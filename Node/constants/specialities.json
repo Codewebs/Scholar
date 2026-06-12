@@ -1,0 +1,14 @@
+[
+  { "id": 1, "libelle": "Mathématiques", "type": "MATIERE" },
+  { "id": 2, "libelle": "Français", "type": "MATIERE" },
+  { "id": 3, "libelle": "Physique-Chimie", "type": "MATIERE" },
+  { "id": 4, "libelle": "SVT", "type": "MATIERE" },
+  { "id": 5, "libelle": "Anglais", "type": "MATIERE" },
+  { "id": 6, "libelle": "Histoire-Géo", "type": "MATIERE" },
+  { "id": 7, "libelle": "Informatique", "type": "MATIERE" },
+  { "id": 8, "libelle": "Philosophie", "type": "MATIERE" },
+  { "id": 9, "libelle": "Gestion de classe", "type": "COMPETENCE_PRO" },
+  { "id": 10, "libelle": "Pédagogie différenciée", "type": "COMPETENCE_PRO" },
+  { "id": 11, "libelle": "Utilisation TICE", "type": "COMPETENCE_PRO" },
+  { "id": 12, "libelle": "Psychologie de l'enfant", "type": "COMPETENCE_PRO" }
+]

@@ -1,0 +1,37 @@
+# ==========================================
+# 🤖 SECTION ANDROID / GRADLE / IDE (Racine)
+# ==========================================
+*.iml
+.gradle/
+.kotlin/
+/local.properties
+/.idea/
+/build/
+/captures/
+/.cxx/
+/externalsNativeBuild/
+
+# Fichiers résiduels ou archives à exclure
+Scolar.rar
+Clarifications.java
+
+# ==========================================
+# 🟢 SECTION BACKEND NODE.JS (Sous-dossier Node)
+# ==========================================
+# On cible spécifiquement le sous-dossier "Node" pour ne pas bloquer le reste
+
+Node/node_modules/
+Node/.env
+Node/.env.local
+Node/.env.development.local
+Node/.env.test.local
+Node/.env.production.local
+
+# Fichiers de log et uploads du backend
+Node/npm-debug.log*
+Node/yarn-debug.log*
+Node/yarn-error.log*
+Node/uploads/
+
+# 系统 (Système)
+.DS_Store

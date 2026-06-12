@@ -1,0 +1,19 @@
+// Node/constants/qualites.js
+module.exports = [
+    "ADMINISTRATEUR",
+    "FONDATEUR",
+    "DIRECTEUR",
+    "VICE_PRINCIPAL",
+    "DIRECTEUR_DES_ETUDES",
+    "INTENDANT",
+    "SECRETAIRE",
+    "SURVEILLANT_GENERAL",
+    "CHEF_DE_DEPARTEMENT",
+    "ENSEIGNANT",
+    "CONSEILLER_ORIENTATION",
+    "INFIRMIER",
+    "PARENT",
+    "ELEVE",
+    "AGENT_ENTRETIEN",
+    "PERSONNEL_CANTINE"
+];

@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:name=".ScholarApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Scholar"
+        android:usesCleartextTraffic="true"
+        tools:targetApi="31">
+        <activity
+            android:name=".ui.Etablissement.EtablissementActivity"
+            android:exported="false"
+            android:label="@string/title_activity_etablissement"
+            android:theme="@style/Theme.Scholar" />
+
+        <activity
+            android:name=".ui.student.StudentManagementActivity"
+            android:exported="false"
+            android:label="Gestion des Élèves"
+            android:theme="@style/Theme.Scholar" />
+        <activity
+            android:name=".ui.student.RepartitionMatiereActivity"
+            android:exported="false"
+            android:label="Repartition des matieres"
+            android:theme="@style/Theme.Scholar" />
+
+        <activity
+            android:name=".ui.salle.SalleManagementActivity"
+            android:exported="false"
+            android:label="Gestion des Salles"
+            android:theme="@style/Theme.Scholar" />
+
+        <activity
+            android:name=".ui.student.ClasseManagementActivity"
+            android:exported="false"
+            android:label="Gestion des Classes"
+            android:theme="@style/Theme.Scholar" />
+
+        <activity
+            android:name=".ui.personnel.DemandeTrackingActivity"
+            android:exported="false"
+            android:label="Suivi de mes demandes"
+            android:theme="@style/Theme.Scholar" />
+        <activity
+            android:name=".ui.personnel.PersonnelAffectationActivity"
+            android:exported="false"
+            android:label="Affectations des Enseignants"
+            android:theme="@style/Theme.Scholar" />
+        <activity
+            android:name=".ui.personnel.PersonnelManagementActivity"
+            android:exported="false"
+            android:label="Gestion du Personnel"
+            android:theme="@style/Theme.Scholar" />
+        <activity
+            android:name=".ui.personnel.EquipePedagogiqueActivity"
+            android:exported="false"
+            android:label="Équipe Pédagogique"
+            android:theme="@style/Theme.Scholar" />
+
+
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:label="@string/title_activity_settings"
+            android:theme="@style/Theme.Scholar" />
+        <activity android:name=".ui.auth.RegisterActivity" />
+        <activity
+            android:name=".ui.auth.LoginActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".ui.finance.FinanceLibraryActivity"
+            android:exported="false"
+            android:label="Bibliothèque des Frais"
+            android:theme="@style/Theme.Scholar" />
+        <activity
+            android:name=".ui.finance.TransportManagementActivity"
+            android:exported="false"
+            android:label="Gestion des Transports"
+            android:theme="@style/Theme.Scholar" />
+        <activity
+            android:name=".ui.settings.PeriodeManagementActivity"
+            android:exported="false"
+            android:label="Périodes &amp; Séquences"
+            android:theme="@style/Theme.Scholar" />
+        <activity
+            android:name=".ui.matieres.MatiereActivity"
+            android:exported="false"
+            android:label="Dashboard Matières"
+            android:theme="@style/Theme.Scholar" />
+        <activity
+            android:name=".ui.finance.PaymentActivity"
+            android:exported="false"
+            android:label="Paiements Frais"
+            android:theme="@style/Theme.Scholar" />
+
+        <activity
+            android:name=".ui.reports.ReportsActivity"
+            android:exported="false"
+            android:label="États et Rapports"
+            android:theme="@style/Theme.Scholar" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name" />
+
+        <activity
+            android:name=".ui.grades.GradeManagementActivity"
+            android:exported="false"
+            android:label="Gestion des Notes"
+            android:theme="@style/Theme.Scholar" />
+
+        <activity
+            android:name=".ui.components.PdfViewerActivity"
+            android:exported="false"
+            android:label="Aperçu PDF"
+            android:theme="@style/Theme.Scholar" />
+
+
+
+        <receiver
+            android:name=".network.NetworkChangeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "156634385774",
+    "project_id": "calculo-53cc6",
+    "storage_bucket": "calculo-53cc6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:156634385774:android:2af1487b9c3c1e10a0857f",
+        "android_client_info": {
+          "package_name": "com.indiza.scholar"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "156634385774-2mdaregkk2ajkgfoh3rb2nrqa0jdbpqb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.indiza.scholar",
+            "certificate_hash": "9ada1de24edc8ba0b3d6d1d8bb6922973b729da6"
+          }
+        },
+        {
+          "client_id": "156634385774-ge6hc4q1d2anud8hmb55j553mkm8u2hq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDxpuITOC0A-r9UfRG_2ZseTTNHaPWNBF4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "156634385774-ge6hc4q1d2anud8hmb55j553mkm8u2hq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
