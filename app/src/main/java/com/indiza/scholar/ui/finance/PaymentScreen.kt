@@ -2,6 +2,7 @@ package com.indiza.scholar.ui.finance
 
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -35,7 +36,8 @@ import com.indiza.scholar.ui.student.EleveUiModel
 fun PaymentScreen(
     idAnneeScolaire: Long,
     financeViewModel: FinanceViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onShowReceipt: (Long, Long) -> Unit
 ) {
     val context = LocalContext.current
     val apiService = remember { 
@@ -53,6 +55,8 @@ fun PaymentScreen(
     var isLoadingStudents by remember { mutableStateOf(false) }
     
     var showPaymentSheet by remember { mutableStateOf(false) }
+    var showPeriscolaireSheet by remember { mutableStateOf(false) }
+    var showReceiptDialog by remember { mutableStateOf<Long?>(null) } // idPaiement
     
     // Config states
     var hasExigiblesConfigured by remember { mutableStateOf(true) }
@@ -60,18 +64,36 @@ fun PaymentScreen(
 
     LaunchedEffect(idAnneeScolaire) {
         isLoadingStudents = true
+        Log.d("PaymentScreen", "🔄 [Fetch] Chargement des élèves pour l'année ID: $idAnneeScolaire")
         try {
             val response = apiService.getAllStudents(idAnneeScolaire)
+            Log.d("PaymentScreen", "📥 [Fetch] Response Code: ${response.code()}")
             if (response.isSuccessful) {
                 allStudents = response.body() ?: emptyList()
+                Log.d("PaymentScreen", "✅ [Fetch] ${allStudents.size} élèves récupérés")
+                allStudents.take(3).forEach { 
+                    Log.d("PaymentScreen", "   - Elève: ${it.nomComplet} (ID: ${it.idEleve}), Classe: ${it.classeLabel}, Soldé: ${it.isSolded}")
+                }
+            } else {
+                Log.e("PaymentScreen", "❌ [Fetch] Erreur API: ${response.errorBody()?.string()}")
             }
             
             // On vérifie aussi si les frais sont configurés (exemple simplifié)
             val libraryResp = apiService.getFraisExigiblesLibrary()
             if (libraryResp.isSuccessful) {
-                hasExigiblesConfigured = libraryResp.body()?.isNotEmpty() ?: false
+                val list = libraryResp.body() ?: emptyList()
+                hasExigiblesConfigured = list.isNotEmpty()
+                Log.d("PaymentScreen", "📚 [Library] ${list.size} frais configurés. hasExigiblesConfigured=$hasExigiblesConfigured")
+            }
+
+            val periResp = apiService.getFraisPeriscolairesLibrary()
+            if (periResp.isSuccessful) {
+                val list = periResp.body() ?: emptyList()
+                hasPeriscolairesConfigured = list.isNotEmpty()
+                Log.d("PaymentScreen", "📚 [PeriLibrary] ${list.size} frais périscolaires configurés.")
             }
         } catch (e: Exception) {
+            Log.e("PaymentScreen", "🔥 [Fetch] Exception", e)
             e.printStackTrace()
         } finally {
             isLoadingStudents = false
@@ -79,6 +101,7 @@ fun PaymentScreen(
     }
 
     LaunchedEffect(searchQuery, paymentStatusFilter, allStudents) {
+        Log.d("PaymentScreen", "🔍 [Filter] Début filtrage: total=${allStudents.size}, query='$searchQuery', filter='$paymentStatusFilter'")
         var result = allStudents
         
         if (searchQuery.isNotBlank()) {
@@ -86,6 +109,7 @@ fun PaymentScreen(
                 it.nomComplet.contains(searchQuery, ignoreCase = true) || 
                 it.matricule.contains(searchQuery, ignoreCase = true) 
             }
+            Log.d("PaymentScreen", "   -> Après recherche: ${result.size}")
         }
         
         result = when (paymentStatusFilter) {
@@ -94,6 +118,7 @@ fun PaymentScreen(
             "Aucun versement" -> result.filter { !it.hasAnyPayment }
             else -> result
         }
+        Log.d("PaymentScreen", "   -> Résultat final: ${result.size}")
         
         filteredStudents = result
     }
@@ -127,7 +152,7 @@ fun PaymentScreen(
                             text = { Text("Gérer Frais Périscolaires", color = Color.White) },
                             onClick = { 
                                 showMenu = false
-                                // TODO: Naviguer vers configuration périscolaire
+                                context.startActivity(Intent(context, FinanceLibraryActivity::class.java))
                             },
                             leadingIcon = { Icon(Icons.Default.Settings, null, tint = Color(0xFF3498DB)) }
                         )
@@ -155,7 +180,7 @@ fun PaymentScreen(
                     Text("Frais périscolaires non configurés", color = Color.Red, fontSize = 10.sp, modifier = Modifier.padding(bottom = 4.dp))
                 }
                 ExtendedFloatingActionButton(
-                    onClick = { /* TODO: Périscolaire */ },
+                    onClick = { if (selectedEleve != null && hasPeriscolairesConfigured) showPeriscolaireSheet = true },
                     icon = { Icon(Icons.Default.CardGiftcard, null) },
                     text = { Text("Payer frais périscolaires") },
                     expanded = selectedEleve != null,
@@ -241,7 +266,37 @@ fun PaymentScreen(
             eleve = selectedEleve!!,
             idAnneeScolaire = idAnneeScolaire,
             viewModel = financeViewModel,
-            onDismiss = { showPaymentSheet = false }
+            isPeriscolaire = false,
+            onDismiss = { showPaymentSheet = false },
+            onSuccess = { showReceiptDialog = it }
+        )
+    }
+
+    if (showPeriscolaireSheet && selectedEleve != null) {
+        PaymentBottomSheet(
+            eleve = selectedEleve!!,
+            idAnneeScolaire = idAnneeScolaire,
+            viewModel = financeViewModel,
+            isPeriscolaire = true,
+            onDismiss = { showPeriscolaireSheet = false },
+            onSuccess = { showReceiptDialog = it }
+        )
+    }
+
+    if (showReceiptDialog != null) {
+        AlertDialog(
+            onDismissRequest = { showReceiptDialog = null },
+            title = { Text("Paiement validé") },
+            text = { Text("Le versement a été enregistré avec succès. Souhaitez-vous afficher le reçu ?") },
+            confirmButton = {
+                Button(onClick = {
+                    selectedEleve?.let { onShowReceipt(it.idEleve, idAnneeScolaire) }
+                    showReceiptDialog = null
+                }) { Text("Afficher le reçu") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showReceiptDialog = null }) { Text("Plus tard") }
+            }
         )
     }
 }
@@ -252,20 +307,31 @@ fun PaymentBottomSheet(
     eleve: EleveUiModel,
     idAnneeScolaire: Long,
     viewModel: FinanceViewModel,
-    onDismiss: () -> Unit
+    isPeriscolaire: Boolean = false,
+    onDismiss: () -> Unit,
+    onSuccess: (Long) -> Unit
 ) {
     var montant by remember { mutableStateOf("") }
     val paymentState by viewModel.paymentState.collectAsState()
+    val lastPaymentId by viewModel.lastPaymentId.collectAsState()
     val details by viewModel.studentPaymentDetails.collectAsState()
 
     LaunchedEffect(eleve.idEleve) {
-        viewModel.loadStudentPaymentDetails(eleve.idEleve, idAnneeScolaire)
+        if (isPeriscolaire) viewModel.loadStudentPeriscolaireDetails(eleve.idEleve, idAnneeScolaire)
+        else viewModel.loadStudentPaymentDetails(eleve.idEleve, idAnneeScolaire)
         viewModel.resetPaymentState()
+    }
+
+    LaunchedEffect(paymentState) {
+        if (paymentState is SaveState.SUCCESS && lastPaymentId != null) {
+            onSuccess(lastPaymentId!!)
+            onDismiss()
+        }
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color(0xFF1E2A3A), contentColor = Color.White) {
         Column(modifier = Modifier.padding(16.dp).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("Paiement Frais Exigibles", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(if (isPeriscolaire) "Paiement Frais Périscolaires" else "Paiement Frais Exigibles", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             
             // Header Info
             Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF2C3E50))) {
@@ -285,7 +351,7 @@ fun PaymentBottomSheet(
             }
 
             // Breakdown Table
-            Text("Détail par frais (Priorité FIFO)", style = MaterialTheme.typography.titleMedium, color = Color(0xFF1ABC9C))
+            Text(if (isPeriscolaire) "Détail par activité" else "Détail par frais (Priorité FIFO)", style = MaterialTheme.typography.titleMedium, color = Color(0xFF1ABC9C))
             Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF2C3E50))) {
                 Column(modifier = Modifier.padding(8.dp)) {
                     details?.frais?.forEach { f ->
@@ -348,13 +414,6 @@ fun PaymentBottomSheet(
             ) {
                 if (paymentState is SaveState.SAVING_REMOTE) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                 else Text("Valider le versement")
-            }
-            
-            if (paymentState is SaveState.SUCCESS) {
-                LaunchedEffect(Unit) {
-                    montant = ""
-                    // Success is handled by VM refreshing details via loadStudentPaymentDetails
-                }
             }
             
             Spacer(modifier = Modifier.height(32.dp))

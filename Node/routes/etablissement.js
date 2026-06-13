@@ -92,9 +92,12 @@ router.get("/user/:userId", async (req, res) => {
 // Créer un établissement
 router.post("/", async (req, res) => {
   try {
+    console.log("📝 [SchoolRoute] Tentative de création d'établissement:", req.body.nomFr);
     const school = await Etablissement.create(req.body);
+    console.log("✅ [SchoolRoute] Établissement créé avec succès ID:", school.idEtablissement);
     res.status(201).json(school);
   } catch (err) {
+    console.error("❌ [SchoolRoute] Erreur création établissement:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -113,9 +116,12 @@ router.get("/:id", async (req, res) => {
 // Modifier un établissement
 router.put("/:id", async (req, res) => {
   try {
+    console.log(`📝 [SchoolRoute] Mise à jour établissement ID ${req.params.id}:`, req.body);
     await Etablissement.update(req.body, { where: { idEtablissement: req.params.id } });
+    console.log(`✅ [SchoolRoute] Établissement ID ${req.params.id} mis à jour.`);
     res.json({ message: "Établissement mis à jour" });
   } catch (err) {
+    console.error(`❌ [SchoolRoute] Erreur mise à jour établissement ${req.params.id}:`, err.message);
     res.status(500).json({ error: err.message });
   }
 });

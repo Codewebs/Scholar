@@ -34,6 +34,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import com.indiza.scholar.model.FraisPeriscolaireEntity
+
 @Composable
 fun FeesManagementView(idAnneeScolaire: Long, viewModel: ClasseManagementViewModel) {
     val classes by viewModel.classes.collectAsState()
@@ -43,7 +46,7 @@ fun FeesManagementView(idAnneeScolaire: Long, viewModel: ClasseManagementViewMod
     if (showLibrary) {
         GlobalFeesLibraryScreen(viewModel) { showLibrary = false }
     } else if (selectedClasse == null) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().background(Color(0xFF1E2A3A)).padding(16.dp)) {
             Button(
                 onClick = { showLibrary = true },
                 modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
@@ -51,7 +54,7 @@ fun FeesManagementView(idAnneeScolaire: Long, viewModel: ClasseManagementViewMod
             ) {
                 Icon(Icons.Default.Settings, null)
                 Spacer(Modifier.width(8.dp))
-                Text("Gérer la Bibliothèque des Frais")
+                Text("Gérer les Bibliothèques des Frais")
             }
 
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -365,27 +368,60 @@ fun EditFeesScreen(idAnneeScolaire: Long, classe: ClasseUiModel, viewModel: Clas
 @Composable
 fun GlobalFeesLibraryScreen(viewModel: ClasseManagementViewModel, onBack: () -> Unit) {
     val library by viewModel.fraisLibrary.collectAsState()
+    val periLibrary by viewModel.periscolaireLibrary.collectAsState()
+    
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabs = listOf("Exigibles", "Périscolaires")
+
     var showAddDialog by remember { mutableStateOf(false) }
     var newFraisFr by remember { mutableStateOf("") }
     var newFraisEn by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) { viewModel.loadFraisLibrary() }
+    LaunchedEffect(selectedTab) { 
+        if (selectedTab == 0) viewModel.loadFraisLibrary() 
+        else viewModel.loadPeriscolaireLibrary()
+    }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    Column(modifier = Modifier.fillMaxSize().background(Color(0xFF1E2A3A))) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(16.dp)) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White) }
-            Text("Bibliothèque des Frais", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("Bibliothèques des Frais", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
 
-        LazyColumn(modifier = Modifier.weight(1f).padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(library) { frais ->
+        TabRow(
+            selectedTabIndex = selectedTab,
+            containerColor = Color(0xFF2C3E50),
+            contentColor = Color.White,
+            indicator = { tabPositions ->
+                TabRowDefaults.SecondaryIndicator(
+                    Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                    color = Color(0xFF1ABC9C)
+                )
+            }
+        ) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTab == index,
+                    onClick = { selectedTab = index },
+                    text = { Text(title) }
+                )
+            }
+        }
+
+        LazyColumn(modifier = Modifier.weight(1f).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val list = if (selectedTab == 0) library else periLibrary.map { FraisExigibleEntity(it.idFraisActivitePeriscolaire, it.libelleFr, it.libelleEn ?: "") }
+            
+            items(list) { frais ->
                 Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF2C3E50))) {
                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(frais.fraisFr, color = Color.White, fontWeight = FontWeight.Bold)
                             Text(frais.fraisEn, color = Color.Gray, fontSize = 12.sp)
                         }
-                        IconButton(onClick = { /* Implement delete if needed */ }) { Icon(Icons.Default.Delete, null, tint = Color.Red) }
+                        IconButton(onClick = { 
+                            if (selectedTab == 0) viewModel.deleteLibraryFrais(frais.idFraisExigible)
+                            else viewModel.deletePeriscolaireLibraryFrais(frais.idFraisExigible)
+                        }) { Icon(Icons.Default.Delete, null, tint = Color.Red) }
                     }
                 }
             }
@@ -393,18 +429,18 @@ fun GlobalFeesLibraryScreen(viewModel: ClasseManagementViewModel, onBack: () -> 
 
         Button(
             onClick = { showAddDialog = true },
-            modifier = Modifier.fillMaxWidth().height(50.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp).height(50.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1ABC9C))
         ) {
             Icon(Icons.Default.Add, null)
-            Text("Nouveau type de frais")
+            Text(if (selectedTab == 0) "Nouveau type de frais" else "Nouvelle activité")
         }
     }
 
     if (showAddDialog) {
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
-            title = { Text("Ajouter un type de frais") },
+            title = { Text(if (selectedTab == 0) "Ajouter un type de frais" else "Ajouter une activité") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(value = newFraisFr, onValueChange = { newFraisFr = it }, label = { Text("Nom (FR)") })
@@ -413,7 +449,11 @@ fun GlobalFeesLibraryScreen(viewModel: ClasseManagementViewModel, onBack: () -> 
             },
             confirmButton = {
                 Button(onClick = {
-                    viewModel.createLibraryFrais(FraisExigibleEntity(fraisFr = newFraisFr, fraisEn = newFraisEn))
+                    if (selectedTab == 0) {
+                        viewModel.createLibraryFrais(FraisExigibleEntity(fraisFr = newFraisFr, fraisEn = newFraisEn))
+                    } else {
+                        viewModel.createPeriscolaireLibraryFrais(FraisPeriscolaireEntity(libelleFr = newFraisFr, libelleEn = newFraisEn))
+                    }
                     showAddDialog = false
                     newFraisFr = ""
                     newFraisEn = ""

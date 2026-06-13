@@ -27,6 +27,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -37,6 +38,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.indiza.scholar.model.AcademicPermission
@@ -169,22 +171,16 @@ fun InitialSetupScreen(
 @Composable
 fun LandingStep(viewModel: InitialSetupViewModel, onNavigateToTracker: () -> Unit) {
     var showServerConfig by remember { mutableStateOf(false) }
-    val context = LocalContext.current
 
     LandingScreen(
         onNavigateToCreate = { pays, ville, arrete -> 
             viewModel.startCreateSchool(pays, ville, arrete)
         },
-        onNavigateToJoinStaff = { code -> 
-            viewModel.startJoinStaff(code)
+        onNavigateToJoinStaff = { 
+            viewModel.startJoinStaff()
         },
-        onNavigateToJoinStudent = { code -> 
-            viewModel.startJoinStudent(code) {
-                // Pour Parent/Eleve, on marque comme complété et on active la session
-                context.getSharedPreferences("app_config", Context.MODE_PRIVATE).edit().putBoolean("setup_complete", true).apply()
-                // On pourrait extraire schoolId/yearId du code si l'API le permettait
-                onNavigateToTracker()
-            }
+        onNavigateToJoinStudent = { 
+            viewModel.startJoinStudent()
         },
         onServerConfigClick = { showServerConfig = true }
     )
@@ -350,8 +346,15 @@ fun SchoolStep(viewModel: InitialSetupViewModel, onNavigateToTracker: () -> Unit
     var searchQuery by remember { mutableStateOf("") }
     val uiState by viewModel.uiState.collectAsState()
     var showBottomSheet by remember { mutableStateOf(false) }
+    var showSuccessSheet by remember { mutableStateOf(false) }
+    var showAlreadyAppliedSheet by remember { mutableStateOf(false) }
     var isNewDemandFlow by remember { mutableStateOf(uiState.isNewUser) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val context = LocalContext.current
+
+    LaunchedEffect(uiState.isNewUser) {
+        isNewDemandFlow = uiState.isNewUser
+    }
 
     Column {
         Text(
@@ -382,8 +385,13 @@ fun SchoolStep(viewModel: InitialSetupViewModel, onNavigateToTracker: () -> Unit
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
                 uiState.userAssociations.forEach { assoc ->
-                    SchoolItem(assoc.school, assoc.school == uiState.selectedSchool, assoc.etat) {
-                        viewModel.selectSchool(assoc.school)
+                    val isClickable = assoc.etat == "VALIDE"
+                    SchoolItem(assoc.school, assoc.school == uiState.selectedSchool, assoc.etat, enabled = isClickable) {
+                        if (isClickable) {
+                            isNewDemandFlow = false
+                            viewModel.selectSchool(assoc.school)
+                            viewModel.validateSchool { /* Déjà validé, ne sera pas appelé */ }
+                        }
                     }
                 }
             } else {
@@ -395,8 +403,25 @@ fun SchoolStep(viewModel: InitialSetupViewModel, onNavigateToTracker: () -> Unit
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
                     uiState.schools.forEach { school ->
-                        SchoolItem(school, school == uiState.selectedSchool) {
+                        val existingAssoc = uiState.userAssociations.find { it.school.idServeur == school.idServeur }
+                        val status = existingAssoc?.etat
+                        
+                        SchoolItem(school, school == uiState.selectedSchool, status) {
                             viewModel.selectSchool(school)
+                            when (status) {
+                                "VALIDE" -> {
+                                    isNewDemandFlow = false
+                                    viewModel.validateSchool { }
+                                }
+                                "EN_ATTENTE", "REJETE" -> {
+                                    isNewDemandFlow = false
+                                    showAlreadyAppliedSheet = true
+                                }
+                                else -> {
+                                    // Pas d'association : on active le flux de postulation
+                                    isNewDemandFlow = true
+                                }
+                            }
                         }
                     }
                 }
@@ -404,6 +429,33 @@ fun SchoolStep(viewModel: InitialSetupViewModel, onNavigateToTracker: () -> Unit
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        if (isNewDemandFlow && uiState.selectedSchool != null) {
+            val isStaff = uiState.selectedProfile != "ELEVE"
+            Text(
+                text = if (isStaff) "Code de recrutement" else "Code d'inscription",
+                color = Color(0xFFF1C40F),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            GlassTextField(
+                value = if (isStaff) uiState.recruitmentCode ?: "" else uiState.inscriptionCode ?: "",
+                onValueChange = { 
+                    if (isStaff) viewModel.onRecruitmentCodeChanged(it) 
+                    else viewModel.onInscriptionCodeChanged(it)
+                },
+                label = if (isStaff) "Code à 4 chiffres" else "Code d'inscription"
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        uiState.error?.let {
+            Text(it, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(vertical = 8.dp))
+        }
+
+        val isCodeRequired = isNewDemandFlow && uiState.selectedSchool != null && uiState.selectedSchool?.idCreateur != uiState.userId
+        val isCodeFilled = if (uiState.selectedProfile == "ELEVE") !uiState.inscriptionCode.isNullOrBlank() else !uiState.recruitmentCode.isNullOrBlank()
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -422,13 +474,112 @@ fun SchoolStep(viewModel: InitialSetupViewModel, onNavigateToTracker: () -> Unit
             }
 
             Button(
-                onClick = { viewModel.validateSchool(onNavigateToTracker) },
+                onClick = { 
+                    viewModel.validateSchool {
+                        if (isNewDemandFlow) {
+                            showSuccessSheet = true
+                        } else {
+                            // Si validé mais profil ELEVE, on termine
+                            if (uiState.selectedProfile == "ELEVE") {
+                                val prefs = context.getSharedPreferences("app_config", Context.MODE_PRIVATE)
+                                prefs.edit().putBoolean("setup_complete", true).apply()
+                                onNavigateToTracker()
+                            }
+                            // Pour les autres rôles validés, validateSchool s'occupe de changer le step vers SELECT_YEAR ou SELECT_PROFILE
+                        }
+                    }
+                },
                 modifier = Modifier.weight(1f).height(48.dp),
-                enabled = uiState.selectedSchool != null,
+                enabled = uiState.selectedSchool != null && (!isCodeRequired || isCodeFilled),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1ABC9C)),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(if (isNewDemandFlow) "Postuler" else "Valider", fontWeight = FontWeight.Bold)
+            }
+        }
+
+        if (uiState.userAssociations.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = {
+                    val prefs = context.getSharedPreferences("app_config", Context.MODE_PRIVATE)
+                    prefs.edit().putBoolean("setup_complete", true).apply()
+                    onNavigateToTracker()
+                },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.1f)),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+            ) {
+                Text("Terminer", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        if (showSuccessSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showSuccessSheet = false },
+                containerColor = Color(0xFF1A0B2E),
+                contentColor = Color.White
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp)
+                        .padding(bottom = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF1ABC9C), modifier = Modifier.size(64.dp))
+                    Spacer(Modifier.height(16.dp))
+                    Text("Demande envoyée !", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Votre demande d'intégration pour ${uiState.selectedSchool?.nomFr} a été transmise à l'administration.",
+                        textAlign = TextAlign.Center,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    Button(
+                        onClick = { showSuccessSheet = false },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1ABC9C))
+                    ) {
+                        Text("OK", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        if (showAlreadyAppliedSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showAlreadyAppliedSheet = false },
+                containerColor = Color(0xFF1A0B2E),
+                contentColor = Color.White
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp)
+                        .padding(bottom = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(Icons.Default.Warning, null, tint = Color(0xFFF1C40F), modifier = Modifier.size(64.dp))
+                    Spacer(Modifier.height(16.dp))
+                    Text("Déjà postulé", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Vous avez déjà une demande en cours ou une inscription active pour cet établissement.",
+                        textAlign = TextAlign.Center,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    Button(
+                        onClick = { showAlreadyAppliedSheet = false },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.2f))
+                    ) {
+                        Text("Compris", fontWeight = FontWeight.Bold)
+                    }
+                }
             }
         }
 
@@ -471,12 +622,13 @@ fun SchoolStep(viewModel: InitialSetupViewModel, onNavigateToTracker: () -> Unit
 }
 
 @Composable
-fun SchoolItem(school: EtablissementEntity, isSelected: Boolean, status: String? = null, onClick: () -> Unit) {
+fun SchoolItem(school: EtablissementEntity, isSelected: Boolean, status: String? = null, enabled: Boolean = true, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable { onClick() },
+            .alpha(if (enabled) 1f else 0.5f)
+            .clickable(enabled = enabled) { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) Color.White.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f)
         ),
@@ -492,14 +644,22 @@ fun SchoolItem(school: EtablissementEntity, isSelected: Boolean, status: String?
                 Text(school.ville ?: "Ville non définie", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
             }
             if (status != null) {
-                val color = if (status == "VALIDE") Color(0xFF1ABC9C) else Color(0xFFF1C40F)
+                val color = when(status) {
+                    "VALIDE" -> Color(0xFF1ABC9C)
+                    "REJETE" -> Color(0xFFE74C3C)
+                    else -> Color(0xFFF1C40F)
+                }
                 Surface(
                     color = color.copy(alpha = 0.2f),
                     shape = RoundedCornerShape(8.dp),
                     border = BorderStroke(1.dp, color.copy(alpha = 0.5f))
                 ) {
                     Text(
-                        text = if (status == "VALIDE") "Inscrit" else "En attente",
+                        text = when(status) {
+                            "VALIDE" -> "Inscrit"
+                            "REJETE" -> "Rejeté"
+                            else -> "En attente"
+                        },
                         color = color,
                         fontSize = 10.sp,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),

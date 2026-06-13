@@ -1,8 +1,11 @@
 const {
     FraisExigible,
     TarifFraisExigible,
+    FraisActivitePeriscolaire,
+    TarifFraisPeriscolaire,
     PaiementFraisGlobal,
     PaiementFraisExigible,
+    PaiementFraisPeriscolaire,
     Eleve,
     Classe,
     AnneeScolaire,
@@ -724,6 +727,169 @@ exports.getInsolvablesList = async (req, res) => {
         }
 
         res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 1b. BIBLIOTHÈQUE DES FRAIS PÉRISCOLAIRES
+exports.getFraisPeriscolairesLibrary = async (req, res) => {
+    try {
+        const library = await FraisActivitePeriscolaire.findAll({ where: { supprimer: false } });
+        res.json(library);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.createFraisPeriscolaire = async (req, res) => {
+    try {
+        const { libelleFr, libelleEn, description } = req.body;
+        const frais = await FraisActivitePeriscolaire.create({ libelleFr, libelleEn, description });
+        res.status(201).json(frais);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.updateFraisPeriscolaire = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await FraisActivitePeriscolaire.update(req.body, { where: { idFraisActivitePeriscolaire: id } });
+        res.json({ message: "Frais périscolaire mis à jour" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.deleteFraisPeriscolaire = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const countTarifs = await TarifFraisPeriscolaire.count({ where: { idFraisActivitePeriscolaire: id, supprimer: false } });
+        if (countTarifs > 0) {
+            return res.status(400).json({ error: "Ce type de frais est utilisé dans des configurations et ne peut pas être supprimé." });
+        }
+        await FraisActivitePeriscolaire.update({ supprimer: true }, { where: { idFraisActivitePeriscolaire: id } });
+        res.json({ message: "Frais périscolaire supprimé" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 15. PAYER FRAIS PÉRISCOLAIRES
+exports.payerFraisPeriscolaires = async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { idEleve, idAnneeScolaire, montantVerse, modePaiement, reference } = req.body;
+        let resteAPayer = parseInt(montantVerse);
+
+        if (resteAPayer <= 0) return res.status(400).json({ error: "Montant invalide" });
+
+        const global = await PaiementFraisGlobal.create({
+            montantTotal: resteAPayer,
+            modePaiement,
+            referenceTransaction: reference,
+            idEleve,
+            idAnneeScolaire,
+            idCaissier: req.user.userId
+        }, { transaction: t });
+
+        const tarifs = await TarifFraisPeriscolaire.findAll({
+            where: { idAnneeScolaire, supprimer: false },
+            order: [['createdAt', 'ASC']],
+            transaction: t
+        });
+
+        for (const tarif of tarifs) {
+            if (resteAPayer <= 0) break;
+
+            const dejaPaye = await PaiementFraisPeriscolaire.sum('montantAlloue', {
+                include: [{
+                    model: PaiementFraisGlobal,
+                    where: { idEleve, idAnneeScolaire, annule: false }
+                }],
+                where: { idTarifFraisActivitePeriscolaire: tarif.idTarifFraisActivitePeriscolaire },
+                transaction: t
+            }) || 0;
+
+            const duSurCeFrais = tarif.montantFraisActivitePeriscolaire - dejaPaye;
+
+            if (duSurCeFrais > 0) {
+                const allocation = Math.min(resteAPayer, duSurCeFrais);
+
+                await PaiementFraisPeriscolaire.create({
+                    montantAlloue: allocation,
+                    idTarifFraisActivitePeriscolaire: tarif.idTarifFraisActivitePeriscolaire,
+                    idPaiementFraisGlobal: global.idPaiementFraisGlobal
+                }, { transaction: t });
+
+                resteAPayer -= allocation;
+            }
+        }
+
+        await t.commit();
+        res.status(201).json({
+            message: "Paiement périscolaire enregistré",
+            idPaiement: global.idPaiementFraisGlobal,
+            tropPercu: resteAPayer
+        });
+
+    } catch (error) {
+        if (t) await t.rollback();
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 16. DÉTAILS PÉRISCOLAIRES D'UN ÉLÈVE
+exports.getStudentPeriscolaireDetails = async (req, res) => {
+    try {
+        const { idEleve, idAnneeScolaire } = req.params;
+        const { Inscription, Salle, Classe, TarifFraisPeriscolaire, FraisActivitePeriscolaire, PaiementFraisPeriscolaire, PaiementFraisGlobal, Eleve } = require("../models");
+
+        const ins = await Inscription.findOne({
+            where: { idEleve, idAnneeScolaire, supprimer: false },
+            include: [{ model: Eleve }, { model: Salle, include: [{ model: Classe, as: "Classe" }] }]
+        });
+
+        if (!ins) return res.status(404).json({ error: "Élève non trouvé." });
+
+        const tarifs = await TarifFraisPeriscolaire.findAll({
+            where: { idAnneeScolaire, supprimer: false },
+            include: [{ model: FraisActivitePeriscolaire, as: "Frais" }],
+            order: [['createdAt', 'ASC']]
+        });
+
+        const details = await Promise.all(tarifs.map(async (t) => {
+            const dejaPaye = await PaiementFraisPeriscolaire.sum('montantAlloue', {
+                include: [{
+                    model: PaiementFraisGlobal,
+                    where: { idEleve, idAnneeScolaire, annule: false }
+                }],
+                where: { idTarifFraisActivitePeriscolaire: t.idTarifFraisActivitePeriscolaire }
+            }) || 0;
+
+            return {
+                idTarif: t.idTarifFraisActivitePeriscolaire,
+                libelle: t.Frais.libelleFr,
+                montantDu: t.montantFraisActivitePeriscolaire,
+                montantPaye: dejaPaye,
+                reste: t.montantFraisActivitePeriscolaire - dejaPaye,
+                isComplet: dejaPaye >= t.montantFraisActivitePeriscolaire
+            };
+        }));
+
+        const totalDejaVerse = details.reduce((sum, item) => sum + item.montantPaye, 0);
+        const totalTotalDu = details.reduce((sum, item) => sum + item.montantDu, 0);
+
+        res.json({
+            nomComplet: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(),
+            classeLabel: ins.Salle ? `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}` : "N/A",
+            totalDejaVerse,
+            totalTotalDu,
+            resteGlobal: totalTotalDu - totalDejaVerse,
+            frais: details
+        });
+
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

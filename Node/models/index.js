@@ -40,6 +40,7 @@ const FraisActivitePeriscolaire = require("./fraisActivitePeriscolaire");
 const TarifFraisPeriscolaire = require("./tarifFraisPeriscolaire");
 const PaiementFraisGlobal = require("./paiementFraisGlobal");
 const PaiementFraisExigible = require("./paiementFraisExigible");
+const PaiementFraisPeriscolaire = require("./paiementFraisPeriscolaire");
 const Quartier = require("./quartier");
 const TarifTransport = require("./tarifTransport");
 const PaiementTransport = require("./paiementTransport");
@@ -183,6 +184,11 @@ PaiementFraisExigible.belongsTo(PaiementFraisGlobal, { foreignKey: "idPaiementFr
 
 PaiementFraisExigible.belongsTo(TarifFraisExigible, { foreignKey: "idTarifFraisExigible", as: "Tarif" });
 
+PaiementFraisGlobal.hasMany(PaiementFraisPeriscolaire, { foreignKey: "idPaiementFraisGlobal", as: "detailsPeriscolaires" });
+PaiementFraisPeriscolaire.belongsTo(PaiementFraisGlobal, { foreignKey: "idPaiementFraisGlobal" });
+
+PaiementFraisPeriscolaire.belongsTo(TarifFraisPeriscolaire, { foreignKey: "idTarifFraisActivitePeriscolaire", as: "Tarif" });
+
 PaiementFraisGlobal.hasMany(PaiementTransport, { foreignKey: "idPaiementFraisGlobal", as: "detailsTransport" });
 PaiementTransport.belongsTo(PaiementFraisGlobal, { foreignKey: "idPaiementFraisGlobal" });
 
@@ -274,6 +280,7 @@ module.exports = {
   TarifFraisPeriscolaire,
   PaiementFraisGlobal,
   PaiementFraisExigible,
+  PaiementFraisPeriscolaire,
   Quartier,
   TarifTransport,
   PaiementTransport

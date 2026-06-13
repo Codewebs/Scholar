@@ -87,6 +87,7 @@ enum class AcademicPermission(
 
     VIEW_STUDENT_LIST("Voir Liste Élèves", "View Student List", "Consulter la liste des élèves", "View the student list"),
     VIEW_PAYMENT_STATUS("Voir Statut Paiement", "View Payment Status", "Vérifier le solde d'un élève", "Check a student's balance"),
+    VIEW_MY_PAYMENT_STATUS("Voir My Statut Paiement", "View My Payment Status", "Vérifier le solde de mes payements élève", "Check my student's balance"),
     MANAGE_ACADEMIC_CONFIG("Gérer Config Académique", "Manage Academic Config", "Paramètres avancés de la pédagogie", "Advanced pedagogical settings"),
     EDIT_STUDENT_NOTE("Modifier Note Élève", "Edit Student Note", "Modifier une note déjà saisie", "Edit a previously entered grade"),
     PRINT_STUDENT_CARD("Imprimer Carte Élève", "Print Student Card", "Impression individuelle de carte", "Individual card printing"),
@@ -124,6 +125,7 @@ enum class AcademicPermission(
     UNENROLL_SCHOOL_YEAR("Retirer Année", "Unenroll School Year", "Clôturer l'année", "Close the year"),
     PRINT_SCHOOL_YEAR_INFO("Imprimer Info Année", "Print School Year Info", "Imprimer le calendrier", "Print the calendar"),
     COLLECT_SCHOOL_YEAR_INFO("Rapport Annuel", "School Year Report", "Générer le rapport de l'année", "Generate the year report"),
+    VIEW_SCHOOL_YEAR_INFO("Voir année scolaire", "View School Year", "Permet de voir l'année scolaire de l'ecole actuel", "View the scholl year"),
     COLLECT_ALL_SCHOOL_YEARS_INFO("Archives", "All School Years Info", "Accéder aux archives des années", "Access year archives");
 
     fun label(lang: String): String = if (lang == "en") labelEn else labelFr
@@ -356,7 +358,8 @@ enum class AcademicRole(
         AcademicPermission.ABOUT,
         AcademicPermission.SUMMARY,
         AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.COLLECT_ALL_SCHOOL_YEARS_INFO
+        AcademicPermission.COLLECT_ALL_SCHOOL_YEARS_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
     ), Icons.Default.Business, Color(0xFFF1C40F)),
 
     DIRECTEUR(setOf(
@@ -369,7 +372,8 @@ enum class AcademicRole(
         AcademicPermission.ABOUT,
         AcademicPermission.SUMMARY,
         AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.COLLECT_ALL_SCHOOL_YEARS_INFO
+        AcademicPermission.COLLECT_ALL_SCHOOL_YEARS_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
     ), Icons.Default.ManageAccounts, Color(0xFF3498DB)),
 
     VICE_PRINCIPAL(setOf(
@@ -382,7 +386,8 @@ enum class AcademicRole(
         AcademicPermission.VIEW_PAYMENT_STATUS,
         AcademicPermission.ABOUT,
         AcademicPermission.SUMMARY,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO
+        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
     ), Icons.Default.SupervisorAccount, Color(0xFF2980B9)),
 
     DIRECTEUR_DES_ETUDES(setOf(
@@ -400,7 +405,8 @@ enum class AcademicRole(
         AcademicPermission.EDIT_STUDENT_INFO,
         AcademicPermission.VIEW_PAYMENT_STATUS,
         AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.COLLECT_ALL_SCHOOL_YEARS_INFO
+        AcademicPermission.COLLECT_ALL_SCHOOL_YEARS_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
     ), Icons.Default.MenuBook, Color(0xFF1ABC9C)),
 
     INTENDANT(setOf(
@@ -420,7 +426,8 @@ enum class AcademicRole(
         AcademicPermission.COLLECT_OTHER_FEES,
         AcademicPermission.VIEW_FINANCIAL_REPORTS,
         AcademicPermission.CANCEL_PAYMENT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO
+        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
     ), Icons.Default.Payments, Color(0xFF27AE60)),
 
     SECRETAIRE(setOf(
@@ -434,7 +441,8 @@ enum class AcademicRole(
         AcademicPermission.VIEW_STUDENT_LIST,
         AcademicPermission.COLLECT_REGISTRATION_FEE,
         AcademicPermission.VIEW_PAYMENT_STATUS,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO
+        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
     ), Icons.Default.AppRegistration, Color(0xFF95A5A6)),
 
     SURVEILLANT_GENERAL(setOf(
@@ -445,7 +453,8 @@ enum class AcademicRole(
         AcademicPermission.EXIT_SLIP,
         AcademicPermission.VIEW_STUDENT_LIST,
         AcademicPermission.VIEW_PAYMENT_STATUS,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO
+        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
     ), Icons.Default.Policy, Color(0xFFD35400)),
 
     CHEF_DE_DEPARTEMENT(setOf(
@@ -455,14 +464,16 @@ enum class AcademicRole(
         AcademicPermission.GRADES_COMPLETION_RATE,
         AcademicPermission.GRADES_REPORT_SHEET,
         AcademicPermission.ABOUT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO
+        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
     ), Icons.Default.Groups, Color(0xFF8E44AD)),
 
     ENSEIGNANT(setOf(
         AcademicPermission.GRADES_REPORT_SHEET,
         AcademicPermission.VIEW_STUDENT_LIST,
         AcademicPermission.ABOUT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO
+        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
     ), Icons.Default.School, Color(0xFF2980B9)),
 
     CONSEILLER_ORIENTATION(setOf(
@@ -471,7 +482,8 @@ enum class AcademicRole(
         AcademicPermission.MANAGE_SANCTIONS,
         AcademicPermission.VIEW_STUDENT_LIST,
         AcademicPermission.ABOUT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO
+        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
     ), Icons.Default.Psychology, Color(0xFF16A085)),
 
     INFIRMIER(setOf(
@@ -480,7 +492,8 @@ enum class AcademicRole(
         AcademicPermission.MANAGE_JUSTIFICATIONS,
         AcademicPermission.VIEW_STUDENT_LIST,
         AcademicPermission.ABOUT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO
+        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
     ), Icons.Default.LocalHospital, Color(0xFFC0392B)),
 
     PARENT(setOf(
@@ -489,7 +502,9 @@ enum class AcademicRole(
         AcademicPermission.GRADES_REPORT_SHEET,
         AcademicPermission.VIEW_MESSAGES,
         AcademicPermission.ABOUT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO
+        AcademicPermission.VIEW_MY_PAYMENT_STATUS,
+        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
     ), Icons.Default.FamilyRestroom, Color(0xFF34495E)),
 
     ELEVE(setOf(
@@ -497,24 +512,37 @@ enum class AcademicRole(
         AcademicPermission.GRADES_REPORT_SHEET,
         AcademicPermission.VIEW_MESSAGES,
         AcademicPermission.ABOUT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO
+        AcademicPermission.VIEW_MY_PAYMENT_STATUS,
+        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
     ), Icons.Default.Person, Color(0xFF7F8C8D)),
 
     AGENT_ENTRETIEN(setOf(
         AcademicPermission.EDIT_OWN_ACCOUNT,
         AcademicPermission.ABOUT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO
+        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
     ), Icons.Default.CleaningServices, Color(0xFFBDC3C7)),
 
     PERSONNEL_CANTINE(setOf(
         AcademicPermission.EDIT_OWN_ACCOUNT,
         AcademicPermission.ABOUT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO
-    ), Icons.Default.Restaurant, Color(0xFFE67E22));
+        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
+    ), Icons.Default.Restaurant, Color(0xFFE67E22)),
+
+    /**
+     * Rôle temporaire pour un utilisateur ayant postulé mais non encore validé.
+     * N'a aucune permission sur les données de l'établissement.
+     */
+    DEMANDEUR(emptySet(), Icons.Default.Pending, Color.Gray),
+
+    SANS_ROLE(emptySet(), Icons.Default.Person, Color.Gray);
 
     companion object {
         fun fromName(name: String?): AcademicRole {
-            return entries.find { it.name.equals(name, ignoreCase = true) } ?: ENSEIGNANT
+            if (name.isNullOrBlank()) return SANS_ROLE
+            return entries.find { it.name.equals(name, ignoreCase = true) } ?: DEMANDEUR
         }
     }
 }

@@ -9,6 +9,21 @@ data class FraisExigibleEntity(
     val description: String? = null
 )
 
+data class FraisPeriscolaireEntity(
+    val idFraisActivitePeriscolaire: Long = 0,
+    val libelleFr: String,
+    val libelleEn: String? = null,
+    val description: String? = null
+)
+
+data class TarifFraisPeriscolaireEntity(
+    val idTarifFraisActivitePeriscolaire: Long = 0,
+    val montantFraisActivitePeriscolaire: Int,
+    val idAnneeScolaire: Long,
+    val idFraisActivitePeriscolaire: Long,
+    @Json(name = "FraisActivitePeriscolaire") val detailsFrais: FraisPeriscolaireEntity? = null
+)
+
 data class TarifFraisEntity(
     val idTarifFraisExigible: Long,
     val montantFraisExigible: Int,

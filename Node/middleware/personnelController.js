@@ -6,6 +6,7 @@ const {
   Utilisateur,
   Matiere,
   Salle,
+  Etablissement,
   sequelize
 } = require("../models");
 const { Op } = require("sequelize");
@@ -14,25 +15,57 @@ const { Op } = require("sequelize");
 exports.envoyerDemande = async (req, res) => {
     try {
         const { idUtilisateur, idEtablissement, profilDemande, nom, prenom, telephone1, email, specialites } = req.body;
+        console.log(`📩 [PersonnelCtrl] Nouvelle demande d'inscription: User=${idUtilisateur}, School=${idEtablissement}, Profil=${profilDemande}`);
 
-        // Vérifier si une demande identique en attente existe
+        // Vérifier si une demande identique en attente existe (par utilisateur ou par identité unique)
+        const orConditions = [{ idUtilisateur }];
+        if (telephone1) orConditions.push({ telephone1 });
+        if (email && email.trim() !== "") orConditions.push({ email });
+
         const existing = await DemandeInscriptionPersonnel.findOne({
-            where: { idUtilisateur, idEtablissement, profilDemande, etat: 'EN_ATTENTE' }
+            where: {
+                idEtablissement,
+                etat: 'EN_ATTENTE',
+                [Op.or]: orConditions
+            }
         });
-        if (existing) return res.status(409).json({ error: "Une demande est déjà en cours d'étude." });
+
+        if (existing) {
+            console.warn(`⚠️ [PersonnelCtrl] Demande déjà en cours pour cette identité dans School=${idEtablissement}`);
+            return res.status(409).json({ error: "Une demande est déjà en cours d'étude pour cet utilisateur, ce numéro ou cet email." });
+        }
+
+        // Vérifier si l'utilisateur est déjà inscrit dans l'établissement
+        const existingMember = await InscriptionPersonnel.findOne({
+            where: {
+                idEtablissement,
+                supprimer: false,
+                [Op.or]: orConditions
+            }
+        });
+
+        if (existingMember) {
+            console.warn(`⚠️ [PersonnelCtrl] Utilisateur déjà inscrit dans School=${idEtablissement}`);
+            return res.status(409).json({ error: "Cet utilisateur, numéro ou email est déjà enregistré dans cet établissement." });
+        }
 
         // Vérifier si l'utilisateur est bloqué par l'établissement
         const blocked = await InscriptionPersonnel.findOne({
             where: { idUtilisateur, idEtablissement, bloque: true }
         });
-        if (blocked) return res.status(403).json({ error: "Accès refusé par l'établissement." });
+        if (blocked) {
+            console.warn(`🚫 [PersonnelCtrl] Tentative de demande par utilisateur bloqué: User=${idUtilisateur}`);
+            return res.status(403).json({ error: "Accès refusé par l'établissement." });
+        }
 
         const demande = await DemandeInscriptionPersonnel.create({
             idUtilisateur, idEtablissement, profilDemande, nom, prenom, telephone1, email, specialites
         });
 
+        console.log(`✅ [PersonnelCtrl] Demande créée avec succès ID: ${demande.idDemande}`);
         res.status(201).json(demande);
     } catch (error) {
+        console.error(`❌ [PersonnelCtrl] Erreur envoyerDemande:`, error.message);
         res.status(500).json({ error: error.message });
     }
 };
@@ -239,13 +272,14 @@ exports.getPersonnelActif = async (req, res) => {
 exports.getUserAssociations = async (req, res) => {
   try {
     const { userId } = req.params;
+    console.log(`🔍 [PersonnelCtrl] Récupération associations pour UserID: ${userId}`);
 
     // On récupère les inscriptions validées
     const inscriptions = await InscriptionPersonnel.findAll({
       where: { idUtilisateur: userId, supprimer: false, bloque: false },
       include: [{
-        model: require("../models").Etablissement,
-        attributes: ['idEtablissement', 'nomFr', 'nomEn', 'ville', 'idCreateur', 'pinSecurite']
+        model: Etablissement,
+        attributes: ['idEtablissement', 'nomFr', 'nomEn', 'ville', 'idCreateur', 'pinSecurite', 'telephone1', 'abreviation', 'logo', 'adresse', 'pays']
       }]
     });
 
@@ -257,12 +291,17 @@ exports.getUserAssociations = async (req, res) => {
       if (!associations[schoolId]) {
         associations[schoolId] = {
           school: {
-            idServeur: ins.Etablissement.idEtablissement,
+            idEtablissement: ins.Etablissement.idEtablissement,
             nomFr: ins.Etablissement.nomFr,
             nomEn: ins.Etablissement.nomEn,
             ville: ins.Etablissement.ville,
             idCreateur: ins.Etablissement.idCreateur,
-            pinSecurite: ins.Etablissement.pinSecurite
+            pinSecurite: ins.Etablissement.pinSecurite,
+            telephone1: ins.Etablissement.telephone1,
+            abreviation: ins.Etablissement.abreviation,
+            logo: ins.Etablissement.logo,
+            adresse: ins.Etablissement.adresse,
+            pays: ins.Etablissement.pays
           },
           roles: [],
           etat: 'VALIDE'
@@ -273,12 +312,15 @@ exports.getUserAssociations = async (req, res) => {
       }
     });
 
-    // On récupère AUSSI les demandes en attente pour afficher le statut "En attente" dans l'UI
+    // On récupère AUSSI les demandes pour afficher le statut (En attente, Validé, Rejeté) dans l'UI
     const demandes = await DemandeInscriptionPersonnel.findAll({
-      where: { idUtilisateur: userId, etat: 'EN_ATTENTE' },
+      where: {
+        idUtilisateur: userId,
+        etat: { [Op.in]: ['EN_ATTENTE', 'VALIDE', 'REJETE'] }
+      },
       include: [{
-        model: require("../models").Etablissement,
-        attributes: ['idEtablissement', 'nomFr', 'nomEn', 'ville', 'idCreateur', 'pinSecurite']
+        model: Etablissement,
+        attributes: ['idEtablissement', 'nomFr', 'nomEn', 'ville', 'idCreateur', 'pinSecurite', 'telephone1', 'abreviation', 'logo', 'adresse', 'pays']
       }]
     });
 
@@ -286,27 +328,34 @@ exports.getUserAssociations = async (req, res) => {
         if (!dem.Etablissement) return;
         const schoolId = dem.Etablissement.idEtablissement;
 
-        // Si on a déjà une inscription validée pour cette école, on ignore la demande en attente
-        // (L'utilisateur est déjà dedans avec un rôle)
-        if (associations[schoolId]) return;
+        // Si on a déjà une inscription validée (dans la table inscription_personnel),
+        // on ne surcharge pas avec le statut de la demande.
+        if (associations[schoolId] && associations[schoolId].etat === 'VALIDE') return;
 
         associations[schoolId] = {
             school: {
-                idServeur: dem.Etablissement.idEtablissement,
+                idEtablissement: dem.Etablissement.idEtablissement,
                 nomFr: dem.Etablissement.nomFr,
                 nomEn: dem.Etablissement.nomEn,
                 ville: dem.Etablissement.ville,
                 idCreateur: dem.Etablissement.idCreateur,
-                pinSecurite: dem.Etablissement.pinSecurite
+                pinSecurite: dem.Etablissement.pinSecurite,
+                telephone1: dem.Etablissement.telephone1,
+                abreviation: dem.Etablissement.abreviation,
+                logo: dem.Etablissement.logo,
+                adresse: dem.Etablissement.adresse,
+                pays: dem.Etablissement.pays
             },
-            roles: [],
-            etat: 'EN_ATTENTE'
+            roles: [dem.profilDemande],
+            etat: dem.etat
         };
     });
 
-    res.json(Object.values(associations));
+    const result = Object.values(associations);
+    console.log(`✅ [PersonnelCtrl] ${result.length} associations trouvées pour UserID: ${userId}`);
+    res.json(result);
   } catch (error) {
-    console.error("❌ Erreur getUserAssociations:", error);
+    console.error("❌ [PersonnelCtrl] Erreur getUserAssociations:", error);
     res.status(500).json({ error: error.message });
   }
 };

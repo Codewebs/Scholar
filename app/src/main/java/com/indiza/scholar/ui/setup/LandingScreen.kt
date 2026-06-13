@@ -25,8 +25,8 @@ import com.indiza.scholar.utils.ValidationUtils
 @Composable
 fun LandingScreen(
     onNavigateToCreate: (String, String, String) -> Unit, // pays, ville, arrete
-    onNavigateToJoinStaff: (String) -> Unit, // codeRecrutement
-    onNavigateToJoinStudent: (String) -> Unit, // codeInscription
+    onNavigateToJoinStaff: () -> Unit,
+    onNavigateToJoinStudent: () -> Unit,
     onServerConfigClick: () -> Unit
 ) {
     var step by remember { mutableIntStateOf(0) } // 0: Landing, 1: Rejoindre
@@ -77,8 +77,8 @@ fun LandingScreen(
                 } else {
                     JoinOptions(
                         onBack = { step = 0 },
-                        onStaff = { onNavigateToJoinStaff(it) },
-                        onStudent = { onNavigateToJoinStudent(it) }
+                        onStaff = { onNavigateToJoinStaff() },
+                        onStudent = { onNavigateToJoinStudent() }
                     )
                 }
             }
@@ -147,54 +147,16 @@ fun CreateSchoolLandingForm(onConfirm: (String, String, String) -> Unit) {
 }
 
 @Composable
-fun JoinOptions(onBack: () -> Unit, onStaff: (String) -> Unit, onStudent: (String) -> Unit) {
-    var selectedRole by remember { mutableStateOf<String?>(null) }
-    var code by remember { mutableStateOf("") }
-
+fun JoinOptions(onBack: () -> Unit, onStaff: () -> Unit, onStudent: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        if (selectedRole == null) {
-            Text("Rejoindre en tant que...", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(24.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SmallJoinCard("Enseignant", Icons.Default.School, Modifier.weight(1f)) { selectedRole = "ENSEIGNANT" }
-                SmallJoinCard("Staff", Icons.Default.Badge, Modifier.weight(1f)) { selectedRole = "STAFF" }
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SmallJoinCard("Parent", Icons.Default.FamilyRestroom, Modifier.weight(1f)) { selectedRole = "PARENT" }
-                SmallJoinCard("Élève", Icons.Default.Person, Modifier.weight(1f)) { selectedRole = "ELEVE" }
-            }
-            TextButton(onClick = onBack, modifier = Modifier.padding(top = 16.dp)) {
-                Text("Retour", color = Color.White.copy(alpha = 0.6f))
-            }
-        } else {
-            val isStaff = selectedRole == "ENSEIGNANT" || selectedRole == "STAFF"
-            Text(
-                text = if (isStaff) "Code de recrutement" else "Code d'inscription",
-                color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = if (isStaff) "Entrez le code à 4 chiffres" else "Disponible sur votre reçu",
-                color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp
-            )
-            Spacer(Modifier.height(24.dp))
-            OutlinedTextField(
-                value = code,
-                onValueChange = { if(it.length <= 8) code = it },
-                modifier = Modifier.width(200.dp),
-                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontSize = 24.sp, color = Color.White),
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFF1ABC9C), unfocusedBorderColor = Color.White.copy(alpha = 0.3f))
-            )
-            Spacer(Modifier.height(24.dp))
-            Button(
-                onClick = { if (isStaff) onStaff(code) else onStudent(code) },
-                modifier = Modifier.fillMaxWidth().height(56.dp)
-            ) {
-                Text("Valider")
-            }
-            TextButton(onClick = { selectedRole = null }) {
-                Text("Changer de rôle", color = Color.White.copy(alpha = 0.6f))
-            }
+        Text("Rejoindre en tant que...", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(24.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            SmallJoinCard("Personnel", Icons.Default.Badge, Modifier.weight(1f)) { onStaff() }
+            SmallJoinCard("Élève / Parent", Icons.Default.Person, Modifier.weight(1f)) { onStudent() }
+        }
+        TextButton(onClick = onBack, modifier = Modifier.padding(top = 16.dp)) {
+            Text("Retour", color = Color.White.copy(alpha = 0.6f))
         }
     }
 }

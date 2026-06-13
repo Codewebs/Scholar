@@ -157,7 +157,7 @@ class MainActivity : AppCompatActivity() {
         // 2. Une année sélectionnée
         // 3. Un rôle assigné ET un état "VALIDE" (donc validé par l'administration dans demande_inscription_personnel)
         val isContextComplete = schoolId > 0L && yearId > 0L && userRole.isNotBlank() && userRole != "GUEST"
-        SessionManager.setContext(schoolId, yearId, isContextComplete)
+        SessionManager.setContext(schoolId, yearId, isContextComplete, userRole)
 
         // Gestion de la redirection vers Dashboard si contexte incomplet
         lifecycleScope.launch {

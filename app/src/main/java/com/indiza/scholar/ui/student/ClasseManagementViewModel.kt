@@ -135,6 +135,9 @@ class ClasseManagementViewModel(private val api: ApiService) : ViewModel() {
     private val _fraisLibrary = MutableStateFlow<List<com.indiza.scholar.model.FraisExigibleEntity>>(emptyList())
     val fraisLibrary: StateFlow<List<com.indiza.scholar.model.FraisExigibleEntity>> = _fraisLibrary.asStateFlow()
 
+    private val _periscolaireLibrary = MutableStateFlow<List<com.indiza.scholar.model.FraisPeriscolaireEntity>>(emptyList())
+    val periscolaireLibrary: StateFlow<List<com.indiza.scholar.model.FraisPeriscolaireEntity>> = _periscolaireLibrary.asStateFlow()
+
     fun loadFraisLibrary() {
         viewModelScope.launch {
             try {
@@ -144,11 +147,47 @@ class ClasseManagementViewModel(private val api: ApiService) : ViewModel() {
         }
     }
 
+    fun loadPeriscolaireLibrary() {
+        viewModelScope.launch {
+            try {
+                val response = api.getFraisPeriscolairesLibrary()
+                if (response.isSuccessful) _periscolaireLibrary.value = response.body() ?: emptyList()
+            } catch (e: Exception) {}
+        }
+    }
+
     fun createLibraryFrais(frais: com.indiza.scholar.model.FraisExigibleEntity) {
         viewModelScope.launch {
             try {
                 val response = api.createFraisExigible(frais)
                 if (response.isSuccessful) loadFraisLibrary()
+            } catch (e: Exception) {}
+        }
+    }
+
+    fun createPeriscolaireLibraryFrais(frais: com.indiza.scholar.model.FraisPeriscolaireEntity) {
+        viewModelScope.launch {
+            try {
+                val response = api.createFraisPeriscolaire(frais)
+                if (response.isSuccessful) loadPeriscolaireLibrary()
+            } catch (e: Exception) {}
+        }
+    }
+
+    fun deleteLibraryFrais(id: Long) {
+        viewModelScope.launch {
+            try {
+                val response = api.deleteFraisExigible(id)
+                if (response.isSuccessful) loadFraisLibrary()
+            } catch (e: Exception) {}
+        }
+    }
+
+    fun deletePeriscolaireLibraryFrais(id: Long) {
+        viewModelScope.launch {
+            try {
+                val response = api.deleteFraisPeriscolaire(id)
+                if (response.isSuccessful) loadPeriscolaireLibrary()
             } catch (e: Exception) {}
         }
     }

@@ -267,8 +267,11 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                val permissions by com.indiza.scholar.SessionManager.permissions.collectAsState()
+                val canViewYear = permissions.contains(com.indiza.scholar.model.AcademicPermission.VIEW_SCHOOL_YEAR_INFO)
+
                 // Sélecteurs d'année et d'établissement sur la même ligne
-                if (schoolId > 0L && userRole.isNotBlank()) {
+                if (schoolId > 0L && canViewYear) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -347,14 +350,19 @@ fun HomeScreen(
                                 }
                                 "Stats" -> {
                                     val intent = Intent(context, com.indiza.scholar.ui.reports.ReportsActivity::class.java)
+                                    intent.putExtra("idAnneeScolaire", selectedAnnee?.idServeur ?: 0L)
+                                    intent.putExtra("schoolId", schoolId)
+                                    intent.putExtra("userRole", userRole)
                                     context.startActivity(intent)
                                 }
                                 "Note/Examen" -> {
                                     val intent = Intent(context, com.indiza.scholar.ui.grades.GradeManagementActivity::class.java)
+                                    intent.putExtra("idAnneeScolaire", selectedAnnee?.idServeur ?: 0L)
                                     context.startActivity(intent)
                                 }
                                 "Paiements" -> {
                                     val intent = Intent(context, com.indiza.scholar.ui.finance.PaymentActivity::class.java)
+                                    intent.putExtra("idAnneeScolaire", selectedAnnee?.idServeur ?: 0L)
                                     context.startActivity(intent)
                                 }
                                 "Classes" -> {

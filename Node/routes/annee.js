@@ -50,6 +50,7 @@ router.post("/", async (req, res) => {
       where: { libelleAnneeScolaire, idEtablissement }
     });
     if (existing) {
+      console.warn(`⚠️ [YearRoute] L'année "${libelleAnneeScolaire}" existe déjà pour l'école ${idEtablissement}`);
       return res.status(409).json({ error: "Cette année existe déjà pour cet établissement" });
     }
 

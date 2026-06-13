@@ -257,6 +257,19 @@ interface ApiService {
     @DELETE("finance/exigibles/library/{id}")
     suspend fun deleteFraisExigible(@Path("id") id: Long): Response<Unit>
 
+    // --- Frais Périscolaires ---
+    @GET("finance/periscolaires/library")
+    suspend fun getFraisPeriscolairesLibrary(): Response<List<com.indiza.scholar.model.FraisPeriscolaireEntity>>
+
+    @POST("finance/periscolaires/library")
+    suspend fun createFraisPeriscolaire(@Body frais: com.indiza.scholar.model.FraisPeriscolaireEntity): Response<com.indiza.scholar.model.FraisPeriscolaireEntity>
+
+    @PUT("finance/periscolaires/library/{id}")
+    suspend fun updateFraisPeriscolaire(@Path("id") id: Long, @Body frais: com.indiza.scholar.model.FraisPeriscolaireEntity): Response<Unit>
+
+    @DELETE("finance/periscolaires/library/{id}")
+    suspend fun deleteFraisPeriscolaire(@Path("id") id: Long): Response<Unit>
+
     @GET("finance/tarifs/classe/{idClasse}/{idAnneeScolaire}")
     suspend fun getTarifsByClasse(
         @Path("idClasse") idClasse: Long,
@@ -282,10 +295,19 @@ interface ApiService {
     ): Response<com.indiza.scholar.model.RecouvrementStatsResponse>
 
     @POST("finance/paiements/exigibles")
-    suspend fun payerFraisExigibles(@Body payload: com.indiza.scholar.model.PaiementPayload): Response<Unit>
+    suspend fun payerFraisExigibles(@Body payload: com.indiza.scholar.model.PaiementPayload): Response<Map<String, Any>>
+
+    @POST("finance/paiements/periscolaires")
+    suspend fun payerFraisPeriscolaires(@Body payload: com.indiza.scholar.model.PaiementPayload): Response<Map<String, Any>>
 
     @GET("finance/paiements/details/{idEleve}/{idAnneeScolaire}")
     suspend fun getStudentPaymentDetails(
+        @Path("idEleve") idEleve: Long,
+        @Path("idAnneeScolaire") idAnneeScolaire: Long
+    ): Response<com.indiza.scholar.model.StudentPaymentDetails>
+
+    @GET("finance/paiements/periscolaires/details/{idEleve}/{idAnneeScolaire}")
+    suspend fun getStudentPeriscolaireDetails(
         @Path("idEleve") idEleve: Long,
         @Path("idAnneeScolaire") idAnneeScolaire: Long
     ): Response<com.indiza.scholar.model.StudentPaymentDetails>

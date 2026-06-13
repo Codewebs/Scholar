@@ -31,7 +31,7 @@ router.get("/me", verifyToken, async (req, res) => {
       email: user.email,
       telephone: user.telephone,
       photo: user.photo,
-      role: user.qualite ? user.qualite.libelleQualite : "ENSEIGNANT",
+      role: user.qualite ? user.qualite.libelleQualite : "DEMANDEUR",
       specialites: user.specialites
     });
   } catch (err) {
@@ -159,7 +159,7 @@ router.post("/login-user", async (req, res) => {
       return res.status(401).json({ success: false, message: "Mot de passe incorrect" });
     }
 
-    const role = user.qualite ? user.qualite.libelleQualite : "ENSEIGNANT";
+    const role = user.qualite ? user.qualite.libelleQualite : "DEMANDEUR";
     const token = jwt.sign({ userId: user.idUtilisateur, role: role }, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN || "7d"
     });
