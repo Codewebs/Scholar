@@ -14,27 +14,27 @@ import androidx.compose.ui.platform.LocalContext
 import com.indiza.scholar.ui.theme.ThemeManager
 
 private val DarkColorScheme = darkColorScheme(
-    primary = ScholarTeal,
-    onPrimary = ScholarWhite,
-    secondary = ScholarBlue,
-    onSecondary = ScholarWhite,
+    primary = Color.White,
+    onPrimary = Color.Black,
+    secondary = Color(0xFF9E9E9E),
+    onSecondary = Color.White,
     tertiary = ScholarRed,
-    background = ScholarDarkBackground,
-    surface = ScholarDarkSurface,
-    onBackground = ScholarWhite,
-    onSurface = ScholarWhite
+    background = Color(0xFF000000),
+    surface = Color(0xFF121212),
+    onBackground = Color.White,
+    onSurface = Color.White
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = ScholarTeal,
-    onPrimary = ScholarWhite,
-    secondary = ScholarBlue,
-    onSecondary = ScholarWhite,
+    primary = Color(0xFF000000), // Action color is Black in the new design
+    onPrimary = Color.White,
+    secondary = Color(0xFF9E9E9E),
+    onSecondary = Color.White,
     tertiary = ScholarRed,
-    background = Color(0xFFF5F6F7),
+    background = Color(0xFFFFFFFF),
     surface = Color.White,
-    onBackground = Color(0xFF2C3E50),
-    onSurface = Color(0xFF2C3E50)
+    onBackground = Color(0xFF000000),
+    onSurface = Color(0xFF000000)
 )
 
 @Composable

@@ -62,6 +62,14 @@ fun StudentManagementScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
+    // 🛡️ Logging des permissions à l'entrée
+    LaunchedEffect(Unit) {
+        val permissions = com.indiza.scholar.SessionManager.permissions.value
+        val role = com.indiza.scholar.SessionManager.userRole.value
+        android.util.Log.d("StudentManagement", "🔑 [Accès Menu Élèves] Utilisateur: ${role.name}")
+        android.util.Log.d("StudentManagement", "📜 Permissions actives (${permissions.size}): ${permissions.map { it.name }}")
+    }
+
     // 🔔 Observer les événements de synchronisation Remote-First
     LaunchedEffect(Unit) {
         viewModel.syncEvents.collect { message ->
@@ -228,27 +236,36 @@ fun StudentManagementScreen(
         }
 
         // 🚀 FORÇAGE DU FAB : Placé à la racine de la Box pour survoler TOUT l'écran
-        FloatingActionButton(
-            onClick = {
-                if (idAnneeScolaireActive > 0) {
-                    isBottomSheetVisible = true
-                } else {
-                    scope.launch {
-                        snackbarHostState.showSnackbar(
-                            message = "Veuillez d'abord sélectionner une année scolaire.",
-                            duration = SnackbarDuration.Short
-                        )
+        val sm = com.indiza.scholar.SessionManager
+        val canRegister = sm.hasPermission(com.indiza.scholar.model.AcademicPermission.REGISTER_STUDENT)
+        val canEnroll = sm.hasPermission(com.indiza.scholar.model.AcademicPermission.ENROLL_STUDENT)
+
+        if (canRegister || canEnroll) {
+            FloatingActionButton(
+                onClick = {
+                    android.util.Log.d("StudentManagement", "🎯 [Interaction] Clic sur FAB Ajouter Élève")
+                    android.util.Log.d("StudentManagement", "✅ Permission REGISTER_STUDENT: $canRegister, ENROLL_STUDENT: $canEnroll")
+                    if (idAnneeScolaireActive > 0) {
+                        isBottomSheetVisible = true
+                    } else {
+                        android.util.Log.w("StudentManagement", "⚠️ Action annulée: Aucune année scolaire sélectionnée")
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = "Veuillez d'abord sélectionner une année scolaire.",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
                     }
-                }
-            },
-            containerColor = Color(0xFF1ABC9C),
-            contentColor = Color.White,
-            shape = CircleShape,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 24.dp, end = 24.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Inscrire un élève")
+                },
+                containerColor = Color(0xFF1ABC9C),
+                contentColor = Color.White,
+                shape = CircleShape,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 24.dp, end = 24.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Inscrire un élève")
+            }
         }
 
         // BottomSheet d'inscription
@@ -404,42 +421,71 @@ fun StudentActionBottomSheet(
 
             HorizontalDivider()
 
-            // 1. Infos de base
-            ActionItem(
-                icon = Icons.Default.Info,
-                label = "Infos détaillées de l'élève",
-                onClick = { showDetailsDialog = true }
-            )
+            val sm = com.indiza.scholar.SessionManager
+            
+            // 1. Infos de base (Dossier)
+            val hasDossierPerm = sm.hasPermission(com.indiza.scholar.model.AcademicPermission.STUDENT_DOSSIER)
+            android.util.Log.d("StudentAction", "👤 [Actions Élève] ${student.nomComplet} (ID: ${student.idEleve})")
+            android.util.Log.d("StudentAction", "🔎 Vérification permission STUDENT_DOSSIER: $hasDossierPerm")
+            if (hasDossierPerm) {
+                ActionItem(
+                    icon = Icons.Default.Info,
+                    label = "Infos détaillées de l'élève",
+                    onClick = { 
+                        android.util.Log.d("StudentAction", "👉 Action: Voir détails")
+                        showDetailsDialog = true 
+                    }
+                )
+            }
 
             // 2. Modifier
-            ActionItem(
-                icon = Icons.Default.Edit,
-                label = "Modifier les informations",
-                onClick = { showEditDialog = true }
-            )
+            val hasEditPerm = sm.hasPermission(com.indiza.scholar.model.AcademicPermission.EDIT_STUDENT_INFO)
+            android.util.Log.d("StudentAction", "🔎 Vérification permission EDIT_STUDENT_INFO: $hasEditPerm")
+            if (hasEditPerm) {
+                ActionItem(
+                    icon = Icons.Default.Edit,
+                    label = "Modifier les informations",
+                    onClick = { 
+                        android.util.Log.d("StudentAction", "👉 Action: Modifier infos")
+                        showEditDialog = true 
+                    }
+                )
+            }
 
             // 3. Re-imprimer le reçu
-            ActionItem(
-                icon = Icons.Default.Print,
-                label = "Ré-imprimer le reçu d'inscription",
-                onClick = {
-                    viewModel.getReceiptData(student.idEleve, idAnneeScolaire) { data ->
-                        if (data != null) {
-                            com.indiza.scholar.utils.ReceiptUtils.generateAndOpenRegistrationReceipt(context, data)
-                        } else {
-                            Toast.makeText(context, "Erreur lors de la récupération des données du reçu.", Toast.LENGTH_LONG).show()
+            val hasPrintPerm = sm.hasPermission(com.indiza.scholar.model.AcademicPermission.PRINT_STUDENT_INFO)
+            android.util.Log.d("StudentAction", "🔎 Vérification permission PRINT_STUDENT_INFO: $hasPrintPerm")
+            if (hasPrintPerm) {
+                ActionItem(
+                    icon = Icons.Default.Print,
+                    label = "Ré-imprimer le reçu d'inscription",
+                    onClick = {
+                        android.util.Log.d("StudentAction", "👉 Action: Ré-imprimer reçu")
+                        viewModel.getReceiptData(student.idEleve, idAnneeScolaire) { data ->
+                            if (data != null) {
+                                com.indiza.scholar.utils.ReceiptUtils.generateAndOpenRegistrationReceipt(context, data)
+                            } else {
+                                Toast.makeText(context, "Erreur lors de la récupération des données du reçu.", Toast.LENGTH_LONG).show()
+                            }
                         }
                     }
-                }
-            )
+                )
+            }
 
             // 4. Supprimer / Désactiver
-            ActionItem(
-                icon = Icons.Default.Delete,
-                label = "Désactiver l'inscription",
-                color = Color.Red,
-                onClick = { showDeleteConfirm = true }
-            )
+            val hasUnenrollPerm = sm.hasPermission(com.indiza.scholar.model.AcademicPermission.UNENROLL_STUDENT)
+            android.util.Log.d("StudentAction", "🔎 Vérification permission UNENROLL_STUDENT: $hasUnenrollPerm")
+            if (hasUnenrollPerm) {
+                ActionItem(
+                    icon = Icons.Default.Delete,
+                    label = "Désactiver l'inscription",
+                    color = Color.Red,
+                    onClick = { 
+                        android.util.Log.d("StudentAction", "👉 Action: Désactiver inscription")
+                        showDeleteConfirm = true 
+                    }
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
         }

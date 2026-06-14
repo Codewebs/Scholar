@@ -288,8 +288,11 @@ exports.getUserAssociations = async (req, res) => {
       if (!ins.Etablissement) return;
 
       const schoolId = ins.Etablissement.idEtablissement;
-      if (!associations[schoolId]) {
-        associations[schoolId] = {
+      const yearId = ins.idAnneeScolaire;
+      const key = `${schoolId}-${yearId}`;
+
+      if (!associations[key]) {
+        associations[key] = {
           school: {
             idEtablissement: ins.Etablissement.idEtablissement,
             nomFr: ins.Etablissement.nomFr,
@@ -303,12 +306,15 @@ exports.getUserAssociations = async (req, res) => {
             adresse: ins.Etablissement.adresse,
             pays: ins.Etablissement.pays
           },
+          idAnneeScolaire: yearId,
           roles: [],
+          permissionsAjoutees: ins.permissionsAjoutees ? JSON.parse(ins.permissionsAjoutees) : [],
+          permissionsRetirees: ins.permissionsRetirees ? JSON.parse(ins.permissionsRetirees) : [],
           etat: 'VALIDE'
         };
       }
-      if (!associations[schoolId].roles.includes(ins.role)) {
-        associations[schoolId].roles.push(ins.role);
+      if (!associations[key].roles.includes(ins.role)) {
+        associations[key].roles.push(ins.role);
       }
     });
 
@@ -327,12 +333,17 @@ exports.getUserAssociations = async (req, res) => {
     demandes.forEach(dem => {
         if (!dem.Etablissement) return;
         const schoolId = dem.Etablissement.idEtablissement;
+        // Pour les demandes, on n'a pas encore d'année scolaire définie dans l'association
+        // mais on peut utiliser une clé générique ou 0
+        const key = `${schoolId}-0`;
 
-        // Si on a déjà une inscription validée (dans la table inscription_personnel),
+        // Si on a déjà une inscription validée (dans la table inscription_personnel) pour cette école,
         // on ne surcharge pas avec le statut de la demande.
-        if (associations[schoolId] && associations[schoolId].etat === 'VALIDE') return;
+        // On vérifie s'il existe une clé schoolId-quelquechose déjà VALIDEE
+        const alreadyHasValid = Object.keys(associations).some(k => k.startsWith(`${schoolId}-`) && associations[k].etat === 'VALIDE');
+        if (alreadyHasValid) return;
 
-        associations[schoolId] = {
+        associations[key] = {
             school: {
                 idEtablissement: dem.Etablissement.idEtablissement,
                 nomFr: dem.Etablissement.nomFr,
@@ -346,7 +357,10 @@ exports.getUserAssociations = async (req, res) => {
                 adresse: dem.Etablissement.adresse,
                 pays: dem.Etablissement.pays
             },
+            idAnneeScolaire: 0,
             roles: [dem.profilDemande],
+            permissionsAjoutees: [],
+            permissionsRetirees: [],
             etat: dem.etat
         };
     });

@@ -1,42 +1,31 @@
 package com.indiza.scholar.ui.auth
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.indiza.scholar.MainActivity
 import com.indiza.scholar.model.LoginResponse
 import com.indiza.scholar.network.ApiClient
 import com.indiza.scholar.network.ApiService
-import com.indiza.scholar.ui.ScholarTitle
+import com.indiza.scholar.ui.setup.ServerConfigBottomSheet
 import com.indiza.scholar.ui.theme.ScholarTheme
 import retrofit2.Call
 import retrofit2.Callback
@@ -60,10 +49,13 @@ class LoginActivity : ComponentActivity() {
         }
 
         setContent {
-            ScholarTheme {
+            var isDarkMode by remember { mutableStateOf(false) } // This should ideally come from a DataStore/Prefs
+            ScholarTheme(darkTheme = isDarkMode) {
                 LoginScreen(
                     onLogin = { ident, mdp -> handleLogin(ident, mdp) },
-                    onRegister = { startActivity(Intent(this, RegisterActivity::class.java)) }
+                    onRegister = { startActivity(Intent(this, RegisterActivity::class.java)) },
+                    isDark = isDarkMode,
+                    onThemeToggle = { isDarkMode = !isDarkMode }
                 )
             }
         }
@@ -102,113 +94,134 @@ class LoginActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginScreen(onLogin: (String, String) -> Unit, onRegister: () -> Unit) {
+fun LoginScreen(
+    onLogin: (String, String) -> Unit, 
+    onRegister: () -> Unit,
+    isDark: Boolean,
+    onThemeToggle: () -> Unit
+) {
     var identifiant by remember { mutableStateOf("") }
     var mdp by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var isLoggingIn by remember { mutableStateOf(false) }
+    var showServerConfig by remember { mutableStateOf(false) }
 
-    // Breathing Animation
-    val infiniteTransition = rememberInfiniteTransition(label = "breathing")
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "glow"
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFF1A0B2E), Color(0xFF3B125A), Color(0xFF5E1B89))
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    IconButton(onClick = { /* Could go to a welcome/intro screen */ }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    ServerConfigIcon(onClick = { showServerConfig = true })
+                    ThemeToggleIcon(isDark = isDark, onToggle = onThemeToggle)
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        // Decorative glowing circles
-        Box(
-            modifier = Modifier
-                .size(300.dp)
-                .offset(x = (-100).dp, y = (-200).dp)
-                .blur(80.dp)
-                .background(Color(0xFF8E24AA).copy(alpha = glowAlpha), RoundedCornerShape(150.dp))
-        )
-        Box(
-            modifier = Modifier
-                .size(250.dp)
-                .offset(x = 150.dp, y = 250.dp)
-                .blur(70.dp)
-                .background(Color(0xFF311B92).copy(alpha = glowAlpha), RoundedCornerShape(125.dp))
-        )
-
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.surface
+    ) { padding ->
         Column(
             modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
                 .padding(24.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color.White.copy(alpha = 0.1f))
-                .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
-                .padding(32.dp)
-                .fillMaxWidth(0.9f),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .verticalScroll(rememberScrollState())
         ) {
-            ScholarTitle(color = Color.White)
             Spacer(modifier = Modifier.height(24.dp))
             
             Text(
-                "Connexion",
-                style = TextStyle(
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    shadow = Shadow(color = Color.Black.copy(alpha = 0.3f), blurRadius = 8f)
-                )
+                text = "Let's Sign you in.",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onSurface,
+                lineHeight = 44.sp
             )
             
-            Spacer(modifier = Modifier.height(32.dp))
-
-            GlassTextField(
-                value = identifiant,
-                onValueChange = { identifiant = it },
-                label = "Email ou Identifiant"
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "Welcome back.",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color(0xFF9E9E9E)
+            )
+            Text(
+                text = "You've been missed!",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color(0xFF9E9E9E)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(48.dp))
 
-            GlassTextField(
+            ModernTextField(
+                value = identifiant,
+                onValueChange = { identifiant = it },
+                label = "Username or Email",
+                placeholder = "Enter your username"
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            ModernTextField(
                 value = mdp,
                 onValueChange = { mdp = it },
-                label = "Mot de passe",
+                label = "Password",
+                placeholder = "Enter your password",
                 isPassword = true,
                 passwordVisible = passwordVisible,
                 onPasswordToggle = { passwordVisible = !passwordVisible }
             )
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(48.dp))
 
-            Button(
-                onClick = { onLogin(identifiant, mdp) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White.copy(alpha = 0.2f),
-                    contentColor = Color.White
-                ),
-                shape = RoundedCornerShape(16.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+            SocialLoginRow()
+
+            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Se connecter", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Don't have an account?",
+                    color = Color(0xFF9E9E9E),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                TextButton(onClick = onRegister) {
+                    Text(
+                        "Register",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
 
+            ModernButton(
+                text = "Login",
+                onClick = { 
+                    isLoggingIn = true
+                    onLogin(identifiant, mdp) 
+                },
+                isLoading = isLoggingIn
+            )
+            
             Spacer(modifier = Modifier.height(16.dp))
+        }
 
-            TextButton(onClick = onRegister) {
-                Text("Créer un compte", color = Color.White.copy(alpha = 0.7f))
-            }
+        if (showServerConfig) {
+            ServerConfigBottomSheet(onDismiss = { showServerConfig = false })
         }
     }
 }

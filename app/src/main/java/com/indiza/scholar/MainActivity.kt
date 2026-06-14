@@ -159,6 +159,39 @@ class MainActivity : AppCompatActivity() {
         val isContextComplete = schoolId > 0L && yearId > 0L && userRole.isNotBlank() && userRole != "GUEST"
         SessionManager.setContext(schoolId, yearId, isContextComplete, userRole)
 
+        // 🛡️ SYNC PERMISSIONS AT STARTUP
+        if (userId > 0L) {
+            lifecycleScope.launch {
+                try {
+                    val response = apiService.getUserAssociations(userId)
+                    if (response.isSuccessful) {
+                        val associations = response.body() ?: emptyList()
+                        // Trouver l'association pour l'école et l'année active
+                        val currentAssoc = associations.find { 
+                            it.school.idServeur == schoolId && (it.idAnneeScolaire == yearId || it.idAnneeScolaire == 0L)
+                        }
+                        
+                        currentAssoc?.let {
+                            Log.d("MainActivity", "🔄 Syncing permissions for role: ${it.roles.firstOrNull()}")
+                            // Mettre à jour le rôle et les permissions
+                            SessionManager.setContext(
+                                schoolId = schoolId,
+                                yearId = yearId,
+                                active = isContextComplete,
+                                role = it.roles.firstOrNull() ?: userRole
+                            )
+                            SessionManager.updatePermissions(
+                                added = it.permissionsAjoutees,
+                                removed = it.permissionsRetirees
+                            )
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "❌ Failed to sync permissions", e)
+                }
+            }
+        }
+
         // Gestion de la redirection vers Dashboard si contexte incomplet
         lifecycleScope.launch {
             SessionManager.isUserActive.collect { isActive ->

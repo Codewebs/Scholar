@@ -1,14 +1,16 @@
 const express = require("express");
 const router = express.Router();
 const controller = require("../middleware/studentController");
+const { verifyToken } = require("../middleware/auth");
+const checkPermission = require("../middleware/checkPermission");
 
 // Points d'accès pour les élèves
-router.post("/register-enroll", controller.registerAndEnrollStudent);
-router.get("/room/:idAnneeScolaire/:idSalle", controller.getStudentsByRoom);
-router.get("/search/:idAnneeScolaire", controller.searchStudents);
-router.get("/all/:idAnneeScolaire", controller.getStudentsBySchoolYear);
+router.post("/register-enroll", verifyToken, checkPermission("REGISTER_STUDENT"), controller.registerAndEnrollStudent);
+router.get("/room/:idAnneeScolaire/:idSalle", verifyToken, controller.getStudentsByRoom);
+router.get("/search/:idAnneeScolaire", verifyToken, controller.searchStudents);
+router.get("/all/:idAnneeScolaire", verifyToken, controller.getStudentsBySchoolYear);
 
-router.put("/:idEleve", controller.updateStudent);
-router.delete("/enrollment/:idEleve/:idAnneeScolaire", controller.deleteEnrollment);
+router.put("/:idEleve", verifyToken, controller.updateStudent);
+router.delete("/enrollment/:idEleve/:idAnneeScolaire", verifyToken, controller.deleteEnrollment);
 
 module.exports = router;

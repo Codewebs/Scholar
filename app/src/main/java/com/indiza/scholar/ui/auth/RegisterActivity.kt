@@ -5,26 +5,17 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,7 +23,6 @@ import com.indiza.scholar.model.LoginResponse
 import com.indiza.scholar.model.Utilisateur
 import com.indiza.scholar.network.ApiClient
 import com.indiza.scholar.network.ApiService
-import com.indiza.scholar.ui.ScholarTitle
 import com.indiza.scholar.ui.theme.ScholarTheme
 import retrofit2.Call
 import retrofit2.Callback
@@ -49,13 +39,16 @@ class RegisterActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            ScholarTheme {
+            var isDarkMode by remember { mutableStateOf(false) }
+            ScholarTheme(darkTheme = isDarkMode) {
                 RegisterScreen(
                     onRegister = { fn, ln, em, tel, pw, cpw -> handleRegister(fn, ln, em, tel, pw, cpw) },
                     onGoToLogin = {
                         startActivity(Intent(this, LoginActivity::class.java))
                         finish()
-                    }
+                    },
+                    isDark = isDarkMode,
+                    onThemeToggle = { isDarkMode = !isDarkMode }
                 )
             }
         }
@@ -99,10 +92,13 @@ class RegisterActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     onRegister: (String, String, String, String, String, String) -> Unit,
-    onGoToLogin: () -> Unit
+    onGoToLogin: () -> Unit,
+    isDark: Boolean,
+    onThemeToggle: () -> Unit
 ) {
     var fname by remember { mutableStateOf("") }
     var lname by remember { mutableStateOf("") }
@@ -114,119 +110,118 @@ fun RegisterScreen(
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var isRegistering by remember { mutableStateOf(false) }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "breathing")
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "glow"
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFF1A0B2E), Color(0xFF4A148C), Color(0xFF311B92))
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    IconButton(onClick = onGoToLogin) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    ThemeToggleIcon(isDark = isDark, onToggle = onThemeToggle)
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        // Glowing background elements
-        Box(
-            modifier = Modifier
-                .size(400.dp)
-                .offset(x = 100.dp, y = (-250).dp)
-                .blur(100.dp)
-                .background(Color(0xFF7B1FA2).copy(alpha = glowAlpha), RoundedCornerShape(200.dp))
-        )
-
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.surface
+    ) { padding ->
         Column(
             modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
                 .padding(24.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color.White.copy(alpha = 0.1f))
-                .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
-                .padding(24.dp)
-                .fillMaxWidth(0.95f)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .verticalScroll(rememberScrollState())
         ) {
-            ScholarTitle(color = Color.White)
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                "Inscription",
-                style = TextStyle(
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    shadow = Shadow(color = Color.Black.copy(alpha = 0.3f), blurRadius = 8f)
-                )
+                text = "Create an Account.",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onSurface,
+                lineHeight = 44.sp
             )
-            
-            Spacer(modifier = Modifier.height(24.dp))
 
-            GlassTextField(value = fname, onValueChange = { fname = it }, label = "Prénom")
-            Spacer(modifier = Modifier.height(12.dp))
-            GlassTextField(value = lname, onValueChange = { lname = it }, label = "Nom")
-            Spacer(modifier = Modifier.height(12.dp))
-            GlassTextField(value = email, onValueChange = { email = it }, label = "Email")
-            Spacer(modifier = Modifier.height(12.dp))
-            GlassTextField(value = telephone, onValueChange = { telephone = it }, label = "Téléphone")
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            GlassTextField(
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Join our community today.",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color(0xFF9E9E9E)
+            )
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            ModernTextField(value = fname, onValueChange = { fname = it }, label = "First Name", placeholder = "Enter your first name")
+            Spacer(modifier = Modifier.height(20.dp))
+            ModernTextField(value = lname, onValueChange = { lname = it }, label = "Last Name", placeholder = "Enter your last name")
+            Spacer(modifier = Modifier.height(20.dp))
+            ModernTextField(value = email, onValueChange = { email = it }, label = "Email", placeholder = "Enter your email")
+            Spacer(modifier = Modifier.height(20.dp))
+            ModernTextField(value = telephone, onValueChange = { telephone = it }, label = "Phone", placeholder = "Enter your phone number")
+            Spacer(modifier = Modifier.height(20.dp))
+
+            ModernTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = "Mot de passe",
+                label = "Password",
+                placeholder = "Create a password",
                 isPassword = true,
                 passwordVisible = passwordVisible,
                 onPasswordToggle = { passwordVisible = !passwordVisible }
             )
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            GlassTextField(
+            Spacer(modifier = Modifier.height(20.dp))
+
+            ModernTextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
-                label = "Confirmer le mot de passe",
+                label = "Confirm Password",
+                placeholder = "Confirm your password",
                 isPassword = true,
                 passwordVisible = confirmPasswordVisible,
                 onPasswordToggle = { confirmPasswordVisible = !confirmPasswordVisible }
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(48.dp))
 
-            Button(
-                onClick = { 
+            ModernButton(
+                text = "Register",
+                onClick = {
                     isRegistering = true
                     onRegister(fname, lname, email, telephone, password, confirmPassword)
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                enabled = !isRegistering,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White.copy(alpha = 0.2f),
-                    contentColor = Color.White
-                ),
-                shape = RoundedCornerShape(16.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+                isLoading = isRegistering
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (isRegistering) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                } else {
-                    Text("Créer mon compte", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Already have an account?",
+                    color = Color(0xFF9E9E9E),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                TextButton(onClick = onGoToLogin) {
+                    Text(
+                        "Login",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
-
+            
             Spacer(modifier = Modifier.height(16.dp))
-
-            TextButton(onClick = onGoToLogin) {
-                Text("Déjà un compte ? Se connecter", color = Color.White.copy(alpha = 0.7f))
-            }
         }
     }
 }

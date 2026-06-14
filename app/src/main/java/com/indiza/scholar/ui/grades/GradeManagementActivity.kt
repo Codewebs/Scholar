@@ -49,22 +49,45 @@ class GradeManagementActivity : ComponentActivity() {
                     onGenerateReportSheet = { salle, rep ->
                         generateAndOpenReportSheet(salle.nomSalle, rep?.detailsMatiere?.libelleFr ?: "Matière")
                     },
-                    onGeneratePV = { type, salle ->
-                        generateAndOpenPV(type, salle.nomSalle)
+                    onGeneratePV = { payload, salle ->
+                        generateAndOpenPV(payload, salle.nomSalle, idAnneeScolaire)
                     }
                 )
             }
         }
     }
 
-    private fun generateAndOpenPV(type: String, salle: String) {
+    private fun generateAndOpenPV(payload: com.indiza.scholar.model.PvExportPayload, salle: String, idAnneeScolaire: Long) {
         val resolver = contentResolver
-        val fileName = "PV_${type}_${salle}.pdf"
+        val fileName = "PV_${payload.exportType.name}_${salle}.pdf"
 
         lifecycleScope.launch {
             val db = AppDatabase.getInstance(this@GradeManagementActivity)
             val school = withContext(Dispatchers.IO) { db.etablissementDao().getEtablissementSync() }
                 ?: EtablissementEntity(nomFr = "Établissement", telephone1 = 0L)
+
+            val annee = withContext(Dispatchers.IO) {
+                db.anneeScolaireDao().getAll().find { it.idServeur == idAnneeScolaire }
+            }
+            val finalPayload = payload.copy(anneeScolaire = annee?.libelleAnneeScolaire ?: "N/A")
+
+            // Construction de données de test pour la démonstration du PV
+            val mockData = PvData(
+                nomSequence = finalPayload.anneeScolaire, // À remplacer par le vrai nom de la séquence
+                nomSalle = salle,
+                matieres = listOf(
+                    MatierePv("Informatique", 2.0, 18.5, 5.0, 12.4, 75.0),
+                    MatierePv("Mathématiques", 4.0, 19.0, 2.0, 10.5, 55.0),
+                    MatierePv("Français", 3.0, 16.0, 7.0, 11.2, 85.0),
+                    MatierePv("Anglais", 3.0, 17.5, 4.0, 13.0, 90.0)
+                ),
+                eleves = listOf(
+                    ElevePv("ADA NKOLO VIRGINIE", mapOf("Informatique" to 15.0, "Mathématiques" to 12.0, "Français" to 14.0, "Anglais" to 16.0), 173.0, 12.0, 14.41, "1ère"),
+                    ElevePv("BELLA MBARGA JEAN", mapOf("Informatique" to 10.0, "Mathématiques" to 8.5, "Français" to 11.0, "Anglais" to 9.0), 115.0, 12.0, 9.58, "12e"),
+                    ElevePv("ETOUNDI PASCAL", mapOf("Informatique" to 18.0, "Mathématiques" to 17.0, "Français" to 15.0, "Anglais" to 14.0), 195.0, 12.0, 16.25, "2e")
+                ),
+                statsGlobales = PvGlobalStats(18.5, 6.2, 11.4, 68.5, 45, 42)
+            )
 
             val uriResult: Uri? = withContext(Dispatchers.IO) {
                 val contentValues = ContentValues().apply {
@@ -76,7 +99,7 @@ class GradeManagementActivity : ComponentActivity() {
                 uri?.let { targetUri ->
                     try {
                         resolver.openOutputStream(targetUri)?.use { os ->
-                            GradeReportGenerator.generatePV(os, school, type, "DUMMY_DATA")
+                            GradeReportGenerator.generatePV(os, school, finalPayload, mockData)
                         }
                         targetUri
                     } catch (e: Exception) {

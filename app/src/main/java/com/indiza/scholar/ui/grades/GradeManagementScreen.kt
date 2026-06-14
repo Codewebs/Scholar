@@ -39,7 +39,7 @@ fun GradeManagementScreen(
     viewModel: GradeManagementViewModel,
     onBack: () -> Unit,
     onGenerateReportSheet: (SalleEntity, RepartitionMatiereEntity?) -> Unit,
-    onGeneratePV: (String, SalleEntity) -> Unit
+    onGeneratePV: (PvExportPayload, SalleEntity) -> Unit
 ) {
     var currentView by remember { mutableStateOf(GradeView.MENU) }
     
@@ -226,9 +226,10 @@ fun GradeManagementScreen(
                     }
                 )
                 GradeView.PV -> PVManagementScreen(
+                    idAnneeScolaire = idAnneeScolaire,
                     salles = salles,
                     sequences = sequences,
-                    onGenerate = { type, salle, seqId -> onGeneratePV(type, salle) }
+                    onGenerate = { payload, salle -> onGeneratePV(payload, salle) }
                 )
             }
         }
@@ -326,7 +327,7 @@ fun GradeMainMenu(sequencesCount: Int, justificationsCount: Int, onNavigate: (Gr
         }
 
         MenuCard("📝", "Saisie par Matière", "Saisie collective par classe/matière", enabled = isReady, onClick = { onNavigate(GradeView.ENTRY_BY_SUBJECT) })
-        MenuCard("👤", "Saisie par Élève", "Correction individuelle des notes", enabled = isReady, onClick = { onNavigate(GradeView.ENTRY_BY_STUDENT) })
+        MenuCard("👤", "Saisie par Élève", "Saisie individuelle des notes", enabled = isReady, onClick = { onNavigate(GradeView.ENTRY_BY_STUDENT) })
         MenuCard("📄", "Fiche de Report", "Grilles papier pour les enseignants", onClick = { onNavigate(GradeView.REPORT_SHEET) })
         MenuCard("⏰", "Saisie des Absences", "Volume horaire (AJ / ANJ)", enabled = isReady, onClick = { onNavigate(GradeView.ABSENCES) })
         MenuCard("🏆", "Procès Verbaux (PV)", "Consultation et gel des résultats", onClick = { onNavigate(GradeView.PV) })
@@ -1533,9 +1534,10 @@ fun ReportSheetScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PVManagementScreen(
+    idAnneeScolaire: Long,
     salles: List<SalleEntity>,
     sequences: List<SousPeriodeEntity>,
-    onGenerate: (String, SalleEntity, Long?) -> Unit
+    onGenerate: (PvExportPayload, SalleEntity) -> Unit
 ) {
     var selectedType by remember { mutableStateOf("Séquentiel") }
     var selectedSalle by remember { mutableStateOf<SalleEntity?>(null) }
@@ -1544,6 +1546,8 @@ fun PVManagementScreen(
     var expandedType by remember { mutableStateOf(false) }
     var expandedSalle by remember { mutableStateOf(false) }
     var expandedSeq by remember { mutableStateOf(false) }
+
+    var showExportOptions by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Générer un Procès Verbal (PV)", color = Color.White, style = MaterialTheme.typography.titleLarge)
@@ -1594,7 +1598,7 @@ fun PVManagementScreen(
         Button(
             onClick = { 
                 if(selectedSalle != null) {
-                    onGenerate(selectedType, selectedSalle!!, selectedSequence?.idServeur) 
+                    showExportOptions = true
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -1603,6 +1607,63 @@ fun PVManagementScreen(
             Icon(Icons.Default.Assessment, null)
             Spacer(Modifier.width(8.dp))
             Text("Générer PV")
+        }
+    }
+
+    if (showExportOptions && selectedSalle != null) {
+        ModalBottomSheet(onDismissRequest = { showExportOptions = false }) {
+            Column(
+                modifier = Modifier.padding(16.dp).fillMaxWidth().padding(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text("Options de génération du PV", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                
+                Card(
+                    onClick = {
+                        showExportOptions = false
+                        onGenerate(
+                            PvExportPayload(
+                                idSalle = selectedSalle!!.idServeur ?: 0L,
+                                idSequence = selectedSequence?.idServeur ?: 0L,
+                                idAnneeScolaire = idAnneeScolaire,
+                                anneeScolaire = "", 
+                                exportType = PdfExportType.SIMPLE
+                            ),
+                            selectedSalle!!
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    ListItem(
+                        headlineContent = { Text("Option 1 : PV Simple") },
+                        supportingContent = { Text("Grille de notes pure, sans statistiques de bas de page") },
+                        leadingContent = { Icon(Icons.Default.TableChart, null) }
+                    )
+                }
+
+                Card(
+                    onClick = {
+                        showExportOptions = false
+                        onGenerate(
+                            PvExportPayload(
+                                idSalle = selectedSalle!!.idServeur ?: 0L,
+                                idSequence = selectedSequence?.idServeur ?: 0L,
+                                idAnneeScolaire = idAnneeScolaire,
+                                anneeScolaire = "",
+                                exportType = PdfExportType.COMPLET
+                            ),
+                            selectedSalle!!
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    ListItem(
+                        headlineContent = { Text("Option 2 : PV Complet") },
+                        supportingContent = { Text("Grille de notes + Bloc complet des statistiques") },
+                        leadingContent = { Icon(Icons.Default.Analytics, null) }
+                    )
+                }
+            }
         }
     }
 }

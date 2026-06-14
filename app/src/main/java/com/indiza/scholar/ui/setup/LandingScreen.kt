@@ -7,18 +7,20 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.indiza.scholar.ui.ScholarTitle
+import com.indiza.scholar.ui.auth.ModernButton
+import com.indiza.scholar.ui.auth.ModernTextField
 import com.indiza.scholar.utils.ValidationUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,87 +28,74 @@ import com.indiza.scholar.utils.ValidationUtils
 fun LandingScreen(
     onNavigateToCreate: (String, String, String) -> Unit, // pays, ville, arrete
     onNavigateToJoinStaff: () -> Unit,
-    onNavigateToJoinStudent: () -> Unit,
-    onServerConfigClick: () -> Unit
+    onNavigateToJoinStudent: () -> Unit
 ) {
     var step by remember { mutableIntStateOf(0) } // 0: Landing, 1: Rejoindre
     var showCreateSheet by remember { mutableStateOf(false) }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFF1A0B2E), Color(0xFF3B125A), Color(0xFF5E1B89))
-                )
-            )
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        // Server Config Icon
-        IconButton(
-            onClick = onServerConfigClick,
-            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
-        ) {
-            Icon(Icons.Default.Code, null, tint = Color.White)
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            ScholarTitle(color = Color.White)
-            Spacer(modifier = Modifier.height(48.dp))
-
-            AnimatedContent(targetState = step, label = "LandingTransition") { currentStep ->
-                if (currentStep == 0) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        LandingButton(
-                            title = "Créer un établissement",
-                            icon = Icons.Default.AddBusiness,
-                            onClick = { showCreateSheet = true }
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        LandingButton(
-                            title = "Rejoindre un établissement",
-                            icon = Icons.Default.Groups,
-                            onClick = { step = 1 }
-                        )
-                    }
-                } else {
-                    JoinOptions(
-                        onBack = { step = 0 },
-                        onStaff = { onNavigateToJoinStaff() },
-                        onStudent = { onNavigateToJoinStudent() }
+        AnimatedContent(targetState = step, label = "LandingTransition") { currentStep ->
+            if (currentStep == 0) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Your journey starts here.",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 44.sp
                     )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "Create or join an existing school to begin.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color(0xFF9E9E9E),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(64.dp))
+
+                    ModernButton(
+                        text = "Create Establishment",
+                        onClick = { showCreateSheet = true }
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    OutlinedButton(
+                        onClick = { step = 1 },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                    ) {
+                        Text("Join Establishment", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                    }
                 }
+            } else {
+                JoinOptions(
+                    onBack = { step = 0 },
+                    onStaff = { onNavigateToJoinStaff() },
+                    onStudent = { onNavigateToJoinStudent() }
+                )
             }
         }
     }
 
     if (showCreateSheet) {
-        ModalBottomSheet(onDismissRequest = { showCreateSheet = false }) {
+        ModalBottomSheet(onDismissRequest = { showCreateSheet = false }, containerColor = MaterialTheme.colorScheme.surface) {
             CreateSchoolLandingForm(onConfirm = { pays, ville, arrete ->
                 showCreateSheet = false
                 onNavigateToCreate(pays, ville, arrete)
             })
         }
-    }
-}
-
-@Composable
-fun LandingButton(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(80.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.1f)),
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
-    ) {
-        Icon(icon, null, modifier = Modifier.size(32.dp), tint = Color.White)
-        Spacer(Modifier.width(16.dp))
-        Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -117,61 +106,87 @@ fun CreateSchoolLandingForm(onConfirm: (String, String, String) -> Unit) {
     var arrete by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
-    Column(modifier = Modifier.padding(24.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Nouvel Établissement", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+    Column(
+        modifier = Modifier.padding(24.dp).padding(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        Text("School Details", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
         
-        OutlinedTextField(value = pays, onValueChange = { pays = it }, label = { Text("Pays") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = ville, onValueChange = { ville = it }, label = { Text("Ville") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(
+        ModernTextField(value = pays, onValueChange = { pays = it }, label = "Country", placeholder = "e.g. Cameroon")
+        ModernTextField(value = ville, onValueChange = { ville = it }, label = "City", placeholder = "e.g. Yaoundé")
+        ModernTextField(
             value = arrete, 
             onValueChange = { arrete = it; error = null }, 
-            label = { Text("Arrêté de création") }, 
-            modifier = Modifier.fillMaxWidth(),
-            isError = error != null,
-            supportingText = { error?.let { Text(it, color = MaterialTheme.colorScheme.error) } }
+            label = "Creation Decree (Arrêté)", 
+            placeholder = "Reference number"
         )
+        
+        if (error != null) {
+            Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
 
-        Button(
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ModernButton(
+            text = "Continue",
             onClick = {
                 if (pays.isNotBlank() && ville.isNotBlank() && ValidationUtils.validateArrete(arrete, pays)) {
                     onConfirm(pays, ville, arrete)
                 } else {
-                    error = "Format d'arrêté invalide pour ce pays"
+                    error = "Invalid format for this country"
                 }
-            },
-            modifier = Modifier.fillMaxWidth().height(56.dp)
-        ) {
-            Text("Continuer")
-        }
+            }
+        )
     }
 }
 
 @Composable
 fun JoinOptions(onBack: () -> Unit, onStaff: () -> Unit, onStudent: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Rejoindre en tant que...", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(24.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SmallJoinCard("Personnel", Icons.Default.Badge, Modifier.weight(1f)) { onStaff() }
-            SmallJoinCard("Élève / Parent", Icons.Default.Person, Modifier.weight(1f)) { onStudent() }
+    Column(horizontalAlignment = Alignment.Start, modifier = Modifier.fillMaxWidth()) {
+        IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
         }
-        TextButton(onClick = onBack, modifier = Modifier.padding(top = 16.dp)) {
-            Text("Retour", color = Color.White.copy(alpha = 0.6f))
-        }
-    }
-}
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text("Join as...", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Black)
+        
+        Spacer(modifier = Modifier.height(32.dp))
 
-@Composable
-fun SmallJoinCard(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Card(
-        modifier = modifier.height(100.dp).clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.1f)),
-        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.2f))
-    ) {
-        Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Icon(icon, null, tint = Color.White)
-            Spacer(Modifier.height(8.dp))
-            Text(title, color = Color.White, fontSize = 14.sp)
+        Surface(
+            onClick = onStaff,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, Color(0xFF9E9E9E).copy(alpha = 0.2f)),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(modifier = Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Badge, null, modifier = Modifier.size(32.dp))
+                Spacer(modifier = Modifier.width(20.dp))
+                Column {
+                    Text("Staff Member", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("Teachers, administrators, etc.", color = Color(0xFF9E9E9E), fontSize = 14.sp)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Surface(
+            onClick = onStudent,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, Color(0xFF9E9E9E).copy(alpha = 0.2f)),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(modifier = Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Person, null, modifier = Modifier.size(32.dp))
+                Spacer(modifier = Modifier.width(20.dp))
+                Column {
+                    Text("Student / Parent", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("Access your academic profile.", color = Color(0xFF9E9E9E), fontSize = 14.sp)
+                }
+            }
         }
     }
 }

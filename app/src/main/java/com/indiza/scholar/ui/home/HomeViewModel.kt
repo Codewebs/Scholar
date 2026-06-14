@@ -44,6 +44,37 @@ class HomeViewModel(private val api: ApiService) : ViewModel() {
             }
         }
     }
+
+    fun syncPermissions(userId: Long, schoolId: Long, yearId: Long) {
+        viewModelScope.launch {
+            try {
+                val response = api.getUserAssociations(userId)
+                if (response.isSuccessful) {
+                    val associations = response.body() ?: emptyList()
+                    val currentAssoc = associations.find { 
+                        it.school.idServeur == schoolId && (it.idAnneeScolaire == yearId || it.idAnneeScolaire == 0L)
+                    }
+                    
+                    currentAssoc?.let {
+                        Log.d("HomeViewModel", "🔄 Context updated: Role=${it.roles.firstOrNull()}, Added=${it.permissionsAjoutees.size}, Removed=${it.permissionsRetirees.size}")
+                        // Mettre à jour le SessionManager
+                        com.indiza.scholar.SessionManager.setContext(
+                            schoolId = schoolId,
+                            yearId = yearId,
+                            active = true,
+                            role = it.roles.firstOrNull()
+                        )
+                        com.indiza.scholar.SessionManager.updatePermissions(
+                            added = it.permissionsAjoutees,
+                            removed = it.permissionsRetirees
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("HomeViewModel", "❌ Sync Permissions failed", e)
+            }
+        }
+    }
 }
 
 class HomeViewModelFactory(private val api: ApiService) : ViewModelProvider.Factory {

@@ -5,6 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.SupervisorAccount
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,7 +45,7 @@ fun ServerConnectionIndicator(api: ApiService) {
             } catch (e: Exception) {
                 isConnected = false
             }
-            delay(10000) // Polling toutes les 10s
+            delay(10000)
         }
     }
 
@@ -51,38 +55,60 @@ fun ServerConnectionIndicator(api: ApiService) {
 
     Box(
         modifier = Modifier
-            .padding(16.dp)
-            .size(width = 120.dp, height = 40.dp)
+            .padding(12.dp)
+            .size(width = 110.dp, height = 36.dp)
             .clip(CircleShape)
             .background(backgroundColor.copy(alpha = 0.9f))
             .clickable {
-                infoIndex = (infoIndex + 1) % 3 // Cycle simple
+                infoIndex = (infoIndex + 1) % 3
             },
         contentAlignment = Alignment.Center
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp) // Espace léger entre l'icône et le texte
         ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .background(Color.White, CircleShape)
-            )
-            
+            // 1. GESTION DES ICÔNES DYNAMIQUES
+            if (isConnected && stats != null) {
+                val icon = when (infoIndex) {
+                    1 -> Icons.Default.SupervisorAccount
+                    2 -> Icons.Default.School
+                    else -> null
+                }
+
+                icon?.let {
+                    Icon(
+                        imageVector = it,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            } else if (!isConnected) {
+
+                Icon(
+                    imageVector = Icons.Default.CloudOff,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+
             Text(
-                text = if (!isConnected) "Offline" else {
+                text = if (!isConnected) {
+                    "Offline"
+                } else {
                     stats?.let { s ->
-                        when(infoIndex) {
+                        when (infoIndex) {
                             0 -> "${s.value} ${s.label}"
-                            1 -> s.extra?.get("teachers")?.let { "$it Profs" } ?: s.label
-                            2 -> s.extra?.get("students")?.let { "$it Élèves" } ?: s.label
+                            1 -> s.extra?.get("teachers")?.let { "$it" } ?: s.label
+                            2 -> s.extra?.get("students")?.toString() ?: s.label
                             else -> s.label
                         }
                     } ?: "Connecté"
                 },
                 color = Color.White,
-                fontSize = 12.sp,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Bold
             )
         }

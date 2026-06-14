@@ -63,8 +63,11 @@ data class AffectationPersonnelSalleResponse(
 
 data class UserAssociation(
     val school: EtablissementEntity,
+    val idAnneeScolaire: Long = 0L,
     val roles: List<String>,
-    val etat: String = "VALIDE" // Par défaut VALIDE pour les inscriptions existantes, sinon mappé depuis la demande
+    val permissionsAjoutees: List<String> = emptyList(),
+    val permissionsRetirees: List<String> = emptySet<String>().toList(),
+    val etat: String = "VALIDE"
 )
 
 data class DemandeInscriptionPersonnel(

@@ -75,3 +75,16 @@ data class SubjectAssignmentItem(
     val noteSur: Int = 20,
     val ordreMatiere: Int = 1
 )
+
+enum class PdfExportType {
+    SIMPLE,  // Sans le Bloc 3 (Uniquement l'en-tête et les notes brutes)
+    COMPLET  // Avec toutes les statistiques de fin de tableau et de pied de page
+}
+
+data class PvExportPayload(
+    val idSalle: Long,
+    val idSequence: Long,
+    val idAnneeScolaire: Long,
+    val anneeScolaire: String,
+    val exportType: PdfExportType
+)

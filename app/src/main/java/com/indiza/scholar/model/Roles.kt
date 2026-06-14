@@ -31,7 +31,7 @@ enum class AcademicPermission(
     MANAGE_PERIODS("Gérer les Périodes", "Manage Periods", "Configuration générale des périodes scolaires", "General configuration of school periods"),
     MANAGE_SUB_PERIODS("Gérer les Sous-Périodes", "Manage Sub-Periods", "Découpage fin des périodes (Séquences, etc.)", "Fine breakdown of periods"),
     MANAGE_USERS("Gérer les Utilisateurs", "Manage Users", "Créer et gérer les comptes utilisateurs", "Create and manage user accounts"),
-    BACKUP_DB("Sauvegarder BD", "Backup DB", "Effectuer une sauvegarde de la base de données", "Perform a database backup"),
+    BACKUP_DB("Sauvegarder BD", "Backup DB", "Effectuer une sauvegarde de la données", "Perform a database backup"),
     RESTORE_DB("Restaurer BD", "Restore DB", "Restaurer les données depuis une sauvegarde", "Restore data from a backup"),
     LOAD_MENUS("Charger les Menus", "Load Menus", "Recharger la configuration des menus système", "Reload system menu configuration"),
     EDIT_OWN_ACCOUNT("Modifier son Compte", "Edit Own Account", "Modifier ses propres informations de profil", "Edit own profile information"),
@@ -125,11 +125,70 @@ enum class AcademicPermission(
     UNENROLL_SCHOOL_YEAR("Retirer Année", "Unenroll School Year", "Clôturer l'année", "Close the year"),
     PRINT_SCHOOL_YEAR_INFO("Imprimer Info Année", "Print School Year Info", "Imprimer le calendrier", "Print the calendar"),
     COLLECT_SCHOOL_YEAR_INFO("Rapport Annuel", "School Year Report", "Générer le rapport de l'année", "Generate the year report"),
-    VIEW_SCHOOL_YEAR_INFO("Voir année scolaire", "View School Year", "Permet de voir l'année scolaire de l'ecole actuel", "View the scholl year"),
+    VIEW_SCHOOL_YEAR_INFO("Voir année scolaire", "View School Year", "Permet de voir l'année scolaire de l'ecole actuel", "View the school year"),
     COLLECT_ALL_SCHOOL_YEARS_INFO("Archives", "All School Years Info", "Accéder aux archives des années", "Access year archives");
 
     fun label(lang: String): String = if (lang == "en") labelEn else labelFr
     fun description(lang: String): String = if (lang == "en") descriptionEn else descriptionFr
+}
+
+/**
+ * Structure d'encapsulation : Menu -> Module -> Fonctionnalité (Permission)
+ */
+sealed class AppModule(val title: String, val permissions: List<AcademicPermission>) {
+    // ECOLE
+    object SchoolProfile : AppModule("Profil École", listOf(AcademicPermission.PRINT_SCHOOL_INFO, AcademicPermission.EDIT_SCHOOL_INFO))
+    object SchoolYear : AppModule("Années Scolaires", listOf(AcademicPermission.VIEW_SCHOOL_YEAR_INFO, AcademicPermission.REGISTER_SCHOOL_YEAR))
+
+    // ELEVES
+    object StudentList : AppModule("Liste des Élèves", listOf(AcademicPermission.VIEW_STUDENT_LIST))
+    object StudentRegistration : AppModule("Inscription/Recrutement", listOf(AcademicPermission.REGISTER_STUDENT, AcademicPermission.ENROLL_STUDENT))
+    object StudentDossier : AppModule("Dossier Pédagogique", listOf(AcademicPermission.STUDENT_DOSSIER))
+    
+    // PAIEMENTS
+    object PaymentsEntry : AppModule("Saisie Paiements", listOf(AcademicPermission.COLLECT_TUITION_FEE, AcademicPermission.COLLECT_REGISTRATION_FEE, AcademicPermission.COLLECT_OTHER_FEES))
+    object FinancialReports : AppModule("Bilans Financiers", listOf(AcademicPermission.VIEW_FINANCIAL_REPORTS, AcademicPermission.FINANCIAL_BALANCE_SHEET))
+
+    // PERSONNEL
+    object StaffManagement : AppModule("Gestion RH", listOf(AcademicPermission.MANAGE_STAFF, AcademicPermission.MANAGE_FUNCTIONS))
+    object StaffPlacement : AppModule("Affectations", listOf(AcademicPermission.STAFF_PLACEMENT))
+
+    // EQUIPE
+    object TeacherManagement : AppModule("Enseignants", listOf(AcademicPermission.REGISTER_TEACHER, AcademicPermission.ENROLL_TEACHER))
+
+    // MATIERES
+    object SubjectsConfig : AppModule("Configuration Matières", listOf(AcademicPermission.MANAGE_STREAMS, AcademicPermission.MANAGE_LEVELS, AcademicPermission.MANAGE_CYCLES))
+
+    // NOTES
+    object GradesEntry : AppModule("Saisie des Notes", listOf(AcademicPermission.MANAGE_GRADES, AcademicPermission.EDIT_STUDENT_NOTE))
+    object GradesValidation : AppModule("Validation", listOf(AcademicPermission.VALIDATE_GRADES, AcademicPermission.HARMONIZE_GRADES))
+
+    // BULLETINS
+    object ReportCards : AppModule("Bulletins", listOf(AcademicPermission.PRINT_ANNUAL_REPORT_CARDS, AcademicPermission.GRADES_REPORT_SHEET))
+
+    // CLASSES
+    object ClassesConfig : AppModule("Salles & Classes", listOf(AcademicPermission.MANAGE_CLASSES, AcademicPermission.MANAGE_ROOMS))
+
+    // PARAMETRES
+    object SystemUsers : AppModule("Utilisateurs", listOf(AcademicPermission.MANAGE_USERS, AcademicPermission.ACTIVITY_LOGS))
+    object SystemMaintenance : AppModule("Maintenance", listOf(AcademicPermission.BACKUP_DB, AcademicPermission.RESTORE_DB, AcademicPermission.GENERAL_CONFIG))
+
+    // STATS
+    object GlobalStats : AppModule("Statistiques", listOf(AcademicPermission.ACADEMIC_STATS, AcademicPermission.GLOBAL_TUITION_STATUS, AcademicPermission.SUMMARY))
+}
+
+enum class AppMenu(val title: String, val emoji: String, val description: String, val modules: List<AppModule>) {
+    ECOLE("Ecole", "🏫", "Gestion de l'établissement", listOf(AppModule.SchoolProfile, AppModule.SchoolYear)),
+    ELEVES("Élèves", "👤", "Gestion des effectifs et dossiers", listOf(AppModule.StudentList, AppModule.StudentRegistration, AppModule.StudentDossier)),
+    PAIEMENTS("Paiements", "💰", "Suivi financier et scolarités", listOf(AppModule.PaymentsEntry, AppModule.FinancialReports)),
+    PERSONNEL("Personnel", "👔", "Gestion RH et affectations", listOf(AppModule.StaffManagement, AppModule.StaffPlacement)),
+    EQUIPE("Équipe", "🎓", "Équipe pédagogique", listOf(AppModule.TeacherManagement)),
+    MATIERES("Matières", "📚", "Programmes et matières", listOf(AppModule.SubjectsConfig)),
+    NOTES("Note/Examen", "📝", "Saisie et suivi des évaluations", listOf(AppModule.GradesEntry, AppModule.GradesValidation)),
+    BULLETINS("Bulletins", "📊", "Génération des résultats", listOf(AppModule.ReportCards)),
+    CLASSES("Classes", "🏫", "Salles et répartitions", listOf(AppModule.ClassesConfig)),
+    PARAMETRES("Paramètres", "⚙️", "Configuration du système", listOf(AppModule.SystemUsers, AppModule.SystemMaintenance)),
+    STATS("Stats", "📈", "Statistiques globales", listOf(AppModule.GlobalStats));
 }
 
 data class PermissionGroup(
@@ -165,7 +224,9 @@ object PermissionGroups {
                         AcademicPermission.MANAGE_LEVELS,
                         AcademicPermission.MANAGE_STREAMS,
                         AcademicPermission.MANAGE_CLASSES,
-                        AcademicPermission.MANAGE_ROOMS
+                        AcademicPermission.MANAGE_ROOMS,
+                        AcademicPermission.MANAGE_NEIGHBORHOODS,
+                        AcademicPermission.MANAGE_ACADEMIC_CONFIG
                     )
                 ),
                 PermissionGroup(
@@ -187,7 +248,8 @@ object PermissionGroups {
                         AcademicPermission.UNENROLL_SCHOOL_YEAR,
                         AcademicPermission.PRINT_SCHOOL_YEAR_INFO,
                         AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-                        AcademicPermission.COLLECT_ALL_SCHOOL_YEARS_INFO
+                        AcademicPermission.COLLECT_ALL_SCHOOL_YEARS_INFO,
+                        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
                     )
                 )
             )
@@ -214,7 +276,8 @@ object PermissionGroups {
                         AcademicPermission.PRINT_STUDENT_CARDS,
                         AcademicPermission.PRINT_STUDENT_CARD,
                         AcademicPermission.MANAGE_TUTORSHIP,
-                        AcademicPermission.ATTENDANCE_CERTIFICATE
+                        AcademicPermission.ATTENDANCE_CERTIFICATE,
+                        AcademicPermission.EXPORT_PDF_CLASS
                     )
                 )
             )
@@ -263,7 +326,8 @@ object PermissionGroups {
                         AcademicPermission.OTHER_FEES_BALANCE_SHEET,
                         AcademicPermission.TRANSPORT_BALANCE_SHEET,
                         AcademicPermission.VIEW_FINANCIAL_REPORTS,
-                        AcademicPermission.VIEW_PAYMENT_STATUS
+                        AcademicPermission.VIEW_PAYMENT_STATUS,
+                        AcademicPermission.VIEW_MY_PAYMENT_STATUS
                     )
                 ),
                 PermissionGroup(
@@ -279,6 +343,16 @@ object PermissionGroups {
         PermissionGroup(
             "Administration & Système", "Admin & System",
             subGroups = listOf(
+                PermissionGroup(
+                    "Ecole", "School",
+                    permissions = listOf(
+                        AcademicPermission.REGISTER_SCHOOL,
+                        AcademicPermission.ENROLL_SCHOOL,
+                        AcademicPermission.EDIT_SCHOOL_INFO,
+                        AcademicPermission.UNENROLL_SCHOOL,
+                        AcademicPermission.PRINT_SCHOOL_INFO
+                    )
+                ),
                 PermissionGroup(
                     "Utilisateurs", "Users",
                     permissions = listOf(
@@ -311,7 +385,10 @@ object PermissionGroups {
                         AcademicPermission.LOAD_MENUS,
                         AcademicPermission.ACTIVITY_LOGS,
                         AcademicPermission.SESSIONS_CONNECTIONS,
-                        AcademicPermission.GENERAL_CONFIG
+                        AcademicPermission.GENERAL_CONFIG,
+                        AcademicPermission.REGISTER_CONFIG,
+                        AcademicPermission.EDIT_CONFIG,
+                        AcademicPermission.PRINT_CONFIG
                     )
                 )
             )
@@ -344,199 +421,23 @@ enum class AcademicRole(
     val color: Color
 ) {
     ADMINISTRATEUR(AcademicPermission.entries.toSet(), Icons.Default.AdminPanelSettings, Color(0xFFE74C3C)),
+    FONDATEUR(emptySet(), Icons.Default.Business, Color(0xFFF1C40F)),
+    DIRECTEUR(emptySet(), Icons.Default.ManageAccounts, Color(0xFF3498DB)),
+    VICE_PRINCIPAL(emptySet(), Icons.Default.SupervisorAccount, Color(0xFF2980B9)),
+    DIRECTEUR_DES_ETUDES(emptySet(), Icons.Default.MenuBook, Color(0xFF1ABC9C)),
+    INTENDANT(emptySet(), Icons.Default.Payments, Color(0xFF27AE60)),
+    SECRETAIRE(emptySet(), Icons.Default.AppRegistration, Color(0xFF95A5A6)),
+    SURVEILLANT_GENERAL(emptySet(), Icons.Default.Policy, Color(0xFFD35400)),
+    CHEF_DE_DEPARTEMENT(emptySet(), Icons.Default.Groups, Color(0xFF8E44AD)),
+    ENSEIGNANT(emptySet(), Icons.Default.School, Color(0xFF2980B9)),
+    CONSEILLER_ORIENTATION(emptySet(), Icons.Default.Psychology, Color(0xFF16A085)),
+    INFIRMIER(emptySet(), Icons.Default.LocalHospital, Color(0xFFC0392B)),
+    PARENT(emptySet(), Icons.Default.FamilyRestroom, Color(0xFF34495E)),
+    ELEVE(emptySet(), Icons.Default.Person, Color(0xFF7F8C8D)),
+    AGENT_ENTRETIEN(emptySet(), Icons.Default.CleaningServices, Color(0xFFBDC3C7)),
+    PERSONNEL_CANTINE(emptySet(), Icons.Default.Restaurant, Color(0xFFE67E22)),
 
-    FONDATEUR(setOf(
-        AcademicPermission.DASHBOARD_ETABLISSEMENT,
-        AcademicPermission.ACADEMIC_STATS,
-        AcademicPermission.FINANCIAL_BALANCE_SHEET,
-        AcademicPermission.TUITION_BALANCE_SHEET,
-        AcademicPermission.OTHER_FEES_BALANCE_SHEET,
-        AcademicPermission.TRANSPORT_BALANCE_SHEET,
-        AcademicPermission.GLOBAL_TUITION_STATUS,
-        AcademicPermission.CYCLE_EFFECTIVE_HISTOGRAM,
-        AcademicPermission.VIEW_FINANCIAL_REPORTS,
-        AcademicPermission.ABOUT,
-        AcademicPermission.SUMMARY,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.COLLECT_ALL_SCHOOL_YEARS_INFO,
-        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
-    ), Icons.Default.Business, Color(0xFFF1C40F)),
-
-    DIRECTEUR(setOf(
-        AcademicPermission.DASHBOARD_ETABLISSEMENT,
-        AcademicPermission.ACADEMIC_STATS,
-        AcademicPermission.FINANCIAL_BALANCE_SHEET,
-        AcademicPermission.VIEW_STUDENT_LIST,
-        AcademicPermission.VIEW_PAYMENT_STATUS,
-        AcademicPermission.VIEW_FINANCIAL_REPORTS,
-        AcademicPermission.ABOUT,
-        AcademicPermission.SUMMARY,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.COLLECT_ALL_SCHOOL_YEARS_INFO,
-        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
-    ), Icons.Default.ManageAccounts, Color(0xFF3498DB)),
-
-    VICE_PRINCIPAL(setOf(
-        AcademicPermission.DASHBOARD_ETABLISSEMENT,
-        AcademicPermission.STUDENT_DOSSIER,
-        AcademicPermission.ACADEMIC_STATS,
-        AcademicPermission.GLOBAL_ATTENDANCE,
-        AcademicPermission.MANAGE_SANCTIONS,
-        AcademicPermission.VIEW_STUDENT_LIST,
-        AcademicPermission.VIEW_PAYMENT_STATUS,
-        AcademicPermission.ABOUT,
-        AcademicPermission.SUMMARY,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
-    ), Icons.Default.SupervisorAccount, Color(0xFF2980B9)),
-
-    DIRECTEUR_DES_ETUDES(setOf(
-        AcademicPermission.DASHBOARD_ETABLISSEMENT,
-        AcademicPermission.MANAGE_LEVELS,
-        AcademicPermission.STUDENT_DOSSIER,
-        AcademicPermission.ACADEMIC_STATS,
-        AcademicPermission.MANAGE_SEQUENCES,
-        AcademicPermission.MANAGE_TERMS,
-        AcademicPermission.MANAGE_CYCLES,
-        AcademicPermission.MANAGE_CLASSES,
-        AcademicPermission.MANAGE_ROOMS,
-        AcademicPermission.VIEW_STUDENT_LIST,
-        AcademicPermission.ENROLL_STUDENT,
-        AcademicPermission.EDIT_STUDENT_INFO,
-        AcademicPermission.VIEW_PAYMENT_STATUS,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.COLLECT_ALL_SCHOOL_YEARS_INFO,
-        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
-    ), Icons.Default.MenuBook, Color(0xFF1ABC9C)),
-
-    INTENDANT(setOf(
-        AcademicPermission.DASHBOARD_ETABLISSEMENT,
-        AcademicPermission.MANAGE_PAYMENT_MODES,
-        AcademicPermission.MANAGE_BANKS,
-        AcademicPermission.PAY_OTHER_FEES,
-        AcademicPermission.PAY_TRANSPORT,
-        AcademicPermission.FINANCIAL_BALANCE_SHEET,
-        AcademicPermission.TUITION_BALANCE_SHEET,
-        AcademicPermission.OTHER_FEES_BALANCE_SHEET,
-        AcademicPermission.TRANSPORT_BALANCE_SHEET,
-        AcademicPermission.VIEW_STUDENT_LIST,
-        AcademicPermission.VIEW_PAYMENT_STATUS,
-        AcademicPermission.COLLECT_REGISTRATION_FEE,
-        AcademicPermission.COLLECT_TUITION_FEE,
-        AcademicPermission.COLLECT_OTHER_FEES,
-        AcademicPermission.VIEW_FINANCIAL_REPORTS,
-        AcademicPermission.CANCEL_PAYMENT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
-    ), Icons.Default.Payments, Color(0xFF27AE60)),
-
-    SECRETAIRE(setOf(
-        AcademicPermission.STUDENT_DOSSIER,
-        AcademicPermission.IMPORT_STUDENTS,
-        AcademicPermission.ATTENDANCE_CERTIFICATE,
-        AcademicPermission.PRINT_STUDENT_CARDS,
-        AcademicPermission.REGISTER_STUDENT,
-        AcademicPermission.ENROLL_STUDENT,
-        AcademicPermission.EDIT_STUDENT_INFO,
-        AcademicPermission.VIEW_STUDENT_LIST,
-        AcademicPermission.COLLECT_REGISTRATION_FEE,
-        AcademicPermission.VIEW_PAYMENT_STATUS,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
-    ), Icons.Default.AppRegistration, Color(0xFF95A5A6)),
-
-    SURVEILLANT_GENERAL(setOf(
-        AcademicPermission.GLOBAL_ATTENDANCE,
-        AcademicPermission.MANAGE_JUSTIFICATIONS,
-        AcademicPermission.MANAGE_SANCTIONS,
-        AcademicPermission.PERMISSION_REASONS,
-        AcademicPermission.EXIT_SLIP,
-        AcademicPermission.VIEW_STUDENT_LIST,
-        AcademicPermission.VIEW_PAYMENT_STATUS,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
-    ), Icons.Default.Policy, Color(0xFFD35400)),
-
-    CHEF_DE_DEPARTEMENT(setOf(
-        AcademicPermission.VIEW_STUDENT_LIST,
-        AcademicPermission.HARMONIZE_GRADES,
-        AcademicPermission.VALIDATE_GRADES,
-        AcademicPermission.GRADES_COMPLETION_RATE,
-        AcademicPermission.GRADES_REPORT_SHEET,
-        AcademicPermission.ABOUT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
-    ), Icons.Default.Groups, Color(0xFF8E44AD)),
-
-    ENSEIGNANT(setOf(
-        AcademicPermission.GRADES_REPORT_SHEET,
-        AcademicPermission.VIEW_STUDENT_LIST,
-        AcademicPermission.ABOUT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
-    ), Icons.Default.School, Color(0xFF2980B9)),
-
-    CONSEILLER_ORIENTATION(setOf(
-        AcademicPermission.STUDENT_DOSSIER,
-        AcademicPermission.MANAGE_TUTORSHIP,
-        AcademicPermission.MANAGE_SANCTIONS,
-        AcademicPermission.VIEW_STUDENT_LIST,
-        AcademicPermission.ABOUT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
-    ), Icons.Default.Psychology, Color(0xFF16A085)),
-
-    INFIRMIER(setOf(
-        AcademicPermission.STUDENT_DOSSIER,
-        AcademicPermission.EXIT_SLIP,
-        AcademicPermission.MANAGE_JUSTIFICATIONS,
-        AcademicPermission.VIEW_STUDENT_LIST,
-        AcademicPermission.ABOUT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
-    ), Icons.Default.LocalHospital, Color(0xFFC0392B)),
-
-    PARENT(setOf(
-        AcademicPermission.STUDENT_DOSSIER,
-        AcademicPermission.VIEW_PAYMENT_STATUS,
-        AcademicPermission.GRADES_REPORT_SHEET,
-        AcademicPermission.VIEW_MESSAGES,
-        AcademicPermission.ABOUT,
-        AcademicPermission.VIEW_MY_PAYMENT_STATUS,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
-    ), Icons.Default.FamilyRestroom, Color(0xFF34495E)),
-
-    ELEVE(setOf(
-        AcademicPermission.STUDENT_DOSSIER,
-        AcademicPermission.GRADES_REPORT_SHEET,
-        AcademicPermission.VIEW_MESSAGES,
-        AcademicPermission.ABOUT,
-        AcademicPermission.VIEW_MY_PAYMENT_STATUS,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
-    ), Icons.Default.Person, Color(0xFF7F8C8D)),
-
-    AGENT_ENTRETIEN(setOf(
-        AcademicPermission.EDIT_OWN_ACCOUNT,
-        AcademicPermission.ABOUT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
-    ), Icons.Default.CleaningServices, Color(0xFFBDC3C7)),
-
-    PERSONNEL_CANTINE(setOf(
-        AcademicPermission.EDIT_OWN_ACCOUNT,
-        AcademicPermission.ABOUT,
-        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
-        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
-    ), Icons.Default.Restaurant, Color(0xFFE67E22)),
-
-    /**
-     * Rôle temporaire pour un utilisateur ayant postulé mais non encore validé.
-     * N'a aucune permission sur les données de l'établissement.
-     */
     DEMANDEUR(emptySet(), Icons.Default.Pending, Color.Gray),
-
     SANS_ROLE(emptySet(), Icons.Default.Person, Color.Gray);
 
     companion object {

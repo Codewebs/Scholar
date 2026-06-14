@@ -1,8 +1,11 @@
 const { Eleve, Inscription, sequelize } = require("../models");
+const { Op } = require("sequelize");
 
 // 1. INSCRIPTION ET CRÉATION DE L'ÉLÈVE (Remote-First)
 exports.registerAndEnrollStudent = async (req, res) => {
-    console.log("📥 [POST] /register-enroll - Payload reçu:", JSON.stringify(req.body, null, 2));
+    const { userId, role } = req.user;
+    console.log(`📥 [POST] /register-enroll - Utilisateur ID: ${userId}, Rôle: ${role}`);
+    console.log("Payload reçu:", JSON.stringify(req.body, null, 2));
     const t = await sequelize.transaction();
     try {
         const data = req.body;
@@ -158,14 +161,62 @@ exports.searchStudents = async (req, res) => {
     }
 };
 
-// 4. RECUPERER TOUS LES ELEVES DE L'ETABLISSEMENT POUR UNE ANNEE
+// 4. RECUPERER TOUS LES ELEVES DE L'ETABLISSEMENT POUR UNE ANNEE (AVEC SCOPING)
 exports.getStudentsBySchoolYear = async (req, res) => {
     const { idAnneeScolaire } = req.params;
+    const { userId, role } = req.user;
+
+    console.log(`🔎 [GET] /school-year/${idAnneeScolaire} - Accès par Utilisateur ID: ${userId}, Rôle: ${role}`);
+
     try {
+        const whereInscription = { idAnneeScolaire, supprimer: false };
+        const whereEleve = { supprimer: false };
+
+        // --- SCOPING LOGIC ---
+        if (role === 'ADMINISTRATEUR') {
+            console.log("🛡️ Rôle ADMINISTRATEUR: Accès global autorisé.");
+        } else if (role === 'ENSEIGNANT' || role === 'CHEF_DE_DEPARTEMENT') {
+            console.log(`👨‍🏫 Rôle ${role}: Scoping par salles assignées...`);
+            const { AffectationPersonnelSalle, InscriptionPersonnel } = require("../models");
+            const insPersonnel = await InscriptionPersonnel.findOne({
+                where: { idUtilisateur: userId, idAnneeScolaire, supprimer: false }
+            });
+            if (insPersonnel) {
+                const affectations = await AffectationPersonnelSalle.findAll({
+                    where: { idInscriptionPersonnel: insPersonnel.idInscriptionPersonnel }
+                });
+                const idSalles = affectations.map(a => a.idSalle);
+                whereInscription.idSalle = idSalles;
+                console.log(`   -> ${idSalles.length} salles trouvées pour cet enseignant.`);
+            } else {
+                console.warn(`   ⚠️ Utilisateur ID ${userId} n'est pas inscrit en tant que personnel pour cette année.`);
+                return res.json([]);
+            }
+        } else if (role === 'PARENT') {
+            console.log(`👨‍👩‍👧 Rôle PARENT: Scoping par lien de parenté (Téléphone)...`);
+            const { Utilisateur } = require("../models");
+            const parent = await Utilisateur.findByPk(userId);
+            whereEleve[Op.or] = [
+                { telephonePere: parent.telephone },
+                { telephoneMere: parent.telephone },
+                { telephoneTuteur: parent.telephone }
+            ];
+            console.log(`   -> Recherche des élèves liés au téléphone: ${parent.telephone}`);
+        } else if (role === 'ELEVE') {
+            console.log(`🎓 Rôle ELEVE: Scoping individuel...`);
+            const { Utilisateur } = require("../models");
+            const me = await Utilisateur.findByPk(userId);
+            if (me) {
+                whereEleve.matricule = me.identifiant;
+                console.log(`   -> Accès restreint au matricule: ${me.identifiant}`);
+            }
+        }
+
         const inscriptions = await Inscription.findAll({
-            where: { idAnneeScolaire, supprimer: false },
+            where: whereInscription,
             include: [{
-                model: Eleve
+                model: Eleve,
+                where: whereEleve
             }, {
                 model: require("../models").Salle,
                 include: [{
@@ -225,7 +276,9 @@ exports.getStudentsBySchoolYear = async (req, res) => {
 // 5. METTRE À JOUR UN ÉLÈVE
 exports.updateStudent = async (req, res) => {
     const { idEleve } = req.params;
+    const { userId, role } = req.user;
     const data = req.body;
+    console.log(`📝 [PUT] /student/${idEleve} - Utilisateur ID: ${userId}, Rôle: ${role}`);
     const t = await sequelize.transaction();
     try {
         await Eleve.update({
@@ -262,6 +315,8 @@ exports.updateStudent = async (req, res) => {
 // 6. DÉSACTIVER UNE INSCRIPTION (SOFT DELETE)
 exports.deleteEnrollment = async (req, res) => {
     const { idEleve, idAnneeScolaire } = req.params;
+    const { userId, role } = req.user;
+    console.log(`🗑️ [DELETE] /enrollment/${idEleve}/${idAnneeScolaire} - Utilisateur ID: ${userId}, Rôle: ${role}`);
     try {
         // On ne supprime pas physiquement l'élève, juste son inscription pour cette année
         const result = await Inscription.update(

@@ -2,7 +2,6 @@ package com.indiza.scholar.ui.profile
 
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -45,9 +45,33 @@ fun ProfileBottomSheet(
     userRole: String,
     userId: Long,
     apiService: ApiService,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onLogout: () -> Unit
 ) {
     var currentTab by remember { mutableIntStateOf(0) } // 0: Infos, 1: Password, 2: Specialities
+
+    var showLogoutConfirm by remember { mutableStateOf(false) }
+
+    if (showLogoutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirm = false },
+            title = { Text("Déconnexion") },
+            text = { Text("Êtes-vous sûr de vouloir vous déconnecter ?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onLogout()
+                    showLogoutConfirm = false
+                }) {
+                    Text("Déconnexion", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutConfirm = false }) {
+                    Text("Annuler")
+                }
+            }
+        )
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -112,6 +136,16 @@ fun ProfileBottomSheet(
                 if (userRole.contains("ENSEIGNANT")) {
                     Tab(selected = currentTab == 2, onClick = { currentTab = 2 }) {
                         Text("Spécialités", modifier = Modifier.padding(12.dp))
+                    }
+                }
+                Tab(selected = false, onClick = { showLogoutConfirm = true }) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Logout, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
+                        Text("Sortie", color = MaterialTheme.colorScheme.error)
                     }
                 }
             }

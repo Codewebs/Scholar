@@ -138,7 +138,7 @@ class HomeFragment : Fragment() {
                         apiService = apiService,
                         userName = userName,
                         userId = userId,
-                        userRole = userRole,
+                        initialUserRole = userRole,
                         schoolId = schoolId,
                         onLogout = { logout() }
                     )
@@ -165,17 +165,18 @@ fun HomeScreen(
     apiService: ApiService,
     userName: String,
     userId: Long,
-    userRole: String,
+    initialUserRole: String, // Renommé pour plus de clarté
     schoolId: Long,
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
     val isUserActive by com.indiza.scholar.SessionManager.isUserActive.collectAsState()
+    val currentUserRole by com.indiza.scholar.SessionManager.userRole.collectAsState()
     
     // Si l'utilisateur n'est pas actif (pas d'école, pas d'année ou pas encore validé)
     if (!isUserActive) {
         LaunchedEffect(Unit) {
-            Log.d("HomeFragment", "User not active (role: $userRole, school: $schoolId). Redirecting to Dashboard.")
+            Log.d("HomeFragment", "User not active (role: $initialUserRole, school: $schoolId). Redirecting to Dashboard.")
             val navController = (context as? androidx.fragment.app.FragmentActivity)
                 ?.findNavController(R.id.nav_host_fragment_activity_main)
             navController?.navigate(R.id.navigation_dashboard)
@@ -196,26 +197,25 @@ fun HomeScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-
+        containerColor = Color(0xFF1E2A3A),
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(padding).background(Color(0xFF1E2A3A))) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp)
+                    .padding(10.dp)
             ) {
-                // Header: Profil + Infos + Indicateur + Logout
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { showProfileSheet = true }
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(56.dp)
+                            .size(50.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center
@@ -223,7 +223,7 @@ fun HomeScreen(
                         Icon(
                             Icons.Default.Person,
                             contentDescription = "Profil",
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(26.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -238,8 +238,12 @@ fun HomeScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            if (userRole.isNotBlank()) {
-                                userRole.split(",").forEach { role ->
+                            // On affiche le rôle actuel du SessionManager (synchronisé)
+                            if (currentUserRole != AcademicRole.SANS_ROLE) {
+                                com.indiza.scholar.ui.personnel.RoleBadge(currentUserRole)
+                            } else if (initialUserRole.isNotBlank()) {
+                                // Fallback sur le rôle initial si le manager n'est pas encore prêt
+                                initialUserRole.split(",").forEach { role ->
                                     com.indiza.scholar.ui.personnel.RoleBadge(AcademicRole.fromName(role.trim()))
                                 }
                             }
@@ -265,7 +269,7 @@ fun HomeScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(11.dp))
 
                 val permissions by com.indiza.scholar.SessionManager.permissions.collectAsState()
                 val canViewYear = permissions.contains(com.indiza.scholar.model.AcademicPermission.VIEW_SCHOOL_YEAR_INFO)
@@ -277,14 +281,14 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Box(modifier = Modifier.weight(1f)) {
-                            LigneAnneeScolaire(anneeViewModel, userRole, schoolId)
+                            LigneAnneeScolaire(anneeViewModel, currentUserRole.name, schoolId, userId, homeViewModel)
                         }
                         Box(modifier = Modifier.weight(1f)) {
                             EtablissementSwitcher(etablissementViewModel, homeViewModel)
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
 
                 // Dashboard Grid
@@ -292,22 +296,13 @@ fun HomeScreen(
                     text = "Tableau de bord",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    color = Color.White,
+                    modifier = Modifier.padding(bottom = 6.dp)
                 )
 
-                val menuItems = listOf(
-                    DashboardItem("🏫", "Ecole", "Infos sur l'école"),
-                    DashboardItem("🧑‍🏫", "Personnel", "Gestion du", hasNotification = true),
-                    DashboardItem("🎓", "Équipe", "Équipe"),
-                    DashboardItem("👩‍🎓", "Élèves", "Inscrire / liste"),
-                    DashboardItem("💰", "Paiements", "Frais scolarité"),
-                    DashboardItem("📚", "Matières", "Création /"),
-                    DashboardItem("🧮", "Note/Examen", "Saisie /", hasNotification = true),
-                    DashboardItem("🗄️", "Bulletins", "Consulter /", hasNotification = true),
-                    DashboardItem("🏫", "Classes", "Classes, Salles"),
-                    DashboardItem("⚙️", "Paramètres", "Cycles, périodes"),
-                    DashboardItem("📊", "Stats", "Rapports et")
-                )
+                val menuItems = com.indiza.scholar.model.AppMenu.entries.filter { menu ->
+                    com.indiza.scholar.SessionManager.isMenuAccessible(menu)
+                }
 
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
@@ -315,64 +310,70 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    items(menuItems) { item ->
-                        DashboardCard(item, onClick = {
+                    items(menuItems) { menu ->
+                        val dashboardItem = DashboardItem(
+                            emoji = menu.emoji,
+                            title = menu.title,
+                            description = menu.description
+                        )
+                        DashboardCard(dashboardItem, onClick = {
                             val intentAnneeId = selectedAnnee?.idServeur ?: 0L
-                            when(item.title) {
-                                "Ecole" -> {
+                            when(menu) {
+                                com.indiza.scholar.model.AppMenu.ECOLE -> {
                                     showEtablissementSheet = true
                                 }
-                                "Personnel" -> {
+                                com.indiza.scholar.model.AppMenu.PERSONNEL -> {
                                     val intent = Intent(context, com.indiza.scholar.ui.personnel.PersonnelManagementActivity::class.java).apply {
                                         putExtra("idEtablissement", schoolId)
                                         putExtra("idAnnee", intentAnneeId)
                                     }
                                     context.startActivity(intent)
                                 }
-                                "Équipe" -> {
+                                com.indiza.scholar.model.AppMenu.EQUIPE -> {
                                     val intent = Intent(context, com.indiza.scholar.ui.personnel.EquipePedagogiqueActivity::class.java).apply {
                                         putExtra("schoolId", schoolId)
                                         putExtra("idAnnee", intentAnneeId)
                                     }
                                     context.startActivity(intent)
                                 }
-                                "Élèves" -> {
+                                com.indiza.scholar.model.AppMenu.ELEVES -> {
                                     val intent = Intent(context, StudentManagementActivity::class.java).apply {
                                         putExtra("idAnneeScolaire", intentAnneeId)
                                     }
                                     context.startActivity(intent)
                                 }
-                                "Matières" -> {
+                                com.indiza.scholar.model.AppMenu.MATIERES -> {
                                     val intent = Intent(context, com.indiza.scholar.ui.matieres.MatiereActivity::class.java).apply {
                                         putExtra("idAnneeScolaire", intentAnneeId)
                                     }
                                     context.startActivity(intent)
                                 }
-                                "Stats" -> {
+                                com.indiza.scholar.model.AppMenu.STATS -> {
                                     val intent = Intent(context, com.indiza.scholar.ui.reports.ReportsActivity::class.java)
                                     intent.putExtra("idAnneeScolaire", selectedAnnee?.idServeur ?: 0L)
                                     intent.putExtra("schoolId", schoolId)
-                                    intent.putExtra("userRole", userRole)
+                                    intent.putExtra("userRole", currentUserRole.name)
                                     context.startActivity(intent)
                                 }
-                                "Note/Examen" -> {
+                                com.indiza.scholar.model.AppMenu.NOTES -> {
                                     val intent = Intent(context, com.indiza.scholar.ui.grades.GradeManagementActivity::class.java)
                                     intent.putExtra("idAnneeScolaire", selectedAnnee?.idServeur ?: 0L)
                                     context.startActivity(intent)
                                 }
-                                "Paiements" -> {
+                                com.indiza.scholar.model.AppMenu.PAIEMENTS -> {
                                     val intent = Intent(context, com.indiza.scholar.ui.finance.PaymentActivity::class.java)
                                     intent.putExtra("idAnneeScolaire", selectedAnnee?.idServeur ?: 0L)
                                     context.startActivity(intent)
                                 }
-                                "Classes" -> {
+                                com.indiza.scholar.model.AppMenu.CLASSES -> {
                                     val intent = Intent(context, ClasseManagementActivity::class.java)
                                     context.startActivity(intent)
                                 }
-                                "Paramètres" -> {
+                                com.indiza.scholar.model.AppMenu.PARAMETRES -> {
                                     val intent = Intent(context, SettingsActivity::class.java)
                                     context.startActivity(intent)
                                 }
+                                else -> {}
                             }
                         })
                     }
@@ -390,10 +391,9 @@ fun HomeScreen(
     }
 
     if (showEtablissementSheet) {
-        val role = remember(userRole) { AcademicRole.fromName(userRole) }
         EtablissementBottomSheet(
             viewModel = etablissementViewModel,
-            userRole = role,
+            userRole = currentUserRole,
             onDismiss = { showEtablissementSheet = false }
         )
     }
@@ -401,10 +401,11 @@ fun HomeScreen(
     if (showProfileSheet) {
         com.indiza.scholar.ui.profile.ProfileBottomSheet(
             userName = userName,
-            userRole = userRole,
+            userRole = currentUserRole.name,
             userId = userId,
             apiService = apiService,
-            onDismiss = { showProfileSheet = false }
+            onDismiss = { showProfileSheet = false },
+            onLogout = onLogout
         )
     }
 }
@@ -507,16 +508,21 @@ fun SelectableDateField(label: String, value: String, onDateSelected: (String) -
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LigneAnneeScolaire(viewModel: AnneeScolaireViewModel, userRole: String, schoolId: Long) {
+fun LigneAnneeScolaire(
+    viewModel: AnneeScolaireViewModel, 
+    userRole: String, 
+    schoolId: Long, 
+    userId: Long, 
+    homeViewModel: HomeViewModel
+) {
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     val annees by viewModel.annees.collectAsState()
     val selectedAnnee by viewModel.selectedAnnee.collectAsState()
 
-    val role = remember(userRole) { AcademicRole.fromName(userRole) }
-    val canAdd = role.permissions.contains(AcademicPermission.REGISTER_SCHOOL_YEAR)
-    val canEdit = role.permissions.contains(AcademicPermission.EDIT_SCHOOL_YEAR_INFO)
-    val canDelete = role.permissions.contains(AcademicPermission.UNENROLL_SCHOOL_YEAR)
+    val canAdd = com.indiza.scholar.SessionManager.hasPermission(AcademicPermission.REGISTER_SCHOOL_YEAR)
+    val canEdit = com.indiza.scholar.SessionManager.hasPermission(AcademicPermission.EDIT_SCHOOL_YEAR_INFO)
+    val canDelete = com.indiza.scholar.SessionManager.hasPermission(AcademicPermission.UNENROLL_SCHOOL_YEAR)
 
     var showActions by remember { mutableStateOf(false) } // Par défaut caché comme dans l'image
 
@@ -530,7 +536,7 @@ fun LigneAnneeScolaire(viewModel: AnneeScolaireViewModel, userRole: String, scho
         Text(
             text = "Année scolaire",
             style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray
+            color = Color.LightGray
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -553,7 +559,7 @@ fun LigneAnneeScolaire(viewModel: AnneeScolaireViewModel, userRole: String, scho
                             text = selectedAnnee?.libelleAnneeScolaire ?: "Non définie",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = Color.White
                         )
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                     }
@@ -578,6 +584,11 @@ fun LigneAnneeScolaire(viewModel: AnneeScolaireViewModel, userRole: String, scho
                                         
                                     // Mettre à jour le SessionManager
                                     com.indiza.scholar.SessionManager.setContext(schoolId, anneeId, schoolId > 0 && anneeId > 0)
+                                    
+                                    // 🛡️ Sync permissions for the new year context
+                                    if (userId > 0L) {
+                                        homeViewModel.syncPermissions(userId, schoolId, anneeId)
+                                    }
                                 }
                             )
                         }
@@ -827,7 +838,8 @@ data class DashboardItem(
     val emoji: String,
     val title: String,
     val description: String,
-    val hasNotification: Boolean = false
+    val hasNotification: Boolean = false,
+    val permission: com.indiza.scholar.model.AcademicPermission? = null
 )
 
 @Composable
@@ -1028,7 +1040,7 @@ fun DashboardCard(item: DashboardItem, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .background(Color(0xFF2C3E50))
             .clickable { onClick() }
             .padding(12.dp)
             .fillMaxWidth()
@@ -1049,7 +1061,7 @@ fun DashboardCard(item: DashboardItem, onClick: () -> Unit) {
             ) {
                 Text(
                     text = item.title,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     maxLines = 2,
@@ -1058,7 +1070,7 @@ fun DashboardCard(item: DashboardItem, onClick: () -> Unit) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = item.description,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    color = Color.LightGray.copy(alpha = 0.6f),
                     fontSize = 11.sp,
                     maxLines = 1,
                     lineHeight = 14.sp
