@@ -99,9 +99,24 @@
             android:label="Périodes &amp; Séquences"
             android:theme="@style/Theme.Scholar" />
         <activity
+            android:name=".ui.settings.SequenceRepartitionActivity"
+            android:exported="false"
+            android:label="Répartition des Séquences"
+            android:theme="@style/Theme.Scholar" />
+        <activity
             android:name=".ui.matieres.MatiereActivity"
             android:exported="false"
             android:label="Dashboard Matières"
+            android:theme="@style/Theme.Scholar" />
+        <activity
+            android:name=".ui.matieres.ApcConfigurationActivity"
+            android:exported="false"
+            android:label="Configuration APC"
+            android:theme="@style/Theme.Scholar" />
+        <activity
+            android:name=".ui.matieres.GroupManagementActivity"
+            android:exported="false"
+            android:label="Gestion des Groupes"
             android:theme="@style/Theme.Scholar" />
         <activity
             android:name=".ui.finance.PaymentActivity"
@@ -113,6 +128,12 @@
             android:name=".ui.reports.ReportsActivity"
             android:exported="false"
             android:label="États et Rapports"
+            android:theme="@style/Theme.Scholar" />
+
+        <activity
+            android:name=".ui.pedagogy.BulletinActivity"
+            android:exported="false"
+            android:label="Bulletins Scolaires"
             android:theme="@style/Theme.Scholar" />
 
         <activity

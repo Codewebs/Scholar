@@ -111,6 +111,20 @@ fun ProfileBottomSheet(
                 ) {
                     if (userPhotoPath != null) {
                         AsyncImage(model = userPhotoPath, contentDescription = null, modifier = Modifier.fillMaxSize())
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Supprimer",
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(20.dp)
+                                .background(Color.Red, CircleShape)
+                                .padding(2.dp)
+                                .clickable {
+                                    ImageStorageUtils.deleteUserPhoto(context, userId)
+                                    userPhotoPath = null
+                                },
+                            tint = Color.White
+                        )
                     } else {
                         Icon(Icons.Default.AddAPhoto, null, modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
                     }

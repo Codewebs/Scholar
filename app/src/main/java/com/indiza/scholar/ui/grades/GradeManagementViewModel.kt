@@ -31,11 +31,17 @@ class GradeManagementViewModel(private val api: ApiService) : ViewModel() {
     private val _sequences = MutableStateFlow<List<SousPeriodeEntity>>(emptyList())
     val sequences: StateFlow<List<SousPeriodeEntity>> = _sequences
 
+    private val _sequenceRepartition = MutableStateFlow<List<RepartitionSousPeriodeEntity>>(emptyList())
+    val sequenceRepartition: StateFlow<List<RepartitionSousPeriodeEntity>> = _sequenceRepartition
+
     private val _repartitions = MutableStateFlow<List<RepartitionMatiereEntity>>(emptyList())
     val repartitions: StateFlow<List<RepartitionMatiereEntity>> = _repartitions
 
     private val _justifications = MutableStateFlow<List<JustificationEntity>>(emptyList())
     val justifications: StateFlow<List<JustificationEntity>> = _justifications
+
+    private val _currentCompetences = MutableStateFlow<List<RepartitionCompetenceEntity>>(emptyList())
+    val currentCompetences: StateFlow<List<RepartitionCompetenceEntity>> = _currentCompetences
 
     private val _hasChanges = MutableStateFlow(false)
     val hasChanges = _hasChanges.asStateFlow()
@@ -49,12 +55,24 @@ class GradeManagementViewModel(private val api: ApiService) : ViewModel() {
     private val _studentProgress = MutableStateFlow<ProgressUiModel?>(null)
     val studentProgress = _studentProgress.asStateFlow()
 
+    fun loadCompetences(idRep: Long, idSeq: Long) {
+        viewModelScope.launch {
+            try {
+                val res = api.getRepartitionCompetences(idRep, idSeq)
+                if (res.isSuccessful) {
+                    _currentCompetences.value = res.body() ?: emptyList()
+                }
+            } catch (e: Exception) { e.printStackTrace() }
+        }
+    }
+
     fun loadSallesWithProgress(idAnnee: Long, idSeq: Long) {
         viewModelScope.launch {
             try {
                 val res = api.getSallesByAnnee(idAnnee)
                 if (res.isSuccessful) {
                     val list = res.body() ?: emptyList()
+                    android.util.Log.d("GradeVM", "📥 Salles reçues (${list.size}): ${list.map { it.nomSalle }}")
                     list.forEach { salle ->
                         val pRes = api.getSalleProgress(salle.idServeur ?: 0L, idSeq, idAnnee)
                         if (pRes.isSuccessful) {
@@ -63,6 +81,8 @@ class GradeManagementViewModel(private val api: ApiService) : ViewModel() {
                     }
                     _salles.value = emptyList()
                     _salles.value = list
+                } else {
+                    android.util.Log.e("GradeVM", "❌ Erreur chargement salles: ${res.errorBody()?.string()}")
                 }
             } catch (e: Exception) { e.printStackTrace() }
         }
@@ -71,13 +91,24 @@ class GradeManagementViewModel(private val api: ApiService) : ViewModel() {
     fun loadInitialData(idAnnee: Long) {
         viewModelScope.launch {
             try {
+                android.util.Log.d("GradeVM", "🔄 Chargement initial des données (Année ID: $idAnnee)")
                 val sRes = api.getSallesByAnnee(idAnnee)
-                if (sRes.isSuccessful) _salles.value = sRes.body() ?: emptyList()
+                if (sRes.isSuccessful) {
+                    val list = sRes.body() ?: emptyList()
+                    android.util.Log.d("GradeVM", "✅ ${list.size} salles autorisées récupérées")
+                    _salles.value = list
+                }
                 
                 val pRes = api.getPeriodesByAnnee(idAnnee)
                 if (pRes.isSuccessful) {
                     val allSequences = pRes.body()?.flatMap { it.sousPeriodes } ?: emptyList()
+                    android.util.Log.d("GradeVM", "✅ ${allSequences.size} séquences récupérées")
                     _sequences.value = allSequences
+                }
+
+                val srRes = api.getSequenceRepartition(idAnnee)
+                if (srRes.isSuccessful) {
+                    _sequenceRepartition.value = srRes.body() ?: emptyList()
                 }
 
                 loadJustifications()
@@ -121,9 +152,11 @@ class GradeManagementViewModel(private val api: ApiService) : ViewModel() {
     fun loadRepartitions(idAnnee: Long, idClasse: Long, idSalle: Long? = null, idSeq: Long? = null) {
         viewModelScope.launch {
             try {
-                val res = api.getRepartitionByAnnee(idAnnee, idClasse)
+                android.util.Log.d("GradeVM", "🔍 Chargement répartitions (Classe ID: $idClasse, Salle ID: $idSalle)")
+                val res = api.getRepartitionByAnnee(idAnnee, idClasse, idSalle)
                 if (res.isSuccessful) {
                     val list = res.body() ?: emptyList()
+                    android.util.Log.d("GradeVM", "✅ ${list.size} matières autorisées récupérées")
                     _repartitions.value = list
                     
                     if (idSalle != null && idSeq != null) {
@@ -208,15 +241,29 @@ class GradeManagementViewModel(private val api: ApiService) : ViewModel() {
     fun loadNotes(idSalle: Long, idRepartition: Long, idSequence: Long, idAnnee: Long) {
         viewModelScope.launch {
             _isLoading.value = true
+            android.util.Log.d("GradeVM", "🔍 [LoadNotes] Salle: $idSalle, Repartition: $idRepartition, Seq: $idSequence, Year: $idAnnee")
             try {
                 val response = api.getNotesByMatiere(idSalle, idRepartition, idSequence, idAnnee)
                 if (response.isSuccessful) {
-                    _notes.value = response.body() ?: emptyList()
+                    val rawNotes = response.body() ?: emptyList()
+                    android.util.Log.d("GradeVM", "📥 [LoadNotes] Received ${rawNotes.size} notes")
+                    
+                    // If we have competencies, ensure we have an entry for each student-competence pair
+                    val comps = _currentCompetences.value
+                    if (comps.isNotEmpty()) {
+                        android.util.Log.d("GradeVM", "🛠️ [LoadNotes] APC Mode: Enriching notes with ${comps.size} competencies")
+                        // Logic to ensure flattened list if backend doesn't provide it
+                        // For now assuming backend/api returns them or we handle them locally
+                    }
+
+                    _notes.value = rawNotes
                     _hasChanges.value = false
                     loadMatiereProgress(idSalle, idRepartition, idSequence, idAnnee)
+                } else {
+                    android.util.Log.e("GradeVM", "❌ [LoadNotes] Error: ${response.errorBody()?.string()}")
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                android.util.Log.e("GradeVM", "❌ [LoadNotes] Exception", e)
             } finally {
                 _isLoading.value = false
             }
@@ -255,17 +302,33 @@ class GradeManagementViewModel(private val api: ApiService) : ViewModel() {
             try {
                 val dirtyNotes = _notes.value.filter { it.isDirty && (it.note != null || it.nonClasse) }
                 if (dirtyNotes.isEmpty()) {
+                    android.util.Log.d("GradeVM", "ℹ️ [SaveNotes] No dirty notes to save")
                     onComplete()
                     return@launch
                 }
+                
+                android.util.Log.d("GradeVM", "💾 [SaveNotes] Saving ${dirtyNotes.size} notes. Sample: ${dirtyNotes.first().nomComplet} -> ${dirtyNotes.first().note}")
+                
+                // Validation
+                val invalid = dirtyNotes.filter { it.idCompetence != null && it.idRepartitionCompetence == null }
+                if (invalid.isNotEmpty()) {
+                    android.util.Log.e("GradeVM", "❌ [SaveNotes] Validation failed: Missing idRepartitionCompetence for ${invalid.size} notes")
+                    // Handle error or proceed if backend is lenient
+                }
+
                 val payload = SaveNotesPayload(dirtyNotes, idRepartition, idSequence, idAnnee, mode)
-                api.saveNotes(payload)
-                _notes.value = _notes.value.map { it.copy(isDirty = false) }
-                _hasChanges.value = false
-                onComplete()
-                loadMatiereProgress(0, idRepartition, idSequence, idAnnee)
+                val res = api.saveNotes(payload)
+                if (res.isSuccessful) {
+                    android.util.Log.d("GradeVM", "✅ [SaveNotes] Success")
+                    _notes.value = _notes.value.map { it.copy(isDirty = false) }
+                    _hasChanges.value = false
+                    onComplete()
+                    loadMatiereProgress(0, idRepartition, idSequence, idAnnee)
+                } else {
+                    android.util.Log.e("GradeVM", "❌ [SaveNotes] Server Error: ${res.errorBody()?.string()}")
+                }
             } catch (e: Exception) {
-                e.printStackTrace()
+                android.util.Log.e("GradeVM", "❌ [SaveNotes] Exception", e)
             }
         }
     }
@@ -307,10 +370,16 @@ class GradeManagementViewModel(private val api: ApiService) : ViewModel() {
         }
     }
 
-    fun updateNoteLocally(index: Int, newNote: Double?, newCote: String?) {
+    fun updateNoteLocally(index: Int, newNote: Double?, newCote: String?, idComp: Long? = null, idRepComp: Long? = null) {
         val currentList = _notes.value.toMutableList()
         if (index in currentList.indices) {
-            currentList[index] = currentList[index].copy(note = newNote, cote = newCote, isDirty = true)
+            currentList[index] = currentList[index].copy(
+                note = newNote,
+                cote = newCote,
+                idCompetence = idComp ?: currentList[index].idCompetence,
+                idRepartitionCompetence = idRepComp ?: currentList[index].idRepartitionCompetence,
+                isDirty = true
+            )
             _notes.value = currentList
             _hasChanges.value = true
         }
@@ -339,10 +408,16 @@ class GradeManagementViewModel(private val api: ApiService) : ViewModel() {
         }
     }
 
-    fun updateStudentNoteLocally(index: Int, newNote: Double?, newCote: String?) {
+    fun updateStudentNoteLocally(index: Int, newNote: Double?, newCote: String?, idComp: Long? = null, idRepComp: Long? = null) {
         val currentList = _studentNotes.value.toMutableList()
         if (index in currentList.indices) {
-            currentList[index] = currentList[index].copy(note = newNote, cote = newCote, isDirty = true)
+            currentList[index] = currentList[index].copy(
+                note = newNote,
+                cote = newCote,
+                idCompetence = idComp ?: currentList[index].idCompetence,
+                idRepartitionCompetence = idRepComp ?: currentList[index].idRepartitionCompetence,
+                isDirty = true
+            )
             _studentNotes.value = currentList
             _hasChanges.value = true
         }

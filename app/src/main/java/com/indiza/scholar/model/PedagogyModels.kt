@@ -23,7 +23,8 @@ data class GroupeMatiereEntity(
     val libelleFr: String,
     val libelleEn: String?,
     val libelleEs: String?,
-    val ordre: Int = 1
+    val ordre: Int = 1,
+    val idEtablissement: Long? = null
 )
 
 @Entity(tableName = "periode")
@@ -83,6 +84,8 @@ data class NoteUiModel(
     var cote: String?,
     var appreciation: String?,
     val idNote: Long?,
+    val idCompetence: Long? = null,
+    val idRepartitionCompetence: Long? = null,
     var nonClasse: Boolean = false,
     var idJustification: Long? = null,
     var isDirty: Boolean = false
@@ -140,6 +143,8 @@ data class StudentNoteUiModel(
     var note: Double?,
     var cote: String?,
     val idNote: Long?,
+    val idCompetence: Long? = null,
+    val idRepartitionCompetence: Long? = null,
     var nonClasse: Boolean = false,
     var idJustification: Long? = null,
     var isDirty: Boolean = false
@@ -158,4 +163,21 @@ data class JustificationEntity(
     val libelleJustificationFr: String,
     val libelleJustificationEn: String?,
     val description: String?
+)
+
+@Entity(tableName = "repartition_sous_periode")
+data class RepartitionSousPeriodeEntity(
+    @PrimaryKey(autoGenerate = true) val idLocal: Long = 0,
+    @Json(name = "idRepartitionSousPeriode") val idServeur: Long? = null,
+    val idClasse: Long,
+    val idSousPeriode: Long,
+    val idAnneeScolaire: Long,
+    val supprimer: Boolean = false,
+    @Json(name = "SousPeriode") val detailsSousPeriode: SousPeriodeEntity? = null
+)
+
+data class SequenceRepartitionPayload(
+    val idAnneeScolaire: Long,
+    val classIds: List<Long>,
+    val sequenceIds: List<Long>
 )

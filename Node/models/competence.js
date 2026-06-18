@@ -4,6 +4,7 @@ const sequelize = require("../db");
 const Competence = sequelize.define("Competence", {
   idCompetence: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
   libelle: { type: DataTypes.STRING(255), allowNull: false },
+  idEtablissement: { type: DataTypes.BIGINT, allowNull: false },
   supprimer: { type: DataTypes.BOOLEAN, defaultValue: false }
 }, {
   tableName: "competence",

@@ -19,6 +19,7 @@ const Periode = require("./periode");
 const SousPeriode = require("./sousPeriode");
 const Competence = require("./competence");
 const RepartitionMatiere = require("./repartitionMatiere");
+const RepartitionSousPeriode = require("./repartitionSousPeriode");
 const RepartitionCompetence = require("./repartitionCompetence");
 const Note = require("./note");
 const Justification = require("./justification");
@@ -75,6 +76,9 @@ EtablissementStructure.belongsTo(Etablissement, { foreignKey: "idEtablissement" 
 AnneeScolaire.hasMany(EtablissementStructure, { foreignKey: "idAnneeScolaire" });
 EtablissementStructure.belongsTo(AnneeScolaire, { foreignKey: "idAnneeScolaire" });
 
+Etablissement.hasMany(GroupeMatiere, { foreignKey: "idEtablissement" });
+GroupeMatiere.belongsTo(Etablissement, { foreignKey: "idEtablissement" });
+
 Enseignement.hasMany(EtablissementStructure, { foreignKey: "idEnseignement" });
 EtablissementStructure.belongsTo(Enseignement, { foreignKey: "idEnseignement" });
 
@@ -96,6 +100,15 @@ Periode.belongsTo(AnneeScolaire, { foreignKey: "idAnneeScolaire" });
 
 Periode.hasMany(SousPeriode, { foreignKey: "idPeriode", as: "sousPeriodes" });
 SousPeriode.belongsTo(Periode, { foreignKey: "idPeriode" });
+
+AnneeScolaire.hasMany(RepartitionSousPeriode, { foreignKey: "idAnneeScolaire" });
+RepartitionSousPeriode.belongsTo(AnneeScolaire, { foreignKey: "idAnneeScolaire" });
+
+Classe.hasMany(RepartitionSousPeriode, { foreignKey: "idClasse", as: "repartitionSequences" });
+RepartitionSousPeriode.belongsTo(Classe, { foreignKey: "idClasse" });
+
+SousPeriode.hasMany(RepartitionSousPeriode, { foreignKey: "idSousPeriode" });
+RepartitionSousPeriode.belongsTo(SousPeriode, { foreignKey: "idSousPeriode" });
 
 AnneeScolaire.hasMany(RepartitionMatiere, { foreignKey: "idAnneeScolaire" });
 RepartitionMatiere.belongsTo(AnneeScolaire, { foreignKey: "idAnneeScolaire" });
@@ -204,11 +217,14 @@ AnneeScolaire.hasMany(Note, { foreignKey: "idAnneeScolaire" });
 Note.belongsTo(Inscription, { foreignKey: "idInscription" });
 Inscription.hasMany(Note, { foreignKey: "idInscription" });
 
-Note.belongsTo(RepartitionMatiere, { foreignKey: "idRepartitionMatiere" });
-RepartitionMatiere.hasMany(Note, { foreignKey: "idRepartitionMatiere" });
+// Note.belongsTo(RepartitionMatiere, { foreignKey: "idRepartitionMatiere" });
+// RepartitionMatiere.hasMany(Note, { foreignKey: "idRepartitionMatiere" });
 
 Note.belongsTo(SousPeriode, { foreignKey: "idSequence" });
 SousPeriode.hasMany(Note, { foreignKey: "idSequence" });
+
+Note.belongsTo(Competence, { foreignKey: "idCompetence" });
+Competence.hasMany(Note, { foreignKey: "idCompetence" });
 
 Note.belongsTo(Justification, { foreignKey: "idJustification" });
 Justification.hasMany(Note, { foreignKey: "idJustification" });
@@ -263,6 +279,7 @@ module.exports = {
   SousPeriode,
   Competence,
   RepartitionMatiere,
+  RepartitionSousPeriode,
   RepartitionCompetence,
   Note,
   Justification,

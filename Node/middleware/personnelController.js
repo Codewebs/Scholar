@@ -130,7 +130,18 @@ exports.validerDemande = async (req, res) => {
     }
 };
 
-// 2b. METTRE A JOUR LES PERMISSIONS
+// 2b. REJETER UNE DEMANDE
+exports.rejeterDemande = async (req, res) => {
+    try {
+        const { idDemande } = req.body;
+        await DemandeInscriptionPersonnel.update({ etat: 'REJETE' }, { where: { idDemande } });
+        res.json({ message: "Demande rejetée." });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 2c. METTRE A JOUR LES PERMISSIONS
 exports.updatePermissions = async (req, res) => {
     try {
         const { idInscriptionPersonnel, permissionsAjoutees, permissionsRetirees } = req.body;
@@ -245,7 +256,10 @@ exports.getPersonnelActif = async (req, res) => {
         const { idEtablissement, idAnneeScolaire } = req.params;
         const personnel = await InscriptionPersonnel.findAll({
             where: { idEtablissement, idAnneeScolaire, supprimer: false },
-            include: [{ model: Matiere, as: 'specialites' }]
+            include: [
+                { model: Matiere, as: 'specialites' },
+                { model: Utilisateur, attributes: ['idUtilisateur', 'nom', 'email', 'telephone'] }
+            ]
         });
 
         // Formatter pour s'assurer que les JSON strings sont parsés en tableaux pour Android

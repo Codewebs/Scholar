@@ -37,9 +37,11 @@ import com.indiza.scholar.model.AcademicPermission
 import com.indiza.scholar.model.AcademicRole
 import com.indiza.scholar.model.EtablissementEntity
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
+import com.indiza.scholar.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,16 +70,16 @@ fun EtablissementScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Établissement") },
+                title = { Text(stringResource(R.string.etablissement_label)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.retour))
                     }
                 },
                 actions = {
                     if (userRole.permissions.contains(AcademicPermission.EDIT_SCHOOL_INFO)) {
                         IconButton(onClick = { showEditSheet = true }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Modifier")
+                            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.modifier))
                         }
                     }
                 }
@@ -97,7 +99,7 @@ fun EtablissementScreen(
                     if (!info.logo.isNullOrBlank()) {
                         AsyncImage(
                             model = info.logo,
-                            contentDescription = "Logo",
+                            contentDescription = stringResource(R.string.logo),
                             modifier = Modifier.size(100.dp).clip(CircleShape).border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
                             contentScale = ContentScale.Crop
                         )
@@ -105,17 +107,17 @@ fun EtablissementScreen(
                         Icon(Icons.Default.Business, contentDescription = null, modifier = Modifier.size(100.dp), tint = Color.LightGray)
                     }
                 }
-                InfoCard(label = "Nom (Lv1)", value = info.nomFr)
-                InfoCard(label = "Nom (Lv2)", value = info.nomEn ?: "-")
-                InfoCard(label = "Abréviation", value = info.abreviation ?: "-")
-                InfoCard(label = "Devise (Monnaie)", value = info.devise ?: "-")
-                InfoCard(label = "Motto (Lv1)", value = info.deviseFr ?: "-")
-                InfoCard(label = "Motto (Lv2)", value = info.deviseEn ?: "-")
-                InfoCard(label = "Arrêté", value = info.arrete ?: "-")
-                InfoCard(label = "Téléphone", value = info.telephone1.toString())
-                InfoCard(label = "Adresse", value = info.adresse ?: "-")
-                InfoCard(label = "Ville", value = info.ville ?: "-")
-                InfoCard(label = "Email", value = info.email ?: "-")
+                InfoCard(label = stringResource(R.string.nom_lv1), value = info.nomFr)
+                InfoCard(label = stringResource(R.string.nom_lv2), value = info.nomEn ?: "-")
+                InfoCard(label = stringResource(R.string.abreviation), value = info.abreviation ?: "-")
+                InfoCard(label = stringResource(R.string.devise_monnaie), value = info.devise ?: "-")
+                InfoCard(label = stringResource(R.string.motto_lv1), value = info.deviseFr ?: "-")
+                InfoCard(label = stringResource(R.string.motto_lv2), value = info.deviseEn ?: "-")
+                InfoCard(label = stringResource(R.string.arrete), value = info.arrete ?: "-")
+                InfoCard(label = stringResource(R.string.telephone), value = info.telephone1.toString())
+                InfoCard(label = stringResource(R.string.adresse), value = info.adresse ?: "-")
+                InfoCard(label = stringResource(R.string.ville), value = info.ville ?: "-")
+                InfoCard(label = stringResource(R.string.email), value = info.email ?: "-")
             } ?: Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
@@ -240,7 +242,7 @@ fun EtablissementBottomSheet(
                 Icon(Icons.Default.Business, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (canEdit) "Configuration de l'École" else "Informations de l'École",
+                    text = if (canEdit) stringResource(R.string.configuration_ecole) else stringResource(R.string.informations_ecole),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -259,7 +261,7 @@ fun EtablissementBottomSheet(
                     if (!info.logo.isNullOrBlank()) {
                         AsyncImage(
                             model = info.logo,
-                            contentDescription = "Logo",
+                            contentDescription = stringResource(R.string.logo),
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
@@ -278,7 +280,7 @@ fun EtablissementBottomSheet(
             OutlinedTextField(
                 value = info.nomFr,
                 onValueChange = { if(canEdit) info = info.copy(nomFr = it) },
-                label = { RequiredLabel("Nom de l'établissement (Lv1)") },
+                label = { RequiredLabel(stringResource(R.string.nom_etablissement_lv1)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 readOnly = !canEdit
@@ -287,7 +289,7 @@ fun EtablissementBottomSheet(
             OutlinedTextField(
                 value = info.nomEn ?: "",
                 onValueChange = { if(canEdit) info = info.copy(nomEn = it) },
-                label = { Text("Nom de l'établissement (Lv2)") },
+                label = { Text(stringResource(R.string.nom_etablissement_lv2)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 readOnly = !canEdit
@@ -297,7 +299,7 @@ fun EtablissementBottomSheet(
                 OutlinedTextField(
                     value = info.abreviation ?: "",
                     onValueChange = { if(canEdit) info = info.copy(abreviation = it) },
-                    label = { Text("Abréviation") },
+                    label = { Text(stringResource(R.string.abreviation)) },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     readOnly = !canEdit
@@ -305,7 +307,7 @@ fun EtablissementBottomSheet(
                 OutlinedTextField(
                     value = info.devise ?: "",
                     onValueChange = { if(canEdit) info = info.copy(devise = it) },
-                    label = { Text("Devise (Monnaie)") },
+                    label = { Text(stringResource(R.string.devise_monnaie)) },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     readOnly = !canEdit
@@ -315,7 +317,7 @@ fun EtablissementBottomSheet(
             OutlinedTextField(
                 value = info.deviseFr ?: "",
                 onValueChange = { if(canEdit) info = info.copy(deviseFr = it) },
-                label = { Text("Devise Lv1 (Motto)") },
+                label = { Text(stringResource(R.string.devise_lv1_motto)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 readOnly = !canEdit
@@ -324,7 +326,7 @@ fun EtablissementBottomSheet(
             OutlinedTextField(
                 value = info.deviseEn ?: "",
                 onValueChange = { if(canEdit) info = info.copy(deviseEn = it) },
-                label = { Text("Devise Lv2 (Motto)") },
+                label = { Text(stringResource(R.string.devise_lv2_motto)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 readOnly = !canEdit
@@ -333,7 +335,7 @@ fun EtablissementBottomSheet(
             OutlinedTextField(
                 value = info.description ?: "",
                 onValueChange = { if(canEdit) info = info.copy(description = it) },
-                label = { Text("Description") },
+                label = { Text(stringResource(R.string.description)) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 readOnly = !canEdit
@@ -342,7 +344,7 @@ fun EtablissementBottomSheet(
             OutlinedTextField(
                 value = info.arrete ?: "",
                 onValueChange = { if(canEdit) info = info.copy(arrete = it) },
-                label = { Text("Arrêté de création") },
+                label = { Text(stringResource(R.string.arrete_de_creation)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 readOnly = !canEdit
@@ -351,7 +353,7 @@ fun EtablissementBottomSheet(
             OutlinedTextField(
                 value = info.telephone1.let { if (it == 0L) "" else it.toString() },
                 onValueChange = { if(canEdit) info = info.copy(telephone1 = it.toLongOrNull() ?: 0L) },
-                label = { RequiredLabel("Téléphone Principal") },
+                label = { RequiredLabel(stringResource(R.string.telephone_principal)) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 singleLine = true,
@@ -362,7 +364,7 @@ fun EtablissementBottomSheet(
                 OutlinedTextField(
                     value = info.telephone2?.let { if (it == 0L) "" else it.toString() } ?: "",
                     onValueChange = { if(canEdit) info = info.copy(telephone2 = it.toLongOrNull() ?: 0L) },
-                    label = { Text("Téléphone 2") },
+                    label = { Text(stringResource(R.string.telephone_2)) },
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     singleLine = true,
@@ -371,7 +373,7 @@ fun EtablissementBottomSheet(
                 OutlinedTextField(
                     value = info.telephone3?.let { if (it == 0L) "" else it.toString() } ?: "",
                     onValueChange = { if(canEdit) info = info.copy(telephone3 = it.toLongOrNull() ?: 0L) },
-                    label = { Text("Téléphone 3") },
+                    label = { Text(stringResource(R.string.telephone_3)) },
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     singleLine = true,
@@ -383,7 +385,7 @@ fun EtablissementBottomSheet(
                 OutlinedTextField(
                     value = info.fax?.let { if (it == 0L) "" else it.toString() } ?: "",
                     onValueChange = { if(canEdit) info = info.copy(fax = it.toLongOrNull() ?: 0L) },
-                    label = { Text("Fax") },
+                    label = { Text(stringResource(R.string.fax)) },
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     singleLine = true,
@@ -392,7 +394,7 @@ fun EtablissementBottomSheet(
                 OutlinedTextField(
                     value = info.sise ?: "",
                     onValueChange = { if(canEdit) info = info.copy(sise = it) },
-                    label = { Text("SISE") },
+                    label = { Text(stringResource(R.string.sise)) },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     readOnly = !canEdit
@@ -402,7 +404,7 @@ fun EtablissementBottomSheet(
             OutlinedTextField(
                 value = info.adresse ?: "",
                 onValueChange = { if(canEdit) info = info.copy(adresse = it) },
-                label = { Text("Adresse Physique") },
+                label = { Text(stringResource(R.string.adresse_physique)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 readOnly = !canEdit
@@ -412,7 +414,7 @@ fun EtablissementBottomSheet(
                 OutlinedTextField(
                     value = info.ville ?: "",
                     onValueChange = { if(canEdit) info = info.copy(ville = it) },
-                    label = { Text("Ville") },
+                    label = { Text(stringResource(R.string.ville)) },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     readOnly = !canEdit
@@ -420,7 +422,7 @@ fun EtablissementBottomSheet(
                 OutlinedTextField(
                     value = info.numBp?.toString() ?: "",
                     onValueChange = { if(canEdit) info = info.copy(numBp = it.toIntOrNull()) },
-                    label = { Text("BP") },
+                    label = { Text(stringResource(R.string.bp)) },
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
@@ -431,7 +433,7 @@ fun EtablissementBottomSheet(
             OutlinedTextField(
                 value = info.email ?: "",
                 onValueChange = { if(canEdit) info = info.copy(email = it) },
-                label = { Text("Email") },
+                label = { Text(stringResource(R.string.email)) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 singleLine = true,
@@ -441,7 +443,7 @@ fun EtablissementBottomSheet(
             OutlinedTextField(
                 value = info.siteWeb ?: "",
                 onValueChange = { if(canEdit) info = info.copy(siteWeb = it) },
-                label = { Text("Site Web") },
+                label = { Text(stringResource(R.string.site_web)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 readOnly = !canEdit
@@ -459,7 +461,7 @@ fun EtablissementBottomSheet(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("Annuler")
+                        Text(stringResource(R.string.annuler))
                     }
                     
                     Button(
@@ -472,7 +474,7 @@ fun EtablissementBottomSheet(
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Text(if (etablissementState == null) "Créer" else "Mettre à jour")
+                        Text(if (etablissementState == null) stringResource(R.string.creer) else stringResource(R.string.mettre_a_jour))
                     }
                 }
             } else {
@@ -481,7 +483,7 @@ fun EtablissementBottomSheet(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Fermer")
+                    Text(stringResource(R.string.fermer))
                 }
             }
             

@@ -57,7 +57,16 @@ const PermissionToMenu = {
     "PERMISSION_REASONS": "Motifs de permission",
     "CYCLE_EFFECTIVE_HISTOGRAM": "Histogramme des effectifs/Cycle",
     "GENERAL_CONFIG": "Configuration generale",
-    "MANAGE_TUTORSHIP": "Tutelle"
+    "MANAGE_TUTORSHIP": "Tutelle",
+    "COLLECT_REGISTRATION_FEE": "Percevoir Frais Inscription",
+    "COLLECT_TUITION_FEE": "Percevoir Scolarité",
+    "COLLECT_OTHER_FEES": "Percevoir Autres Frais",
+    "CANCEL_PAYMENT": "Annuler Paiement",
+    "VIEW_FINANCIAL_REPORTS": "Voir Rapports Financiers",
+    "VIEW_STUDENT_LIST": "Voir Liste Élèves",
+    "VIEW_PAYMENT_STATUS": "Voir Statut Paiement",
+    "VIEW_MY_PAYMENT_STATUS": "Voir My Statut Paiement",
+    "EDIT_STUDENT_NOTE": "Modifier Note Élève"
 };
 
 module.exports = PermissionToMenu;

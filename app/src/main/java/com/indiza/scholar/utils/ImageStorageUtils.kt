@@ -34,4 +34,9 @@ object ImageStorageUtils {
         val file = File(context.filesDir, "user_photos/user_$userId.jpg")
         return if (file.exists()) file else null
     }
+
+    fun deleteUserPhoto(context: Context, userId: Long): Boolean {
+        val file = File(context.filesDir, "user_photos/user_$userId.jpg")
+        return if (file.exists()) file.delete() else false
+    }
 }

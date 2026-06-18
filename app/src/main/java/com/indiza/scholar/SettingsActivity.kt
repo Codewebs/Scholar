@@ -114,6 +114,22 @@ fun SettingsScreen(
 
     var networkKey by remember { mutableIntStateOf(0) }
     var isSyncEnabled by remember { mutableStateOf(SyncConfig.isRemoteSyncEnabled) }
+    var doubleReceipts by remember { mutableStateOf(SyncConfig.doubleReceipts) }
+    var nbTelephones by remember { mutableIntStateOf(SyncConfig.nbTelephones) }
+    var useCompetences by remember { mutableStateOf(SyncConfig.useCompetences) }
+
+    LaunchedEffect(Unit) {
+        val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        isSyncEnabled = prefs.getBoolean("sync_enabled", false)
+        doubleReceipts = prefs.getBoolean("double_receipts", false)
+        nbTelephones = prefs.getInt("nb_telephones", 2)
+        useCompetences = prefs.getBoolean("use_competences", false)
+        
+        SyncConfig.isRemoteSyncEnabled = isSyncEnabled
+        SyncConfig.doubleReceipts = doubleReceipts
+        SyncConfig.nbTelephones = nbTelephones
+        SyncConfig.useCompetences = useCompetences
+    }
 
     val apiService = remember(networkKey) {
         ApiClient.create {
@@ -269,6 +285,17 @@ fun SettingsScreen(
                     }
                 )
                 SettingsItem(
+                    icon = Icons.Default.Layers,
+                    iconColor = Color(0xFFE91E63),
+                    title = "Répartition Séquences",
+                    subtitle = "Évaluations par classe",
+                    onClick = {
+                        val intent = Intent(context, com.indiza.scholar.ui.settings.SequenceRepartitionActivity::class.java)
+                        intent.putExtra("idAnneeScolaire", idAnneeScolaireActive)
+                        context.startActivity(intent)
+                    }
+                )
+                SettingsItem(
                     icon = Icons.Default.Book,
                     iconColor = Color(0xFF8E44AD),
                     title = "Matières",
@@ -280,11 +307,31 @@ fun SettingsScreen(
                     }
                 )
                 SettingsItem(
-                    icon = Icons.Default.People,
+                    icon = Icons.Default.FactCheck,
+                    iconColor = Color(0xFF2ECC71),
+                    title = "Configuration APC",
+                    subtitle = "Répartition et Compétences",
+                    onClick = {
+                        val intent = Intent(context, com.indiza.scholar.ui.matieres.ApcConfigurationActivity::class.java)
+                        intent.putExtra("idAnneeScolaire", idAnneeScolaireActive)
+                        context.startActivity(intent)
+                    }
+                )
+                SettingsItem(
+                    icon = Icons.Default.Layers,
                     iconColor = Color(0xFFE67E22),
+                    title = "Gestion des Groupes",
+                    subtitle = "Catégories de matières",
+                    onClick = {
+                        val intent = Intent(context, com.indiza.scholar.ui.matieres.GroupManagementActivity::class.java)
+                        context.startActivity(intent)
+                    }
+                )
+                SettingsItem(
+                    icon = Icons.Default.People,
+                    iconColor = Color(0xFFF1C40F),
                     title = "Personnel",
                     subtitle = "Affectation des enseignants",
-                    showDivider = false,
                     onClick = {
                         val intent = Intent(context, com.indiza.scholar.ui.personnel.PersonnelManagementActivity::class.java)
                         intent.putExtra("idEtablissement", schoolId)
@@ -292,9 +339,72 @@ fun SettingsScreen(
                         context.startActivity(intent)
                     }
                 )
+                SettingsItem(
+                    icon = Icons.Default.Gavel,
+                    iconColor = Color(0xFF607D8B),
+                    title = "Évaluation par Compétences",
+                    subtitle = "Activer le mode CTBA/CNA",
+                    action = {
+                        Switch(
+                            checked = useCompetences,
+                            onCheckedChange = { isChecked ->
+                                useCompetences = isChecked
+                                SyncConfig.useCompetences = isChecked
+                                context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putBoolean("use_competences", isChecked).apply()
+                            }
+                        )
+                    },
+                    showDivider = false
+                )
             }
 
-            // 5. Section Système
+            // 5. Section Configuration Administrative & Impression
+            SettingsSection(title = "Administration & Impression") {
+                SettingsItem(
+                    icon = Icons.Default.ContentCopy,
+                    iconColor = Color(0xFF3498DB),
+                    title = "Doubler les reçus de paiement",
+                    subtitle = "Imprime la copie parent et établissement sur la même page",
+                    action = {
+                        Switch(
+                            checked = doubleReceipts,
+                            onCheckedChange = { isChecked ->
+                                doubleReceipts = isChecked
+                                SyncConfig.doubleReceipts = isChecked
+                                context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putBoolean("double_receipts", isChecked).apply()
+                            }
+                        )
+                    }
+                )
+                SettingsItem(
+                    icon = Icons.Default.Phone,
+                    iconColor = Color(0xFF2ECC71),
+                    title = "Nombre de téléphones",
+                    subtitle = "Téléphones affichés sur l'en-tête ($nbTelephones)",
+                    action = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = {
+                                if (nbTelephones > 1) {
+                                    nbTelephones--
+                                    SyncConfig.nbTelephones = nbTelephones
+                                    context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putInt("nb_telephones", nbTelephones).apply()
+                                }
+                            }) { Icon(Icons.Default.Remove, null) }
+                            Text("$nbTelephones")
+                            IconButton(onClick = {
+                                if (nbTelephones < 3) {
+                                    nbTelephones++
+                                    SyncConfig.nbTelephones = nbTelephones
+                                    context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putInt("nb_telephones", nbTelephones).apply()
+                                }
+                            }) { Icon(Icons.Default.Add, null) }
+                        }
+                    },
+                    showDivider = false
+                )
+            }
+
+            // 6. Section Système
             SettingsSection(title = "Système") {
                 val currentMode by ThemeManager.themeMode
                 

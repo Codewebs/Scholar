@@ -174,4 +174,120 @@ class MatiereViewModel(private val api: ApiService) : ViewModel() {
             }
         }
     }
+
+    // --- APC & Groups ---
+    private val _groups = MutableStateFlow<List<GroupeMatiereEntity>>(emptyList())
+    val groups: StateFlow<List<GroupeMatiereEntity>> = _groups.asStateFlow()
+
+    private val _competences = MutableStateFlow<List<CompetenceEntity>>(emptyList())
+    val competences: StateFlow<List<CompetenceEntity>> = _competences.asStateFlow()
+
+    private val _repartitionCompetences = MutableStateFlow<List<RepartitionCompetenceEntity>>(emptyList())
+    val repartitionCompetences: StateFlow<List<RepartitionCompetenceEntity>> = _repartitionCompetences.asStateFlow()
+
+    fun loadGroups() {
+        viewModelScope.launch {
+            try {
+                val response = api.getMatiereGroups()
+                if (response.isSuccessful) _groups.value = response.body() ?: emptyList()
+            } catch (e: Exception) {}
+        }
+    }
+
+    fun createGroup(libFr: String, ordre: Int = 1) {
+        viewModelScope.launch {
+            _saveState.value = SaveState.SAVING_REMOTE
+            try {
+                val group = GroupeMatiereEntity(libelleFr = libFr, libelleEn = null, libelleEs = null, ordre = ordre)
+                val response = api.createGroup(group)
+                if (response.isSuccessful) {
+                    _saveState.value = SaveState.SUCCESS
+                    loadGroups()
+                } else {
+                    _saveState.value = SaveState.ERROR("Erreur: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                _saveState.value = SaveState.ERROR("Erreur réseau")
+            }
+        }
+    }
+
+    fun updateGroup(id: Long, libFr: String, ordre: Int) {
+        viewModelScope.launch {
+            _saveState.value = SaveState.SAVING_REMOTE
+            try {
+                val group = GroupeMatiereEntity(libelleFr = libFr, libelleEn = null, libelleEs = null, ordre = ordre)
+                val response = api.updateGroup(id, group)
+                if (response.isSuccessful) {
+                    _saveState.value = SaveState.SUCCESS
+                    loadGroups()
+                } else {
+                    _saveState.value = SaveState.ERROR("Erreur: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                _saveState.value = SaveState.ERROR("Erreur réseau")
+            }
+        }
+    }
+
+    fun deleteGroup(id: Long) {
+        viewModelScope.launch {
+            _saveState.value = SaveState.SAVING_REMOTE
+            try {
+                val response = api.deleteGroup(id)
+                if (response.isSuccessful) {
+                    _saveState.value = SaveState.SUCCESS
+                    loadGroups()
+                } else {
+                    _saveState.value = SaveState.ERROR("Erreur: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                _saveState.value = SaveState.ERROR("Erreur réseau")
+            }
+        }
+    }
+
+    fun loadGlobalCompetencies() {
+        viewModelScope.launch {
+            try {
+                val response = api.getGlobalCompetencies()
+                if (response.isSuccessful) _competences.value = response.body() ?: emptyList()
+            } catch (e: Exception) {}
+        }
+    }
+
+    fun loadRepartitionCompetences(idRepartitionMatiere: Long?, idSousPeriode: Long?) {
+        viewModelScope.launch {
+            try {
+                val response = api.getRepartitionCompetences(idRepartitionMatiere, idSousPeriode)
+                if (response.isSuccessful) _repartitionCompetences.value = response.body() ?: emptyList()
+            } catch (e: Exception) {}
+        }
+    }
+
+    fun saveRepartitionCompetence(idRM: Long, idComp: Long, idSPs: List<Long>) {
+        viewModelScope.launch {
+            _saveState.value = SaveState.SAVING_REMOTE
+            try {
+                val payload = SaveRepartitionCompetencePayload(idRM, idComp, idSPs)
+                val response = api.saveRepartitionCompetence(payload)
+                if (response.isSuccessful) {
+                    _saveState.value = SaveState.SUCCESS
+                } else {
+                    _saveState.value = SaveState.ERROR("Erreur: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                _saveState.value = SaveState.ERROR("Erreur réseau")
+            }
+        }
+    }
+
+    fun deleteRepartitionCompetence(id: Long, idRM: Long, idSP: Long) {
+        viewModelScope.launch {
+            try {
+                val response = api.deleteRepartitionCompetence(id)
+                if (response.isSuccessful) loadRepartitionCompetences(idRM, idSP)
+            } catch (e: Exception) {}
+        }
+    }
 }

@@ -41,7 +41,7 @@ exports.getNotesByMatiere = async (req, res) => {
         });
 
         const notes = await Note.findAll({
-            where: { idRepartitionMatiere, idSequence, idAnneeScolaire, supprimer: false }
+            where: { idSequence, idAnneeScolaire, supprimer: false }
         });
 
         const result = inscriptions.map(ins => {
@@ -70,41 +70,51 @@ exports.getNotesByMatiere = async (req, res) => {
 exports.saveNotes = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        const { notes, idRepartitionMatiere, idSequence, idAnneeScolaire, modeSaisie } = req.body;
-        console.log(`[SERVER] Saving/Updating ${notes.length} notes (filtered by client) for Subject: ${idRepartitionMatiere}, Sequence: ${idSequence}`);
+        const { notes, idSequence, idAnneeScolaire, modeSaisie } = req.body;
+        console.log(`[SERVER] 💾 Saving/Updating ${notes?.length} notes, Sequence: ${idSequence}, Year: ${idAnneeScolaire}, Mode: ${modeSaisie}`);
+        console.log("📥 [SERVER] FULL REQUEST BODY:", JSON.stringify(req.body, null, 2));
+
+        if (!notes || notes.length === 0) return res.json({ message: "Aucune note à enregistrer" });
 
         for (const item of notes) {
             let noteVal = item.note;
             let coteVal = item.cote;
 
-            if (modeSaisie === 'ALPHABETIC' && coteVal) {
-                noteVal = coteToNote[coteVal] || null;
-            }
+            if (modeSaisie === 'ALPHABETIC' && coteVal) noteVal = coteToNote[coteVal] || null;
 
             const grading = getGradingInfo(noteVal);
 
+            // Strong validation for idRepartitionCompetence when competence is present
+            if (item.idCompetence && !item.idRepartitionCompetence) {
+                console.error(`❌ [SERVER VALIDATION] Missing idRepartitionCompetence for student ${item.idInscription || 'UNKNOWN ID'}`);
+                console.error("❌ [SERVER VALIDATION] Item details:", JSON.stringify(item, null, 2));
+                throw new Error("L'identifiant de répartition de compétence est obligatoire.");
+            }
+
             const data = {
                 note: noteVal,
-                cote: grading.cote,
-                appreciation: grading.appreciation,
+                cote: item.nonClasse ? 'N.C' : (coteVal || grading.cote),
+                appreciation: item.nonClasse ? 'Non Classé' : grading.appreciation,
                 nonClasse: item.nonClasse || false,
                 idJustification: item.idJustification,
-                idRepartitionMatiere,
+                idCompetence: item.idCompetence,
+                idRepartitionCompetence: item.idRepartitionCompetence,
                 idSequence,
                 idAnneeScolaire,
                 idInscription: item.idInscription,
-                supprimer: false // Ensure we reactivate if it was soft-deleted
+                supprimer: false
             };
 
-            // Use upsert to handle uniqueness based on (idInscription, idRepartitionMatiere, idSequence, idAnneeScolaire)
+            console.log(`   -> [DB UPSERT] Student: ${item.idInscription}, RepComp: ${item.idRepartitionCompetence}, Note: ${noteVal}`);
             await Note.upsert(data, { transaction: t });
         }
 
         await t.commit();
+        console.log("✅ [SERVER] Save successful");
         res.json({ message: "Notes enregistrées avec succès" });
     } catch (error) {
         await t.rollback();
-        console.error("[SERVER ERROR] saveNotes:", error);
+        console.error("❌ [SERVER ERROR] saveNotes:", error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -126,7 +136,7 @@ exports.getNotesByStudent = async (req, res) => {
         });
 
         const result = repartitions.map(rep => {
-            const noteObj = notes.find(n => n.idRepartitionMatiere === rep.idRepartitionMatiere);
+            const noteObj = notes.find(n => n.idInscription === idInscription);
             return {
                 idRepartitionMatiere: rep.idRepartitionMatiere,
                 matiereLabel: rep.Matiere.libelleFr,
@@ -151,25 +161,26 @@ exports.saveNotesByStudent = async (req, res) => {
     const t = await sequelize.transaction();
     try {
         const { notes, idInscription, idSequence, idAnneeScolaire, modeSaisie } = req.body;
-        console.log(`[SERVER] Saving/Updating grades for student Inscription: ${idInscription}, Sequence: ${idSequence}`);
+        console.log(`[SERVER] 💾 Saving/Updating grades for student Inscription: ${idInscription}, Sequence: ${idSequence}, Year: ${idAnneeScolaire}`);
+
+        if (!notes || notes.length === 0) return res.json({ message: "Aucune note à enregistrer" });
 
         for (const item of notes) {
             let noteVal = item.note;
             let coteVal = item.cote;
 
-            if (modeSaisie === 'ALPHABETIC' && coteVal) {
-                noteVal = coteToNote[coteVal] || null;
-            }
+            if (modeSaisie === 'ALPHABETIC' && coteVal) noteVal = coteToNote[coteVal] || null;
 
             const grading = getGradingInfo(noteVal);
 
             const data = {
                 note: noteVal,
-                cote: grading.cote,
-                appreciation: grading.appreciation,
+                cote: item.nonClasse ? 'N.C' : (coteVal || grading.cote),
+                appreciation: item.nonClasse ? 'Non Classé' : grading.appreciation,
                 nonClasse: item.nonClasse || false,
                 idJustification: item.idJustification,
-                idRepartitionMatiere: item.idRepartitionMatiere,
+                idCompetence: item.idCompetence,
+                idRepartitionCompetence: item.idRepartitionCompetence,
                 idSequence,
                 idAnneeScolaire,
                 idInscription,
@@ -183,7 +194,7 @@ exports.saveNotesByStudent = async (req, res) => {
         res.json({ message: "Notes de l'élève enregistrées" });
     } catch (error) {
         await t.rollback();
-        console.error("[SERVER ERROR] saveNotesByStudent:", error);
+        console.error("❌ [SERVER ERROR] saveNotesByStudent:", error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -192,7 +203,7 @@ exports.saveNotesByStudent = async (req, res) => {
 exports.bulkActionNotes = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        const { action, idsInscription, idRepartitionMatiere, idSequence, idAnneeScolaire, value, idJustification } = req.body;
+        const { action, idsInscription, idRepartitionCompetence, idSequence, idAnneeScolaire, value, idJustification } = req.body;
         console.log(`[SERVER] Bulk Action: ${action} for ${idsInscription.length} students`);
 
         if (action === 'SET_GLOBAL_NOTE') {
@@ -201,7 +212,7 @@ exports.bulkActionNotes = async (req, res) => {
             for (const idIns of idsInscription) {
                 await Note.upsert({
                     idInscription: idIns,
-                    idRepartitionMatiere,
+                    idRepartitionCompetence,
                     idSequence,
                     idAnneeScolaire,
                     note: noteVal,
@@ -211,38 +222,21 @@ exports.bulkActionNotes = async (req, res) => {
                     supprimer: false
                 }, { transaction: t });
             }
-        } else if (action === 'RESET_MATIERE') {
+        } else if (action === 'RESET_COMPETENCE') {
             await Note.update({ supprimer: true }, {
                 where: {
-                    idRepartitionMatiere,
+                    idRepartitionCompetence,
                     idSequence,
                     idAnneeScolaire,
                     idInscription: { [Op.in]: idsInscription }
                 },
                 transaction: t
             });
-        } else if (action === 'NON_COMPOSE_GLOBAL') {
-            for (const idIns of idsInscription) {
-                await Note.upsert({
-                    idInscription: idIns,
-                    idRepartitionMatiere,
-                    idSequence,
-                    idAnneeScolaire,
-                    nonClasse: true,
-                    idJustification: idJustification,
-                    note: 0,
-                    cote: 'F-',
-                    appreciation: 'Compétences non acquises (CNA)',
-                    supprimer: false
-                }, { transaction: t });
-            }
         }
-
         await t.commit();
         res.json({ message: "Action effectuée avec succès" });
     } catch (error) {
         await t.rollback();
-        console.error("[SERVER ERROR] bulkActionNotes:", error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -251,8 +245,6 @@ exports.bulkActionNotes = async (req, res) => {
 exports.getAbsencesBySalle = async (req, res) => {
     try {
         const { idSalle, idSequence, idAnneeScolaire } = req.query;
-        console.log(`[SERVER] Fetching absences for Salle: ${idSalle}, Sequence: ${idSequence}`);
-
         const inscriptions = await Inscription.findAll({
             where: { idSalle, idAnneeScolaire, supprimer: false },
             include: [{ model: Eleve, attributes: ['idEleve', 'nom', 'prenom', 'matricule'] }],
@@ -277,7 +269,6 @@ exports.getAbsencesBySalle = async (req, res) => {
 
         res.json(result);
     } catch (error) {
-        console.error("[SERVER ERROR] getAbsencesBySalle:", error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -285,8 +276,6 @@ exports.getAbsencesBySalle = async (req, res) => {
 exports.saveAbsences = async (req, res) => {
     try {
         const { absences, idSequence, idAnneeScolaire } = req.body;
-        console.log(`[SERVER] Saving ${absences.length} absence records for Sequence: ${idSequence}`);
-
         for (const item of absences) {
             const data = {
                 heuresAJ: item.heuresAJ,
@@ -303,7 +292,6 @@ exports.saveAbsences = async (req, res) => {
         }
         res.json({ message: "Absences enregistrées" });
     } catch (error) {
-        console.error("[SERVER ERROR] saveAbsences:", error);
         res.status(500).json({ error: error.message });
     }
 };

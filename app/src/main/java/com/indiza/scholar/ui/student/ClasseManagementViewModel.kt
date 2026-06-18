@@ -8,13 +8,10 @@ import com.indiza.scholar.model.ClasseUiModel
 import com.indiza.scholar.model.CycleEntity
 import com.indiza.scholar.network.ApiService
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -237,6 +234,27 @@ class ClasseManagementViewModel(private val api: ApiService) : ViewModel() {
                 if (response.isSuccessful) {
                     loadData(payload.idAnneeScolaire)
                     onSuccess()
+                }
+            } catch (e: Exception) {}
+        }
+    }
+
+    // --- Sequences ---
+    private val _sequences = MutableStateFlow<List<com.indiza.scholar.model.SousPeriodeEntity>>(emptyList())
+    val sequences: StateFlow<List<com.indiza.scholar.model.SousPeriodeEntity>> = _sequences.asStateFlow()
+
+    fun loadSequencesForClass(idAnneeScolaire: Long, idClasse: Long) {
+        viewModelScope.launch {
+            try {
+                val response = api.getSequenceRepartition(idAnneeScolaire, idClasse)
+                if (response.isSuccessful) {
+                    _sequences.value = response.body()?.map {
+                        it.detailsSousPeriode ?: com.indiza.scholar.model.SousPeriodeEntity(
+                            libelleSousPeriodeFr = "SEQ ${it.idSousPeriode}",
+                            dateDebut = "",
+                            dateFin = ""
+                        )
+                    } ?: emptyList()
                 }
             } catch (e: Exception) {}
         }

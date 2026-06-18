@@ -57,27 +57,69 @@ exports.getAllSalles = async (req, res) => {
 exports.getSallesByAnnee = async (req, res) => {
     try {
         const { idAnneeScolaire } = req.params;
+        const user = req.user;
 
-        // 1. Filtrer uniquement les classes qui ont des tarifs définis pour cette année
-        const classesWithFees = await TarifFraisExigible.findAll({
-            where: { idAnneeScolaire },
-            attributes: ['idClasse'],
-            group: ['idClasse']
-        });
-        const validClasseIds = classesWithFees.map(c => c.idClasse);
+        console.log(`🔍 [SalleController] getSallesByAnnee pour Année ID: ${idAnneeScolaire}, User: ${user?.userId} (${user?.role})`);
+
+        let salleFilter = {
+            idAnneeScolaire,
+            supprimer: false
+        };
+
+        // --- SCOPING LOGIC ---
+        if (user && user.role === 'ENSEIGNANT') {
+            console.log(`👨‍🏫 [Scoping Salles] Filtrage pour l'enseignant Utilisateur ID: ${user.userId}`);
+            const ins = await InscriptionPersonnel.findOne({
+                where: { idUtilisateur: user.userId, idAnneeScolaire, supprimer: false }
+            });
+
+            if (ins) {
+                console.log(`   -> Inscription Personnel trouvée ID: ${ins.idInscriptionPersonnel} (Rôle: ${ins.role})`);
+                const { Salle } = require("../models");
+                const affs = await AffectationPersonnelSalle.findAll({
+                    where: { idInscriptionPersonnel: ins.idInscriptionPersonnel },
+                    include: [{ model: Salle, as: 'Salle', attributes: ['nomSalle'] }]
+                });
+                const assignedSalleIds = affs.map(a => a.idSalle);
+                const assignedNames = affs.map(a => a.Salle?.nomSalle || 'Inconnu').join(", ");
+
+                salleFilter.idSalle = assignedSalleIds;
+                console.log(`   -> 🎯 Salles assignées (${assignedSalleIds.length}): [${assignedNames}] (IDs: ${assignedSalleIds})`);
+            } else {
+                console.warn(`   ⚠️ [Scoping Salles] Inscription personnel non trouvée pour l'utilisateur ${user.userId}`);
+                return res.json([]);
+            }
+        } else {
+            // Pour les autres (Admin, Intendant, etc.), on peut garder le filtre initial sur les classes avec tarifs si c'est pour la finance,
+            // MAIS si cet endpoint est aussi utilisé pour la pédagogie, ce filtre est trop restrictif.
+            // On va vérifier si on vient du module finance via un header ou un paramètre, sinon on renvoie tout.
+            // Hypothèse : cet endpoint est partagé. On va s'assurer que si on n'est pas ENSEIGNANT, on voit tout pour l'instant,
+            // ou on garde la logique "Frais" si nécessaire.
+
+            /*
+            const classesWithFees = await TarifFraisExigible.findAll({
+                where: { idAnneeScolaire },
+                attributes: ['idClasse'],
+                group: ['idClasse']
+            });
+            const validClasseIds = classesWithFees.map(c => c.idClasse);
+            salleFilter.idClasse = validClasseIds;
+            */
+        }
 
         const salles = await Salle.findAll({
-            where: {
-                idAnneeScolaire,
-                supprimer: false,
-                idClasse: validClasseIds // Filtre d'exclusion
-            },
+            where: salleFilter,
             include: [{
                 model: Classe,
                 as: 'Classe',
-                attributes: ['libelleClasseFr', 'libelleClasseEn', 'libelleClasseEs']
+                attributes: ['idClasse', 'libelleClasseFr', 'libelleClasseEn', 'libelleClasseEs']
             }]
         });
+
+        console.log(`✅ [SalleController] Found ${salles.length} salles with classes`);
+        if (salles.length > 0) {
+            console.log(`   Sample salle:`, JSON.stringify(salles[0].toJSON(), null, 2));
+        }
 
         // Calculer l'occupation actuelle
         const result = await Promise.all(salles.map(async (s) => {
@@ -86,7 +128,6 @@ exports.getSallesByAnnee = async (req, res) => {
             return {
                 ...sJson,
                 elevesInscrits: count,
-                // On aplatit pour Android si besoin ou on laisse l'objet Classe
                 classeLabel: sJson.Classe ? sJson.Classe.libelleClasseFr : "N/A"
             };
         }));
@@ -201,6 +242,7 @@ exports.getClassesWithRoomStats = async (req, res) => {
                 libelleClasseEs: c.libelleClasseEs,
                 abreviation: c.abreviation,
                 cycleLabel: c.Cycle ? c.Cycle.libelleCycle : "N/A",
+                enseignementLabel: c.Cycle?.Enseignement ? c.Cycle.Enseignement.enseignementFr : "N/A",
                 roomCount: c.salles ? c.salles.length : 0,
                 hasFees: countFees > 0,
                 totalEnrolled,

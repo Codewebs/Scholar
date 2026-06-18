@@ -185,6 +185,20 @@ fun PaymentScreen(
                     text = { Text("Payer frais périscolaires") },
                     expanded = selectedEleve != null,
                     containerColor = if (selectedEleve != null && hasPeriscolairesConfigured) Color(0xFF3498DB) else Color.Gray,
+                    contentColor = Color.White,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        selectedEleve?.let {
+                            onShowReceipt(it.idEleve, idAnneeScolaire)
+                        }
+                    },
+                    icon = { Icon(Icons.Default.Print, null) },
+                    text = { Text("Re-imprimer dernier reçu") },
+                    expanded = selectedEleve != null,
+                    containerColor = Color(0xFF9B59B6),
                     contentColor = Color.White
                 )
             }

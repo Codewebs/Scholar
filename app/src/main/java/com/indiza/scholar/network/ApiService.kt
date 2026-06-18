@@ -138,8 +138,24 @@ interface ApiService {
     @GET("pedagogy/matieres/repartition/{idAnneeScolaire}")
     suspend fun getRepartitionByAnnee(
         @Path("idAnneeScolaire") idAnneeScolaire: Long,
-        @Query("idClasse") idClasse: Long? = null
+        @Query("idClasse") idClasse: Long? = null,
+        @Query("idSalle") idSalle: Long? = null
     ): Response<List<com.indiza.scholar.model.RepartitionMatiereEntity>>
+
+    @GET("pedagogy/matieres/groups")
+    suspend fun getMatiereGroups(): Response<List<com.indiza.scholar.model.GroupeMatiereEntity>>
+
+    @POST("pedagogy/matieres/groups")
+    suspend fun createGroup(@Body group: com.indiza.scholar.model.GroupeMatiereEntity): Response<com.indiza.scholar.model.GroupeMatiereEntity>
+
+    @PUT("pedagogy/matieres/groups/{id}")
+    suspend fun updateGroup(@Path("id") id: Long, @Body group: com.indiza.scholar.model.GroupeMatiereEntity): Response<Unit>
+
+    @DELETE("pedagogy/matieres/groups/{id}")
+    suspend fun deleteGroup(@Path("id") id: Long): Response<Unit>
+
+    @POST("pedagogy/matieres/groups/clone-templates")
+    suspend fun cloneTemplateGroups(@Query("idEtablissement") idEtablissement: Long? = null): Response<Unit>
 
     // --- Users & Profile ---
     @PUT("users/profile")
@@ -173,6 +189,31 @@ interface ApiService {
     @POST("pedagogy/matieres/repartition/bulk-assign")
     suspend fun bulkAssignSubject(@Body payload: com.indiza.scholar.model.BulkAssignSubjectPayload): Response<Unit>
 
+    @POST("pedagogy/matieres/repartition/transfer-subject")
+    suspend fun transferSubject(@Body payload: com.indiza.scholar.model.TransferSubjectPayload): Response<Unit>
+
+    @POST("pedagogy/matieres/repartition/transfer-group")
+    suspend fun transferGroup(@Body payload: com.indiza.scholar.model.TransferGroupPayload): Response<Unit>
+
+    // --- Compétences (APC) ---
+    @GET("pedagogy/competences")
+    suspend fun getGlobalCompetencies(): Response<List<com.indiza.scholar.model.CompetenceEntity>>
+
+    @POST("pedagogy/competences")
+    suspend fun createCompetence(@Body competence: com.indiza.scholar.model.CompetenceEntity): Response<com.indiza.scholar.model.CompetenceEntity>
+
+    @GET("pedagogy/matieres/repartition/competences")
+    suspend fun getRepartitionCompetences(
+        @Query("idRepartitionMatiere") idRepartitionMatiere: Long?,
+        @Query("idSousPeriode") idSousPeriode: Long?
+    ): Response<List<com.indiza.scholar.model.RepartitionCompetenceEntity>>
+
+    @POST("pedagogy/matieres/repartition/competences")
+    suspend fun saveRepartitionCompetence(@Body payload: com.indiza.scholar.model.SaveRepartitionCompetencePayload): Response<com.indiza.scholar.model.RepartitionCompetenceEntity>
+
+    @DELETE("pedagogy/matieres/repartition/competences/{id}")
+    suspend fun deleteRepartitionCompetence(@Path("id") id: Long): Response<Unit>
+
     // --- Périodes & Sous-Périodes ---
     @GET("pedagogy/periodes/annee/{idAnneeScolaire}")
     suspend fun getPeriodesByAnnee(@Path("idAnneeScolaire") idAnneeScolaire: Long): Response<List<com.indiza.scholar.model.PeriodeEntity>>
@@ -197,6 +238,15 @@ interface ApiService {
 
     @POST("pedagogy/periodes/clone")
     suspend fun clonePeriodes(@Body payload: Map<String, Long>): Response<Unit>
+
+    @GET("pedagogy/periodes/repartition/{idAnneeScolaire}")
+    suspend fun getSequenceRepartition(
+        @Path("idAnneeScolaire") idAnneeScolaire: Long,
+        @Query("idClasse") idClasse: Long? = null
+    ): Response<List<com.indiza.scholar.model.RepartitionSousPeriodeEntity>>
+
+    @POST("pedagogy/periodes/repartition/bulk-assign")
+    suspend fun bulkAssignSequences(@Body payload: com.indiza.scholar.model.SequenceRepartitionPayload): Response<Unit>
 
     // --- Personnel ---
     @POST("personnel/demande")

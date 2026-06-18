@@ -225,3 +225,13 @@ exports.deleteEnseignement = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+
+exports.deleteClasse = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await Classe.destroy({ where: { idClasse: id } });
+        res.json({ message: "Classe supprimée avec succès" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

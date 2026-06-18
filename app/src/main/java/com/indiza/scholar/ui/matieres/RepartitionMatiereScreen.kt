@@ -212,12 +212,12 @@ fun PreviousYearTab(
     val classesWithFees = remember(classes) { classes.filter { it.hasFees } }
     val saveState by viewModel.saveState.collectAsState()
     val repartition by viewModel.repartition.collectAsState()
-    
+
     var showSubjectsFor by remember { mutableStateOf<Long?>(null) }
 
     Column(modifier = Modifier.padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Récupérer le programme de l'année précédente", color = Color(0xFF1ABC9C), fontWeight = FontWeight.Bold)
-        
+
         if (previousYearId == 0L) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Aucune année précédente trouvée.", color = Color.Gray)
@@ -228,7 +228,7 @@ fun PreviousYearTab(
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(classesWithFees) { classe ->
                     val classSubjects = repartition.filter { it.idClasse == classe.idClasse }
-                    
+
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF2C3E50))
@@ -238,13 +238,13 @@ fun PreviousYearTab(
                                 Text(classe.libelleClasseFr, color = Color.White, fontWeight = FontWeight.Bold)
                                 Text(classe.cycleLabel, color = Color.Gray, fontSize = 12.sp)
                             }
-                            
+
                             if (classSubjects.isNotEmpty()) {
                                 IconButton(onClick = { showSubjectsFor = classe.idClasse }) {
                                     Icon(Icons.Default.List, null, tint = Color(0xFF3498DB))
                                 }
                             }
-                            
+
                             Button(
                                 onClick = {
                                     viewModel.cloneProgram(CloneProgramPayload(
@@ -254,40 +254,40 @@ fun PreviousYearTab(
                                         idAnneeSource = previousYearId
                                     )) {
                                         Toast.makeText(context, "Programme récupéré pour ${classe.libelleClasseFr}", Toast.LENGTH_SHORT).show()
-                }
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1ABC9C)),
-            enabled = saveState !is SaveState.SAVING_REMOTE
-            ) {
-            Text("Récupérer", fontSize = 12.sp)
-        }
-        }
-    }
-}
-}
-}
-}
-
-if (showSubjectsFor != null) {
-    val classe = classesWithFees.find { it.idClasse == showSubjectsFor }
-    val subjects = repartition.filter { it.idClasse == showSubjectsFor }
-    AlertDialog(
-        onDismissRequest = { showSubjectsFor = null },
-        title = { Text("Matières - ${classe?.libelleClasseFr}") },
-        text = {
-            if (subjects.isEmpty()) {
-                Text("Aucune matière configurée.")
-            } else {
-                LazyColumn {
-                    items(subjects) { sub ->
-                        Text("• ${sub.detailsMatiere?.libelleFr} (Coef ${sub.coef})")
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1ABC9C)),
+                                enabled = saveState !is SaveState.SAVING_REMOTE
+                            ) {
+                                Text("Récupérer", fontSize = 12.sp)
+                            }
+                        }
                     }
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = { showSubjectsFor = null }) { Text("Fermer") } }
-    )
-}
+        }
+    }
+
+    if (showSubjectsFor != null) {
+        val classe = classesWithFees.find { it.idClasse == showSubjectsFor }
+        val subjects = repartition.filter { it.idClasse == showSubjectsFor }
+        AlertDialog(
+            onDismissRequest = { showSubjectsFor = null },
+            title = { Text("Matières - ${classe?.libelleClasseFr}") },
+            text = {
+                if (subjects.isEmpty()) {
+                    Text("Aucune matière configurée.")
+                } else {
+                    LazyColumn {
+                        items(subjects) { sub ->
+                            Text("• ${sub.detailsMatiere?.libelleFr} (Coef ${sub.coef})")
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showSubjectsFor = null }) { Text("Fermer") } }
+        )
+    }
 }
 
 data class AssignInfo(val coef: Int, val noteSur: Int = 20)
@@ -391,7 +391,14 @@ fun BulkAssignTab(
 
         Button(
             onClick = {
-                val list = assignments.map { SubjectAssignmentItem(it.key, it.value.coef, it.value.noteSur) }
+                val list = assignments.map { (classeId, info) ->
+                    SubjectAssignmentItem(
+                        idMatiere = selectedMatiereId,
+                        idClasse = classeId,
+                        coef = info.coef,
+                        noteSur = info.noteSur
+                    )
+                }
                 viewModel.bulkAssignSubject(BulkAssignSubjectPayload(idAnneeScolaire, selectedMatiereId, list)) {
                     assignments.clear()
                 }

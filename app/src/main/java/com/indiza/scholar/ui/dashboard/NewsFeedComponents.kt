@@ -61,6 +61,16 @@ fun NewsFeedScreen(
             }
         }
 
+        // Quick Actions Row
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            QuickActionItem("Élèves", Icons.Default.People, Color(0xFF3498DB)) { /* Navigate */ }
+            QuickActionItem("Notes", Icons.Default.Star, Color(0xFFE74C3C)) { /* Navigate */ }
+            QuickActionItem("Bulletins", Icons.Default.Description, Color(0xFF9B59B6)) { /* Navigate to Bulletin Config */ }
+        }
+
         // Publish Section
         if (!userRole.contains("PARENT") && !userRole.contains("ELEVE")) {
             PublishSection(userName, schoolName, userRole, onPublish = {
@@ -90,6 +100,26 @@ fun NewsFeedScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun QuickActionItem(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = color.copy(alpha = 0.1f),
+            modifier = Modifier.size(56.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = color, modifier = Modifier.size(24.dp))
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
     }
 }
 

@@ -1,4 +1,4 @@
-const { Periode, SousPeriode, AnneeScolaire, sequelize } = require("../models");
+const { Periode, SousPeriode, AnneeScolaire, RepartitionSousPeriode, Classe, sequelize } = require("../models");
 const { Op } = require("sequelize");
 
 // Helper to check interval inclusion
@@ -208,5 +208,137 @@ exports.clonePeriodes = async (req, res) => {
     } catch (error) {
         await t.rollback();
         res.status(500).json({ error: error.message });
+    }
+};
+
+// --- Répartition des Séquences par Classe ---
+
+exports.getRepartitionSequences = async (req, res) => {
+    try {
+        const { idAnneeScolaire } = req.params;
+        const { idClasse } = req.query;
+
+        let where = { idAnneeScolaire, supprimer: false };
+        if (idClasse) where.idClasse = idClasse;
+
+        const repartition = await RepartitionSousPeriode.findAll({
+            where,
+            include: [
+                { model: SousPeriode, include: [{ model: Periode, attributes: ['libellePeriodeFr'] }] },
+                { model: Classe, attributes: ['libelleClasseFr'] }
+            ],
+            order: [['idClasse', 'ASC'], [{ model: SousPeriode }, 'ordreSousPeriode', 'ASC']]
+        });
+
+        res.json(repartition);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.bulkAssignSequences = async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { idAnneeScolaire, classIds, sequenceIds } = req.body;
+
+        console.log("📥 bulkAssignSequences received payload:", JSON.stringify({ idAnneeScolaire, classIds, sequenceIds }, null, 2));
+
+        if (!idAnneeScolaire || !classIds || !sequenceIds) {
+            return res.status(400).json({ 
+                error: "idAnneeScolaire, classIds et sequenceIds obligatoires.",
+                received: { idAnneeScolaire, classIds, sequenceIds }
+            });
+        }
+
+        if (!Array.isArray(classIds) || !Array.isArray(sequenceIds)) {
+            return res.status(400).json({ error: "classIds et sequenceIds doivent être des tableaux." });
+        }
+
+        if (classIds.length === 0 || sequenceIds.length === 0) {
+            return res.status(400).json({ error: "Au moins une classe et une séquence obligatoire." });
+        }
+
+        // Verify all classIds exist in database
+        const existingClasses = await Classe.findAll({
+            where: { idClasse: classIds },
+            attributes: ['idClasse', 'libelleClasseFr']
+        });
+        
+        console.log("🔍 Found classes in DB:", existingClasses.map(c => ({ idClasse: c.idClasse, libelleClasseFr: c.libelleClasseFr })));
+        
+        if (existingClasses.length !== classIds.length) {
+            const foundIds = existingClasses.map(c => c.idClasse);
+            const missingIds = classIds.filter(id => !foundIds.includes(id));
+            console.warn("⚠️ WARNING: Some classIds don't exist in DB:", missingIds);
+            return res.status(400).json({ 
+                error: "Certaines classes n'existent pas.",
+                missingClassIds: missingIds,
+                foundClassIds: foundIds
+            });
+        }
+
+        // Verify all sequenceIds exist in database
+        const existingSequences = await SousPeriode.findAll({
+            where: { idSousPeriode: sequenceIds },
+            attributes: ['idSousPeriode', 'libelleSousPeriodeFr']
+        });
+        
+        console.log("🔍 Found sequences in DB:", existingSequences.map(s => ({ idSousPeriode: s.idSousPeriode, libelleSousPeriodeFr: s.libelleSousPeriodeFr })));
+        
+        if (existingSequences.length !== sequenceIds.length) {
+            const foundIds = existingSequences.map(s => s.idSousPeriode);
+            const missingIds = sequenceIds.filter(id => !foundIds.includes(id));
+            console.warn("⚠️ WARNING: Some sequenceIds don't exist in DB:", missingIds);
+            return res.status(400).json({ 
+                error: "Certaines séquences n'existent pas.",
+                missingSequenceIds: missingIds,
+                foundSequenceIds: foundIds
+            });
+        }
+
+        let createdCount = 0;
+
+        for (const classId of classIds) {
+            console.log(`🔄 Processing classId: ${classId}`);
+            
+            // Soft delete existing repartition for this class
+            const updateResult = await RepartitionSousPeriode.update(
+                { supprimer: true }, 
+                {
+                    where: { idAnneeScolaire, idClasse: classId },
+                    transaction: t
+                }
+            );
+            console.log(`   - Updated ${updateResult[0]} existing repartitions`);
+
+            // Create new repartitions
+            for (const sequenceId of sequenceIds) {
+                console.log(`   ✏️ Creating repartition with idClasse=${classId}, idSousPeriode=${sequenceId}`);
+                
+                await RepartitionSousPeriode.create({
+                    idAnneeScolaire: parseInt(idAnneeScolaire),
+                    idClasse: parseInt(classId),
+                    idSousPeriode: parseInt(sequenceId),
+                    supprimer: false
+                }, { transaction: t });
+                
+                createdCount++;
+            }
+        }
+
+        await t.commit();
+        console.log(`✅ bulkAssignSequences completed: ${createdCount} repartitions created`);
+        res.json({ 
+            message: "Répartition des séquences mise à jour avec succès.", 
+            count: createdCount 
+        });
+    } catch (error) {
+        await t.rollback();
+        console.error("❌ Error bulkAssignSequences:", error.message);
+        console.error("   Stack:", error.stack);
+        res.status(500).json({ 
+            error: error.message, 
+            details: error.stack 
+        });
     }
 };

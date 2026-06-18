@@ -6,6 +6,7 @@ const { verifyToken } = require("../middleware/auth");
 router.post("/demande", verifyToken, controller.envoyerDemande);
 router.get("/demandes/etablissement/:idEtablissement", verifyToken, controller.getDemandesEnAttente);
 router.post("/valider-demande", verifyToken, controller.validerDemande);
+router.post("/rejeter-demande", verifyToken, controller.rejeterDemande);
 router.post("/update-permissions", verifyToken, controller.updatePermissions);
 router.post("/reconduire", verifyToken, controller.reconduirePersonnel);
 router.post("/bloquer", verifyToken, controller.setBloqueStatut);

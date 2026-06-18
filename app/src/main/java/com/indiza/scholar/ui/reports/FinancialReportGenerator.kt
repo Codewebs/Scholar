@@ -40,21 +40,31 @@ object FinancialReportGenerator {
     }
 
     private fun generateDetailedReceipt(document: Document, type: String, params: Map<String, Any>) {
-        val student = params["student"] as? EleveUiModel ?: return
+        val student = params["student"] as? EleveUiModel
         val receiptData = params["receiptData"] as? com.indiza.scholar.model.ReceiptData
         val paymentDetails = params["paymentDetails"] as? com.indiza.scholar.model.StudentPaymentDetails
         
+        // 🚀 PROTECTION CRITIQUE : Si on n'a ni student ni receiptData, on ne peut rien afficher
+        if (student == null && receiptData == null) {
+            document.add(Paragraph("Erreur: Données de l'élève manquantes pour le reçu.").setFontColor(DeviceRgb(255, 0, 0)))
+            return
+        }
+
+        val matricule = student?.matricule ?: receiptData?.studentInfo?.matricule ?: "---"
+        val nomComplet = student?.nomComplet ?: receiptData?.studentInfo?.fullName ?: "---"
+        val classe = student?.classeLabel ?: receiptData?.studentInfo?.classLabel ?: "---"
+
         document.add(Paragraph(type.uppercase()).setBold().setFontSize(14f).setTextAlignment(TextAlignment.CENTER))
-        document.add(Paragraph("Année Scolaire : 2024 - 2025").setTextAlignment(TextAlignment.CENTER).setFontSize(10f))
+        document.add(Paragraph("Année Scolaire : ${receiptData?.receiptInfo?.schoolYear ?: "2024 - 2025"}").setTextAlignment(TextAlignment.CENTER).setFontSize(10f))
         document.add(Paragraph("\n"))
         
         val studentTable = Table(UnitValue.createPercentArray(floatArrayOf(30f, 70f))).useAllAvailableWidth()
         studentTable.addCell(createNoBorderCell("Matricule :", true))
-        studentTable.addCell(createNoBorderCell(student.matricule ?: receiptData?.studentInfo?.matricule ?: "N/A"))
+        studentTable.addCell(createNoBorderCell(matricule))
         studentTable.addCell(createNoBorderCell("Nom & Prénom :", true))
-        studentTable.addCell(createNoBorderCell(student.nomComplet))
+        studentTable.addCell(createNoBorderCell(nomComplet))
         studentTable.addCell(createNoBorderCell("Classe / Salle :", true))
-        studentTable.addCell(createNoBorderCell(student.classeLabel))
+        studentTable.addCell(createNoBorderCell(classe))
         document.add(studentTable)
         
         document.add(Paragraph("\n"))

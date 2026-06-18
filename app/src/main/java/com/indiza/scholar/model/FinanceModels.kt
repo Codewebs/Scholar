@@ -127,7 +127,9 @@ data class ReceiptData(
 
 data class SchoolInfo(
     val name: String,
+    val nameEn: String? = null,
     val ministry: String?,
+    val motto: String? = "Discipline - Travail - Succès",
     val address: String?,
     val bp: String?,
     val phones: String?,
@@ -138,16 +140,20 @@ data class SchoolInfo(
 
 data class ReceiptInfo(
     val title: String,
-    val receiptNo: String,
+    val receiptNo: String, // ex: FS-2
     val schoolYear: String,
-    val dateTime: String
+    val dateTime: String, // Date
+    val operationTime: String? = null // Heure avec secondes
 )
 
 data class StudentReceiptInfo(
     val matricule: String,
     val fullName: String,
     val classLabel: String,
-    val cycleLabel: String?
+    val cycleLabel: String?,
+    val dateNaissance: String? = null,
+    val lieuNaissance: String? = null,
+    val sexe: String? = null
 )
 
 data class FinancialReceiptDetail(
@@ -156,7 +162,21 @@ data class FinancialReceiptDetail(
     val amountWords: String,
     val paymentMode: String,
     val balance: Int,
-    val remaining: Int
+    val remaining: Int,
+    val penalties: Int = 0,
+    val printedBy: String = "ADMINISTRATEUR",
+    val todayBreakdown: List<FeePaymentDetail> = emptyList(),
+    val fullHistory: List<FeeHistoryDetail> = emptyList()
+)
+
+data class FeeHistoryDetail(
+    val ordre: Int,
+    val libelle: String,
+    val montantTotal: Int,
+    val augmentation: Int = 0,
+    val reduction: Int = 0,
+    val dejaPaye: Int,
+    val reste: Int
 )
 
 data class ReceiptValidation(

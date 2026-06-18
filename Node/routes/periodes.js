@@ -16,4 +16,8 @@ router.delete("/sous-periodes/:id", verifyToken, checkPermission("MANAGE_SUB_PER
 
 router.post("/clone", verifyToken, checkPermission("MANAGE_PERIODS"), controller.clonePeriodes);
 
+// Répartition des Séquences par Classe - Route spécifique AVANT route générique
+router.post("/repartition/bulk-assign", verifyToken, checkPermission("MANAGE_PERIODS"), controller.bulkAssignSequences);
+router.get("/repartition/:idAnneeScolaire", verifyToken, controller.getRepartitionSequences);
+
 module.exports = router;

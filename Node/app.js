@@ -38,14 +38,18 @@ async function startApplication() {
     await seedEducationProfiles();
     await seedSpecialities();
     console.log("✅ Base de données, qualités, menus, profils et spécialités initialisés.");
-    
-    const PORT = process.env.PORT || 4000;
-    app.listen(PORT, () => {
-      console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
+
+    // 1. Utilise le port 3000 par défaut pour correspondre à ton proxy Vite
+    const PORT = process.env.PORT || 3000;
+
+    // 2. Ajoute '0.0.0.0' pour écouter sur tout le réseau local
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Serveur démarré en local sur : http://localhost:${PORT}`);
+      console.log(`📡 Accessible sur le réseau à  : http://192.168.0.50:${PORT}`);
     });
   } catch (error) {
     console.error("❌ Le serveur n'a pas pu démarrer :", error);
   }
 }
-	
+
 startApplication();

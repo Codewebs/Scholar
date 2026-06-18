@@ -365,8 +365,17 @@ fun HomeScreen(
                                     intent.putExtra("idAnneeScolaire", selectedAnnee?.idServeur ?: 0L)
                                     context.startActivity(intent)
                                 }
+                                com.indiza.scholar.model.AppMenu.BULLETINS -> {
+                                    val intent = Intent(context, com.indiza.scholar.ui.pedagogy.BulletinActivity::class.java).apply {
+                                        putExtra("idAnneeScolaire", selectedAnnee?.idServeur ?: 0L)
+                                    }
+                                    context.startActivity(intent)
+                                }
                                 com.indiza.scholar.model.AppMenu.CLASSES -> {
-                                    val intent = Intent(context, ClasseManagementActivity::class.java)
+                                    val intent = Intent(context, ClasseManagementActivity::class.java).apply {
+                                        putExtra("idAnneeScolaire", selectedAnnee?.idServeur ?: 0L)
+                                        putExtra("userRole", currentUserRole.name)
+                                    }
                                     context.startActivity(intent)
                                 }
                                 com.indiza.scholar.model.AppMenu.PARAMETRES -> {

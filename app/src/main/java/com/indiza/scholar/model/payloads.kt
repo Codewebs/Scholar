@@ -65,15 +65,17 @@ data class CloneProgramPayload(
 
 data class BulkAssignSubjectPayload(
     val idAnneeScolaire: Long,
-    val idMatiere: Long,
+    val idMatiere: Long?,
     val assignments: List<SubjectAssignmentItem>
 )
 
 data class SubjectAssignmentItem(
+    val idMatiere: Long? = null,
     val idClasse: Long,
     val coef: Int,
     val noteSur: Int = 20,
-    val ordreMatiere: Int = 1
+    val ordreMatiere: Int = 1,
+    val idGroupeMatiere: Long? = null
 )
 
 enum class PdfExportType {
