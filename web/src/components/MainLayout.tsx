@@ -154,8 +154,8 @@ const MainLayout: React.FC = () => {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
-           <div className="max-w-7xl mx-auto">
+        <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar">
+           <div className="w-full">
               <Outlet />
            </div>
         </div>

@@ -268,7 +268,7 @@ const StudentListPage: React.FC = () => {
       {loading ? (
         <div className="p-20 text-center animate-pulse uppercase font-black tracking-widest text-[#9E9E9E]">Chargement de la liste...</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 pb-20">
           {filteredStudents.map((student) => (
             <div key={student.idEleve} className="card p-6 flex flex-col justify-between hover:border-accent transition-all group relative overflow-hidden">
                {/* Rare Violet Accent: Pulse indicator for solde */}
