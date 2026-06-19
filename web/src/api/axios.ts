@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const getBaseUrl = () => {
-  return localStorage.getItem('server_url') || import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+  return localStorage.getItem('server_url') || import.meta.env.VITE_API_BASE_URL || 'http://192.168.0.50:4000';
 };
 
 const api = axios.create({

@@ -750,12 +750,12 @@ fun EnrollStudentBottomSheet(
                                             nouveau = studentToEdit == null
                                         )
                                         if (studentToEdit != null) {
-                                            viewModel.updateStudent(studentToEdit.idEleve, payload) { success ->
+                                            viewModel.updateStudent(studentToEdit.idEleve, payload) { success, error ->
                                                 if (success) {
                                                     Toast.makeText(context, "Mise à jour réussie !", Toast.LENGTH_SHORT).show()
                                                     onDismiss()
                                                 } else {
-                                                    Toast.makeText(context, "Échec de la mise à jour.", Toast.LENGTH_LONG).show()
+                                                    Toast.makeText(context, error ?: "Échec de la mise à jour.", Toast.LENGTH_LONG).show()
                                                 }
                                             }
                                         } else {

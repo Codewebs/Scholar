@@ -353,11 +353,33 @@ exports.getClassesMissingFrais = async (req, res) => {
     }
 };
 
+// 18. LISTE DES TRANSACTIONS D'UN ÉLÈVE
+exports.getStudentTransactions = async (req, res) => {
+    try {
+        const { idEleve, idAnneeScolaire } = req.params;
+        const { PaiementFraisGlobal } = require("../models");
+        const transactions = await PaiementFraisGlobal.findAll({
+            where: { idEleve, idAnneeScolaire },
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(transactions);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 // 9. GÉNÉRATION DES DONNÉES DU REÇU D'INSCRIPTION
 exports.getRegistrationReceiptData = async (req, res) => {
     try {
         const { idEleve, idAnneeScolaire } = req.params;
-        const { Inscription, Eleve, Salle, Classe, AnneeScolaire, Etablissement, PaiementFraisGlobal, PaiementFraisExigible, TarifFraisExigible } = require("../models");
+        console.log(`🖨️ Génération reçu pour Elève:${idEleve}, Année:${idAnneeScolaire}`);
+
+        const {
+            Inscription, Eleve, Salle, Classe, AnneeScolaire, Etablissement,
+            PaiementFraisGlobal, PaiementFraisExigible, TarifFraisExigible, FraisExigible,
+            PaiementFraisPeriscolaire, TarifFraisPeriscolaire, FraisActivitePeriscolaire,
+            PaiementTransport, Utilisateur
+        } = require("../models");
 
         // 1. Infos élève et inscription
         const ins = await Inscription.findOne({
@@ -372,69 +394,246 @@ exports.getRegistrationReceiptData = async (req, res) => {
             ]
         });
 
-        if (!ins) return res.status(404).json({ error: "Inscription non trouvée." });
+        if (!ins) {
+            console.warn("⚠️ Inscription non trouvée");
+            return res.status(404).json({ error: "Inscription non trouvée." });
+        }
 
         // 2. Infos établissement
-        const school = await Etablissement.findOne(); // On suppose un seul établissement pour l'instant
+        const school = await Etablissement.findOne();
 
-        // 3. Dernier paiement pour l'inscription (ou total payé)
-        // Pour un reçu d'inscription, on peut prendre le total payé à ce jour ou le dernier PaiementFraisGlobal
+        // 3. Dernier paiement pour cet élève
         const lastPayment = await PaiementFraisGlobal.findOne({
             where: { idEleve, idAnneeScolaire, annule: false },
-            order: [['createdAt', 'DESC']]
+            order: [['createdAt', 'DESC']],
+            include: [{ model: Utilisateur, as: 'Caissier', attributes: ['nom'] }]
         });
 
-        const totalPaye = await PaiementFraisExigible.sum('montantAlloue', {
-            include: [{
-                model: PaiementFraisGlobal,
-                where: { idEleve, idAnneeScolaire, annule: false }
-            }]
-        }) || 0;
+        if (!lastPayment) {
+            console.warn("⚠️ Aucun paiement trouvé");
+            return res.status(404).json({ error: "Aucun paiement trouvé pour cet élève." });
+        }
 
-        const totalDu = await TarifFraisExigible.sum('montantFraisExigible', {
-            where: { idClasse: ins.Salle.Classe.idClasse, idAnneeScolaire, supprimer: false }
-        }) || 0;
+        // 4. Détail de la répartition du montant reçu (Aujourd'hui)
+        // On récupère TOUS les tarifs exigibles de la classe pour montrer la ventilation (même si 0)
+        const idClasse = ins.Salle.Classe.idClasse;
+        const allTarifsExigibles = await TarifFraisExigible.findAll({
+            where: { idClasse, idAnneeScolaire, supprimer: false },
+            include: [{ model: FraisExigible, as: 'Frais' }],
+            order: [['ordrePaiement', 'ASC']]
+        });
+
+        const currentAllocationsExigible = await PaiementFraisExigible.findAll({
+            where: { idPaiementFraisGlobal: lastPayment.idPaiementFraisGlobal, annule: false }
+        });
+
+        const todayBreakdown = allTarifsExigibles.map(t => {
+            const alloc = currentAllocationsExigible.find(a => a.idTarifFraisExigible === t.idTarifFraisExigible);
+            return {
+                libelle: t.Frais?.fraisFr || "Frais inconnu",
+                montantAlloue: alloc ? alloc.montantAlloue : 0
+            };
+        });
+
+        // Si le paiement concernait aussi (ou uniquement) le périscolaire
+        const currentAllocationsPeri = await PaiementFraisPeriscolaire.findAll({
+            where: { idPaiementFraisGlobal: lastPayment.idPaiementFraisGlobal, annule: false },
+            include: [{
+                model: TarifFraisPeriscolaire, as: 'Tarif',
+                include: [{ model: FraisActivitePeriscolaire, as: 'Frais' }]
+            }]
+        });
+
+        currentAllocationsPeri.forEach(p => {
+            todayBreakdown.push({
+                libelle: p.Tarif?.Frais?.libelleFr || "Activité",
+                montantAlloue: p.montantAlloue
+            });
+        });
+
+        // 5. État actuel des frais (Historique Global)
+        const tarifsExigibles = await TarifFraisExigible.findAll({
+            where: { idClasse, idAnneeScolaire, supprimer: false },
+            include: [{ model: FraisExigible, as: "Frais" }],
+            order: [['ordrePaiement', 'ASC']]
+        });
+
+        const fullHistory = await Promise.all(tarifsExigibles.map(async (t, index) => {
+            const dejaPaye = await PaiementFraisExigible.sum('montantAlloue', {
+                where: {
+                    idTarifFraisExigible: t.idTarifFraisExigible,
+                    annule: false
+                },
+                include: [{
+                    model: PaiementFraisGlobal,
+                    where: { idEleve, idAnneeScolaire, annule: false }
+                }]
+            }) || 0;
+
+            return {
+                ordre: index + 1,
+                libelle: t.Frais?.fraisFr || "Inconnu",
+                montantTotal: t.montantFraisExigible,
+                augmentation: 0,
+                reduction: 0,
+                dejaPaye: dejaPaye,
+                reste: t.montantFraisExigible - dejaPaye
+            };
+        }));
+
+        const totalDejaVerse = fullHistory.reduce((sum, h) => sum + h.dejaPaye, 0);
+        const totalTotalDu = fullHistory.reduce((sum, h) => sum + h.montantTotal, 0);
 
         const data = {
             schoolInfo: {
-                name: school?.nomFr || "Établissement Scolaire",
+                name: school?.nomFr || "INSTITUT BILINGUE ROGER AMPERE",
+                devise: school?.devise || "Discipline - Travail - Succès",
                 ministry: school?.tutelle || "Ministère des Enseignements Secondaires",
                 address: school?.adresse,
                 bp: school?.bp,
                 phones: school?.telephone1?.toString(),
                 email: school?.email,
                 authorizationNo: school?.numeroAgrement,
-                logoUrl: null
+                logoUrl: school?.logo
             },
             receiptInfo: {
-                title: "REÇU D'INSCRIPTION",
-                receiptNo: lastPayment ? `REC-${lastPayment.idPaiementFraisGlobal}` : `INS-${ins.idInscription}`,
+                title: "REÇU DE PAIEMENT",
+                receiptNo: `FS-${lastPayment.idPaiementFraisGlobal}`,
                 schoolYear: ins.AnneeScolaire.libelleAnneeScolaire,
-                dateTime: lastPayment ? lastPayment.createdAt : ins.createdAt
+                dateTime: lastPayment.createdAt,
+                operationTime: lastPayment.createdAt
             },
             studentInfo: {
                 matricule: ins.Eleve.matricule,
                 fullName: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(),
                 classLabel: `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}`,
-                cycleLabel: null // Optionnel
+                dateNaissance: ins.Eleve.dateNaissance,
+                lieuNaissance: ins.Eleve.lieuNaissance,
+                sexe: ins.Eleve.sexe === 'M' ? 'MASCULIN' : 'FEMININ',
+                redoublant: ins.nouveau ? 'NON' : 'OUI'
             },
             financialDetail: {
-                nature: "Frais d'inscription et scolarité",
-                amountDigits: lastPayment ? lastPayment.montantTotal : totalPaye,
-                amountWords: "Arrêté la présente somme à...", // Idéalement convertir en lettres
-                paymentMode: lastPayment ? lastPayment.modePaiement : "CASH",
-                balance: totalPaye,
-                remaining: totalDu - totalPaye
+                nature: "Paiement frais de scolarité",
+                amountDigits: lastPayment.montantTotal,
+                amountWords: "...",
+                paymentMode: lastPayment.modePaiement,
+                balance: totalDejaVerse,
+                remaining: totalTotalDu - totalDejaVerse,
+                penalties: 0,
+                printedBy: lastPayment.Caissier?.nom || "ADMINISTRATEUR",
+                todayBreakdown,
+                fullHistory
             },
             validation: {
-                cashierName: "Service de la Caisse",
-                qrContent: `REF:${ins.idInscription}-EL:${idEleve}`
+                cashierName: lastPayment.Caissier?.nom || "La Caisse",
+                qrContent: `REF:${lastPayment.idPaiementFraisGlobal}-EL:${idEleve}`
+            }
+        };
+
+        console.log("✅ Données reçu générées avec succès");
+        res.json(data);
+    } catch (error) {
+        console.error("❌ Erreur getRegistrationReceiptData:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 17. ANNULER UN PAIEMENT (GLOBAL + DÉTAILS)
+exports.annulerPaiement = async (req, res) => {
+    const { idPaiementFraisGlobal } = req.params;
+    const t = await sequelize.transaction();
+    try {
+        const { PaiementFraisGlobal, PaiementFraisExigible, PaiementFraisPeriscolaire, PaiementTransport } = require("../models");
+
+        // 0. Vérification LIFO (Last In First Out)
+        // On récupère le paiement à annuler
+        const paiementToCancel = await PaiementFraisGlobal.findByPk(idPaiementFraisGlobal);
+        if (!paiementToCancel) throw new Error("Paiement introuvable.");
+        if (paiementToCancel.annule) throw new Error("Ce paiement est déjà annulé.");
+
+        // On cherche s'il existe un paiement valide PLUS RÉCENT pour cet élève
+        const moreRecent = await PaiementFraisGlobal.findOne({
+            where: {
+                idEleve: paiementToCancel.idEleve,
+                idAnneeScolaire: paiementToCancel.idAnneeScolaire,
+                annule: false,
+                createdAt: { [Op.gt]: paiementToCancel.createdAt }
+            },
+            transaction: t
+        });
+
+        if (moreRecent) {
+            throw new Error(`Impossible d'annuler cette transaction. Vous devez d'abord annuler la transaction la plus récente (#FS-${moreRecent.idPaiementFraisGlobal} du ${moreRecent.createdAt.toLocaleDateString()}) pour respecter l'ordre chronologique.`);
+        }
+
+        // 1. Marquer le paiement global comme annulé
+        await PaiementFraisGlobal.update({ annule: true }, { where: { idPaiementFraisGlobal }, transaction: t });
+
+        // 2. Marquer tous les détails comme annulés
+        await PaiementFraisExigible.update({ annule: true }, { where: { idPaiementFraisGlobal }, transaction: t });
+        await PaiementFraisPeriscolaire.update({ annule: true }, { where: { idPaiementFraisGlobal }, transaction: t });
+        await PaiementTransport.update({ annule: true }, { where: { idPaiementFraisGlobal }, transaction: t });
+
+        await t.commit();
+        res.json({ message: "Paiement annulé avec succès" });
+    } catch (error) {
+        if (t) await t.rollback();
+        console.error("❌ Erreur annulerPaiement:", error.message);
+        res.status(400).json({ error: error.message });
+    }
+};
+
+// 19. GÉNÉRATION DES DONNÉES DU REÇU D'INSCRIPTION (Sans finances)
+exports.getSimpleRegistrationReceipt = async (req, res) => {
+    try {
+        const { idEleve, idAnneeScolaire } = req.params;
+        const { Inscription, Eleve, Salle, Classe, AnneeScolaire, Etablissement } = require("../models");
+
+        const ins = await Inscription.findOne({
+            where: { idEleve, idAnneeScolaire, supprimer: false },
+            include: [
+                { model: Eleve },
+                { model: AnneeScolaire },
+                { model: Salle, include: [{ model: Classe, as: 'Classe' }] }
+            ]
+        });
+
+        if (!ins) return res.status(404).json({ error: "Inscription non trouvée." });
+        const school = await Etablissement.findOne();
+
+        const data = {
+            schoolInfo: {
+                name: school?.nomFr || "INSTITUT BILINGUE ROGER AMPERE",
+                devise: school?.devise || "Discipline - Travail - Succès",
+                ministry: school?.tutelle || "Ministère des Enseignements Secondaires",
+                address: school?.adresse,
+                bp: school?.bp,
+                phones: school?.telephone1?.toString(),
+                email: school?.email,
+                logoUrl: school?.logo
+            },
+            receiptInfo: {
+                title: "FICHE D'INSCRIPTION",
+                receiptNo: `INS-${ins.idInscription}`,
+                schoolYear: ins.AnneeScolaire.libelleAnneeScolaire,
+                dateTime: ins.createdAt
+            },
+            studentInfo: {
+                matricule: ins.Eleve.matricule,
+                fullName: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(),
+                classLabel: `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}`,
+                dateNaissance: ins.Eleve.dateNaissance,
+                lieuNaissance: ins.Eleve.lieuNaissance,
+                sexe: ins.Eleve.sexe === 'M' ? 'MASCULIN' : 'FEMININ',
+                redoublant: ins.nouveau ? 'NON' : 'OUI'
+            },
+            validation: {
+                qrContent: `INSCRIPTION:${ins.idInscription}-MAT:${ins.Eleve.matricule}`
             }
         };
 
         res.json(data);
     } catch (error) {
-        console.error("❌ Erreur getRegistrationReceiptData:", error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -727,6 +926,21 @@ exports.getInsolvablesList = async (req, res) => {
         }
 
         res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 18. LISTE DES TRANSACTIONS D'UN ÉLÈVE
+exports.getStudentTransactions = async (req, res) => {
+    try {
+        const { idEleve, idAnneeScolaire } = req.params;
+        const { PaiementFraisGlobal } = require("../models");
+        const transactions = await PaiementFraisGlobal.findAll({
+            where: { idEleve, idAnneeScolaire },
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(transactions);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

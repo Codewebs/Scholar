@@ -46,6 +46,9 @@ export const studentService = {
   getRooms: (yearId: number) =>
     api.get<any[]>(`/salles/annee/${yearId}`),
 
+  globalSearch: (q: string, yearId: number) =>
+    api.get<any[]>(`/students/global/search`, { params: { q, idAnneeScolaire: yearId } }),
+
   getStudentsBySalle: (yearId: number, idSalle: number) =>
     api.get<any[]>(`/students/room/${yearId}/${idSalle}`),
 };

@@ -192,6 +192,9 @@ FraisActivitePeriscolaire.hasMany(TarifFraisPeriscolaire, { foreignKey: "idFrais
 PaiementFraisGlobal.belongsTo(Eleve, { foreignKey: "idEleve" });
 Eleve.hasMany(PaiementFraisGlobal, { foreignKey: "idEleve" });
 
+PaiementFraisGlobal.belongsTo(Utilisateur, { foreignKey: "idCaissier", as: "Caissier" });
+Utilisateur.hasMany(PaiementFraisGlobal, { foreignKey: "idCaissier" });
+
 PaiementFraisGlobal.hasMany(PaiementFraisExigible, { foreignKey: "idPaiementFraisGlobal", as: "detailsExigibles" });
 PaiementFraisExigible.belongsTo(PaiementFraisGlobal, { foreignKey: "idPaiementFraisGlobal" });
 
@@ -217,8 +220,8 @@ AnneeScolaire.hasMany(Note, { foreignKey: "idAnneeScolaire" });
 Note.belongsTo(Inscription, { foreignKey: "idInscription" });
 Inscription.hasMany(Note, { foreignKey: "idInscription" });
 
-// Note.belongsTo(RepartitionMatiere, { foreignKey: "idRepartitionMatiere" });
-// RepartitionMatiere.hasMany(Note, { foreignKey: "idRepartitionMatiere" });
+Note.belongsTo(RepartitionMatiere, { foreignKey: "idRepartitionMatiere" });
+RepartitionMatiere.hasMany(Note, { foreignKey: "idRepartitionMatiere" });
 
 Note.belongsTo(SousPeriode, { foreignKey: "idSequence" });
 SousPeriode.hasMany(Note, { foreignKey: "idSequence" });

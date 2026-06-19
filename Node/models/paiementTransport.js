@@ -7,7 +7,8 @@ const PaiementTransport = sequelize.define("PaiementTransport", {
   dateFin: { type: DataTypes.DATEONLY, allowNull: false },
   idMois: { type: DataTypes.INTEGER, allowNull: true }, // 1-12
   idPaiementFraisGlobal: { type: DataTypes.BIGINT, allowNull: false },
-  idTarifTransport: { type: DataTypes.BIGINT, allowNull: false }
+  idTarifTransport: { type: DataTypes.BIGINT, allowNull: false },
+  annule: { type: DataTypes.BOOLEAN, defaultValue: false }
 }, {
   tableName: "paiement_transport",
   timestamps: true

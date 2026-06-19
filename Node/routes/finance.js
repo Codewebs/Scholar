@@ -27,8 +27,11 @@ router.get("/stats/recouvrement/:idClasse/:idAnneeScolaire", verifyToken, checkP
 router.post("/paiements/exigibles", verifyToken, checkPermission("COLLECT_TUITION_FEE"), controller.payerFraisExigibles);
 router.post("/paiements/periscolaires", verifyToken, checkPermission("COLLECT_OTHER_FEES"), controller.payerFraisPeriscolaires);
 router.get("/paiements/details/:idEleve/:idAnneeScolaire", verifyToken, controller.getStudentPaymentDetails);
+router.get("/paiements/transactions/:idEleve/:idAnneeScolaire", verifyToken, controller.getStudentTransactions);
 router.get("/paiements/periscolaires/details/:idEleve/:idAnneeScolaire", verifyToken, controller.getStudentPeriscolaireDetails);
 router.get("/receipt/registration/:idEleve/:idAnneeScolaire", verifyToken, controller.getRegistrationReceiptData);
+router.get("/receipt/registration-simple/:idEleve/:idAnneeScolaire", verifyToken, controller.getSimpleRegistrationReceipt);
+router.post("/paiements/annuler/:idPaiementFraisGlobal", verifyToken, checkPermission("CANCEL_PAYMENT"), controller.annulerPaiement);
 
 // Multi-classe application
 router.get("/classes/missing-frais/:idFrais/:idAnneeScolaire", verifyToken, controller.getClassesMissingFrais);

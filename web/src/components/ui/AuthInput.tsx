@@ -9,7 +9,8 @@ const AuthInput: React.FC<AuthInputProps> = ({ label, suffix, ...props }) => {
   return (
     <div className="space-y-1.5 w-full">
       <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">
-        {label}
+        {label.replace('*', '')}
+        {label.includes('*') && <span className="text-red-500 ml-1 font-black">*</span>}
       </label>
       <div className="relative flex items-center">
         <input

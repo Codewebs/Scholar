@@ -1,54 +1,60 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSchoolYear } from '../../context/SchoolYearContext';
+import api from '../../api/axios';
 import {
-  Layout,
-  Type,
-  Users,
-  BarChart3,
-  CheckSquare,
-  Save,
-  ChevronDown,
-  ChevronUp,
-  Image as ImageIcon,
-  Eye,
-  ArrowLeft,
-  Printer,
-  Grid,
-  Zap,
-  School,
-  FileText,
-  AlertCircle,
-  Clock,
-  Award,
-  FileSignature as Signature
+    Printer,
+    ArrowLeft,
+    Settings2,
+    Layout,
+    Type,
+    BarChart3,
+    School,
+    ChevronDown,
+    ChevronUp,
+    CheckCircle2,
+    Eye,
+    Save,
+    Trash2,
+    AlertCircle,
+    Copy,
+    Image as ImageIcon
 } from 'lucide-react';
 import { clsx } from 'clsx';
-import api from '../../api/axios';
 
 interface BulletinTemplate {
-  id: string;
-  name: string;
-  description: string;
-  config: any;
+    id: string;
+    name: string;
+    description: string;
+    config: any;
 }
 
 const BulletinConfigPage: React.FC = () => {
   const { selectedYear } = useSchoolYear();
   const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
-
-  const [activeTab, setActiveTab] = useState<'COCKPIT' | 'LIBRARY'>('COCKPIT');
-  const [openAccordions, setOpenAccordions] = useState<string[]>(['A', 'B']);
-
-  // --- Configuration State (The JSON Profile) ---
+  const [openAccordions, setOpenAccordions] = useState<string[]>(['A']);
   const [config, setConfig] = useState({
-    profileName: "",
     // Accordion A: Périmètre
-    selectedClassId: null,
+    selectedPerimeter: 'SALLE' as 'SALLE' | 'CLASSE' | 'CYCLE',
+    selectedId: null as number | null,
     periodType: 'SEQUENCE' as 'SEQUENCE' | 'TRIMESTER' | 'ANNUAL',
-    calcMode: 'HYBRID' as 'TRADITIONAL' | 'COTATION' | 'HYBRID',
+    selectedPeriodId: null as number | null, // ID of the SousPeriode (for SEQUENCE) or Periode (for TRIMESTER)
+    showSubPeriods: true, // Show EVAL 1, EVAL 2, etc.
+    showPeriodSummary: true, // Show Trimester/Annual total column
+
+    // Notation Systems
+    calcMode: 'HYBRID' as 'NUMERIC' | 'LETTER' | 'COLOR' | 'HYBRID_NUM_COLOR' | 'HYBRID_NUM_LETTER' | 'HYBRID_LETTER_COLOR' | 'ALPHA',
+    hybridConfig: {
+        showNumeric: true,
+        showLetter: true,
+        showColors: true
+    },
 
     // Accordion B: En-tête
     showMinisterialHeader: true,
+    margins: {
+        top: 10,
+        bottom: 10
+    },
     schoolInfo: {
         name: true,
         sigle: true,
@@ -77,36 +83,74 @@ const BulletinConfigPage: React.FC = () => {
         showGlobalStats: true,
         showAverages: true,
         showMaxMin: true,
+        showRank: true,
+        showClassAverage: true,
         showSuccessRate: true,
-        showCharts: true,
+        showCharts: false,
         chartType: 'BAR' as 'BAR' | 'RADAR'
     },
 
-    // Accordion E: Bas de page
-    footer: {
-        showAppreciations: true,
-        showDiscipline: true,
-        showAbsences: true,
-        showConduct: true, // Heures de colle, avertissements
-        showDecisions: true,
-        signatures: {
-            parent: true,
-            teacher: true,
-            principal: true,
-            useDigitalSign: false
-        }
-    }
+    // Advanced
+    allowIncompleteStudent: false,
+    allowIncompleteRoom: false
   });
 
   const [classes, setClasses] = useState<any[]>([]);
+  const [periods, setPeriods] = useState<any[]>([]);
+  const [filteredSequences, setFilteredSequences] = useState<any[]>([]);
   const [schoolData, setSchoolData] = useState<any>(null);
+  const [showPerimeterSheet, setShowPerimeterSheet] = useState(false);
 
   useEffect(() => {
     if (yearId) {
-        api.get(`/salles/classes/stats/${yearId}`).then(res => setClasses(res.data));
+        api.get(`/pedagogy/periodes/annee/${yearId}`).then(res => setPeriods(res.data));
+        api.get(`/salles/classes/stats/${yearId}`).then(res => {
+            console.log("📊 Données Classes/Salles reçues:", res.data);
+            setClasses(res.data);
+
+            // Fallback: If classes have no salles, fetch salles directly
+            const anySalle = res.data.some((c: any) => (c.salles || c.Salles || []).length > 0);
+            if (!anySalle) {
+                console.warn("⚠️ Aucune salle trouvée dans l'objet classe, tentative de récupération directe...");
+                api.get(`/salles/annee/${yearId}`).then(sRes => {
+                    console.log("📥 Salles récupérées par endpoint direct:", sRes.data);
+                    // Map salles to their classes if possible
+                    const updatedClasses = res.data.map((c: any) => ({
+                        ...c,
+                        salles: sRes.data.filter((s: any) => s.idClasse === c.idClasse)
+                    }));
+                    setClasses(updatedClasses);
+                });
+            }
+        });
         api.get('/admin/etablissement/profile').then(res => setSchoolData(res.data)).catch(() => {});
     }
   }, [yearId]);
+
+  useEffect(() => {
+    if (config.selectedId && config.periodType === 'SEQUENCE') {
+        let classId: number | null = null;
+        if (config.selectedPerimeter === 'SALLE') {
+            const foundClass = classes.find(c => (c.salles || c.Salles || []).some((s: any) => s.idSalle === config.selectedId));
+            classId = foundClass ? foundClass.idClasse : null;
+        } else if (config.selectedPerimeter === 'CLASSE') {
+            classId = config.selectedId;
+        }
+
+        if (classId) {
+            api.get(`/pedagogy/periodes/repartition/annee/${yearId}?idClasse=${classId}`).then(res => {
+                // Repartition contains SousPeriode objects
+                const seqs = res.data.map((r: any) => r.SousPeriode).filter(Boolean);
+                setFilteredSequences(seqs);
+            });
+        } else {
+            // Fallback to all sequences if no specific class found (e.g. CYCLE)
+            setFilteredSequences(periods.flatMap(p => p.sousPeriodes || []));
+        }
+    } else {
+        setFilteredSequences(periods.flatMap(p => p.sousPeriodes || []));
+    }
+  }, [config.selectedId, config.selectedPerimeter, config.periodType, classes, periods, yearId]);
 
   const toggleAccordion = (id: string) => {
     setOpenAccordions(prev =>
@@ -117,169 +161,272 @@ const BulletinConfigPage: React.FC = () => {
   const templates: BulletinTemplate[] = [
     {
         id: 'cameroon-apc',
-        name: 'Modèle Officiel Cameroun APC',
-        description: 'Standard Bilingue (FR/EN) avec compétences',
-        config: { ...config, calcMode: 'HYBRID', showMinisterialHeader: true, body: { ...config.body, apcMode: 'BLOCKS' } }
+        name: 'Modèle APC Officiel Cameroun',
+        description: 'Standard Bilingue (FR/EN) avec grille de compétences, EVAL 1/2 et blocs de discipline complets.',
+        config: {
+            ...config,
+            calcMode: 'HYBRID',
+            showMinisterialHeader: true,
+            periodType: 'TRIMESTER',
+            showSubPeriods: true,
+            showPeriodSummary: true,
+            body: { ...config.body, apcMode: 'BLOCKS', tableBorderWidth: '1px' },
+            schoolInfo: { ...config.schoolInfo, logoPosition: 'CENTER_WATERMARK' }
+        }
     },
     {
-        id: 'classic-fr',
-        name: 'Modèle Classique Français',
-        description: 'Épuré, focus sur les moyennes et appréciations',
-        config: { ...config, calcMode: 'TRADITIONAL', showMinisterialHeader: false, schoolInfo: { ...config.schoolInfo, logoPosition: 'RIGHT' } }
-    },
-    {
-        id: 'intl-grades',
-        name: 'Modèle International Grades',
-        description: 'Système par cotes (A+, B, C...) sans notes numériques',
-        config: { ...config, calcMode: 'COTATION', body: { ...config.body, tableBorderColor: '#E2E8F0' } }
+        id: 'intl-modern',
+        name: 'Bulletin International Moderne',
+        description: 'Design épuré, focus sur les Grades (A-F), commentaires narratifs et esthétique minimaliste.',
+        config: {
+            ...config,
+            calcMode: 'LETTER',
+            showMinisterialHeader: false,
+            periodType: 'SEQUENCE',
+            showSubPeriods: false,
+            showPeriodSummary: true,
+            body: { ...config.body, showSubjectTeachers: false, tableBorderWidth: '0.5px' },
+            schoolInfo: { ...config.schoolInfo, logoPosition: 'RIGHT', name: true, sigle: false, devise: false }
+        }
     }
   ];
 
-  const handleApplyTemplate = (tpl: BulletinTemplate) => {
-    setConfig(tpl.config);
-    setActiveTab('COCKPIT');
-    setOpenAccordions(['A', 'B', 'C', 'D', 'E']);
-  };
-
-  const AccordionHeader: React.FC<{ id: string, title: string, icon: any }> = ({ id, title, icon: Icon }) => (
-    <button
-      onClick={() => toggleAccordion(id)}
-      className="w-full flex items-center justify-between p-6 bg-white hover:bg-gray-50 transition-colors border-b border-gray-100 group"
-    >
-      <div className="flex items-center space-x-4">
-        <div className={clsx(
-            "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-            openAccordions.includes(id) ? "bg-black text-white shadow-lg" : "bg-gray-50 text-gray-400 group-hover:bg-gray-100"
-        )}>
-          <Icon size={20} />
-        </div>
-        <span className="font-black uppercase tracking-tight text-sm text-black">{title}</span>
-      </div>
-      {openAccordions.includes(id) ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-    </button>
-  );
-
   return (
-    <div className="flex flex-col h-screen bg-[#F5F7FB] overflow-hidden">
-      {/* Top Navigation */}
-      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between z-30 shadow-sm">
-        <div className="flex items-center space-x-8">
-            <button onClick={() => window.history.back()} className="p-3 hover:bg-gray-100 rounded-full transition-all bg-gray-50">
-                <ArrowLeft size={24} />
-            </button>
-            <div className="flex bg-gray-100 p-1.5 rounded-[20px]">
-                <button
-                    onClick={() => setActiveTab('COCKPIT')}
-                    className={clsx(
-                        "px-8 py-2.5 rounded-[15px] text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2",
-                        activeTab === 'COCKPIT' ? "bg-white text-black shadow-md scale-105" : "text-gray-400 hover:text-gray-600"
-                    )}
-                >
-                    <Zap size={14} />
-                    <span>Cockpit de Configuration</span>
-                </button>
-                <button
-                    onClick={() => setActiveTab('LIBRARY')}
-                    className={clsx(
-                        "px-8 py-2.5 rounded-[15px] text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2",
-                        activeTab === 'LIBRARY' ? "bg-white text-black shadow-md scale-105" : "text-gray-400 hover:text-gray-600"
-                    )}
-                >
-                    <Grid size={14} />
-                    <span>Bibliothèque de Maquettes</span>
-                </button>
-            </div>
-        </div>
+    <div className="min-h-screen bg-[#F8F9FD] p-8 pb-32">
+      <div className="max-w-6xl mx-auto">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+          <div>
+            <h1 className="text-3xl font-black uppercase tracking-tighter text-black flex items-center">
+              Cockpit Pédagogique
+              <div className="ml-4 px-3 py-1 bg-accent text-white rounded-full text-[10px] tracking-widest animate-pulse">
+                GÉNÉRATEUR A4
+              </div>
+            </h1>
+            <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">
+              Configuration & Impression des Bulletins de Notes
+            </p>
+          </div>
 
-        <div className="flex items-center space-x-4">
-            <div className="flex -space-x-2">
-                {[1,2,3].map(i => <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-200" />)}
-            </div>
-            <button className="flex items-center space-x-3 px-8 py-4 bg-accent text-white rounded-full font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-all shadow-xl shadow-accent/20">
+          <div className="flex items-center space-x-4">
+            <button className="flex items-center space-x-3 px-6 py-4 bg-white border border-gray-100 rounded-full text-[10px] font-black uppercase tracking-widest text-gray-500 hover:shadow-lg transition-all">
+                <Save size={18} />
+                <span>Sauver Profil</span>
+            </button>
+            <button
+                disabled={!yearId || !config.selectedId || (config.periodType !== 'ANNUAL' && !config.selectedPeriodId)}
+                onClick={() => {
+                    localStorage.setItem('bulletin_print_config', JSON.stringify(config));
+                    window.open('/app/pedagogy/bulletins/print', '_blank');
+                }}
+                className={clsx(
+                    "flex items-center space-x-3 px-8 py-4 rounded-full font-black uppercase text-[10px] tracking-widest transition-all shadow-xl",
+                    (!yearId || !config.selectedId || (config.periodType !== 'ANNUAL' && !config.selectedPeriodId))
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed opacity-50"
+                        : "bg-accent text-white hover:scale-105 shadow-accent/20"
+                )}
+            >
                 <Printer size={18} />
-                <span>Générer les PDF</span>
+                <span>
+                    {!config.selectedId ? "Sélectionnez un périmètre"
+                    : !yearId ? "Sélectionnez une année"
+                    : (config.periodType !== 'ANNUAL' && !config.selectedPeriodId) ? "Sélectionnez une période"
+                    : "Générer les PDF"}
+                </span>
             </button>
+          </div>
         </div>
-      </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Panel: The Cockpit Controls */}
-        <div className="w-[40%] bg-white border-r border-gray-200 overflow-y-auto custom-scrollbar flex flex-col relative z-20">
-          {activeTab === 'COCKPIT' ? (
-            <div className="pb-32">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          {/* Main Config Area */}
+          <div className="lg:col-span-8 space-y-6">
+            <div className="bg-white rounded-[40px] shadow-sm border border-gray-50 overflow-hidden">
               {/* Accordion A: Périmètre */}
               <AccordionHeader id="A" title="Périmètre & Données de base" icon={Layout} />
               {openAccordions.includes('A') && (
                 <div className="p-8 space-y-6 bg-gray-50/30 animate-in fade-in duration-500">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Classe / Niveau</label>
-                    <select
-                        className="w-full p-5 bg-white border border-gray-100 rounded-[20px] text-xs font-black uppercase outline-none focus:border-black transition-all shadow-sm"
-                        value={config.selectedClassId || ''}
-                        onChange={(e) => setConfig({...config, selectedClassId: e.target.value as any})}
-                    >
-                        <option value="">Toute l'école</option>
-                        {classes.map(c => <option key={c.idClasse} value={c.idClasse}>{c.libelleClasseFr}</option>)}
-                    </select>
+                  {/* Validation Overrides */}
+                  <div className="bg-white p-5 rounded-[24px] border border-gray-100 shadow-sm space-y-4 mb-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Autorisations d'impression</p>
+                    <ConfigSwitch
+                        label="Imprimer même si notes incomplètes (Élève)"
+                        checked={config.allowIncompleteStudent}
+                        onChange={(v) => setConfig({...config, allowIncompleteStudent: v})}
+                    />
+                    <ConfigSwitch
+                        label="Imprimer même si salle incomplète"
+                        checked={config.allowIncompleteRoom}
+                        onChange={(v) => setConfig({...config, allowIncompleteRoom: v})}
+                    />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Périodicité</label>
-                        <select
-                            className="w-full p-5 bg-white border border-gray-100 rounded-[20px] text-xs font-black uppercase outline-none focus:border-black"
-                            value={config.periodType}
-                            onChange={(e) => setConfig({...config, periodType: e.target.value as any})}
-                        >
-                            <option value="SEQUENCE">Séquentiel</option>
-                            <option value="TRIMESTER">Trimestriel</option>
-                            <option value="ANNUAL">Bilan Annuel</option>
-                        </select>
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Système de notation</label>
-                        <select
-                            className="w-full p-5 bg-white border border-gray-100 rounded-[20px] text-xs font-black uppercase outline-none focus:border-black"
-                            value={config.calcMode}
-                            onChange={(e) => setConfig({...config, calcMode: e.target.value as any})}
-                        >
-                            <option value="TRADITIONAL">Traditionnel (Points)</option>
-                            <option value="COTATION">Cotes / Grades</option>
-                            <option value="HYBRID">Hybride (APC + Notes)</option>
-                        </select>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Périmètre de génération</label>
+                    <div className="flex gap-2">
+                        {['SALLE', 'CLASSE', 'CYCLE'].map((p) => (
+                            <button
+                                key={p}
+                                onClick={() => {
+                                    setConfig({
+                                        ...config,
+                                        selectedPerimeter: p as any,
+                                        selectedId: config.selectedPerimeter === p ? config.selectedId : null
+                                    });
+                                    setShowPerimeterSheet(true);
+                                }}
+                                className={clsx(
+                                    "flex-1 p-4 rounded-2xl border-2 text-[10px] font-black uppercase transition-all flex flex-col items-center gap-2",
+                                    config.selectedPerimeter === p ? "border-black bg-black text-white" : "border-gray-100 bg-white text-gray-400"
+                                )}
+                            >
+                                <span>{p}</span>
+                                {config.selectedPerimeter === p && config.selectedId && (
+                                    <span className="text-[8px] opacity-60">ID: {config.selectedId}</span>
+                                )}
+                            </button>
+                        ))}
                     </div>
                   </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Périodicité</label>
+                            <select
+                                className="w-full p-5 bg-white border border-gray-100 rounded-[20px] text-xs font-black uppercase outline-none focus:border-black transition-all"
+                                value={config.periodType}
+                                onChange={(e) => setConfig({...config, periodType: e.target.value as any, selectedPeriodId: null})}
+                            >
+                                <option value="SEQUENCE">Séquentiel (Séquences)</option>
+                                <option value="TRIMESTER">Trimestriel (Trimestres / Semestres)</option>
+                                <option value="ANNUAL">Bilan Annuel</option>
+                            </select>
+                        </div>
+
+                        {config.periodType !== 'ANNUAL' && (
+                            <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">
+                                    Sélectionner {config.periodType === 'SEQUENCE' ? 'la Séquence' : 'le Trimestre'}
+                                </label>
+                                <select
+                                    className="w-full p-5 bg-white border border-gray-100 rounded-[20px] text-xs font-black uppercase outline-none focus:border-black transition-all"
+                                    value={config.selectedPeriodId || ''}
+                                    onChange={(e) => setConfig({...config, selectedPeriodId: parseInt(e.target.value)})}
+                                >
+                                    <option value="">-- Choisir --</option>
+                                    {config.periodType === 'SEQUENCE' ? (
+                                        filteredSequences.map(sp => (
+                                            <option key={sp.idSousPeriode} value={sp.idSousPeriode}>{sp.libelleSousPeriodeFr}</option>
+                                        ))
+                                    ) : (
+                                        periods.map(p => (
+                                            <option key={p.idPeriode} value={p.idPeriode}>{p.libellePeriodeFr}</option>
+                                        ))
+                                    )}
+                                </select>
+                            </div>
+                        )}
+
+                        {config.periodType === 'ANNUAL' && (
+                            <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Détails à inclure</label>
+                                <select
+                                    className="w-full p-5 bg-white border border-gray-100 rounded-[20px] text-xs font-black uppercase outline-none focus:border-black transition-all"
+                                    value={config.showSubPeriods ? 'SUB' : 'MAIN'}
+                                    onChange={(e) => setConfig({...config, showSubPeriods: e.target.value === 'SUB'})}
+                                >
+                                    <option value="MAIN">Toutes les Périodes (Trimestres)</option>
+                                    <option value="SUB">Toutes les Sous-Périodes (Séquences)</option>
+                                </select>
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Système de notation</label>
+                            <select
+                                className="w-full p-5 bg-white border border-gray-100 rounded-[20px] text-xs font-black uppercase outline-none focus:border-black transition-all"
+                                value={config.calcMode}
+                                onChange={(e) => setConfig({...config, calcMode: e.target.value as any})}
+                            >
+                                <option value="NUMERIC">Tout Numérique (Notes /20)</option>
+                                <option value="LETTER">Tout Cotation (Cotes A-E)</option>
+                                <option value="COLOR">Tout Colorimétrique</option>
+                                <option value="HYBRID">Hybride (Note + Cote + Couleur)</option>
+                                <option value="HYBRID_NUM_COLOR">Note + Couleur</option>
+                                <option value="HYBRID_NUM_LETTER">Hybride : Numérique + Cote</option>
+                                <option value="HYBRID_LETTER_COLOR">Hybride : Cote + Couleur</option>
+                                <option value="ALPHA">Mode Alpha (Correspondance Note/Cote)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {config.periodType !== 'SEQUENCE' && (
+                        <div className="bg-white p-5 rounded-[24px] border border-gray-100 shadow-sm space-y-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Colonnes de Période</p>
+                            <ConfigSwitch label="Afficher les séquences (EVAL 1, 2...)" checked={config.showSubPeriods} onChange={(v) => setConfig({...config, showSubPeriods: v})} />
+                            <ConfigSwitch label="Afficher Moyenne Période" checked={config.showPeriodSummary} onChange={(v) => setConfig({...config, showPeriodSummary: v})} />
+                        </div>
+                    )}
+
+                  {config.calcMode === 'HYBRID' && (
+                    <div className="bg-white p-5 rounded-[24px] border border-gray-100 shadow-sm space-y-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Paramètres Hybride</p>
+                        <ConfigSwitch label="Afficher Notes Numériques" checked={config.hybridConfig.showNumeric} onChange={(v) => setConfig({...config, hybridConfig: {...config.hybridConfig, showNumeric: v}})} />
+                        <ConfigSwitch label="Afficher Cotes (A+...)" checked={config.hybridConfig.showLetter} onChange={(v) => setConfig({...config, hybridConfig: {...config.hybridConfig, showLetter: v}})} />
+                        <ConfigSwitch label="Afficher Couleurs" checked={config.hybridConfig.showColors} onChange={(v) => setConfig({...config, hybridConfig: {...config.hybridConfig, showColors: v}})} />
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Accordion B: En-tête */}
               <AccordionHeader id="B" title="En-tête & Bloc Institutionnel" icon={School} />
               {openAccordions.includes('B') && (
-                <div className="p-8 space-y-6 bg-gray-50/30 animate-in fade-in duration-500">
-                  <ConfigSwitch
-                    label="En-tête Ministériel (Bilingue)"
-                    checked={config.showMinisterialHeader}
-                    onChange={(v) => setConfig({...config, showMinisterialHeader: v})}
-                  />
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-4 pt-4 border-t border-gray-100">
-                    <ConfigSwitch label="Nom Établissement" checked={config.schoolInfo.name} onChange={(v) => setConfig({...config, schoolInfo: {...config.schoolInfo, name: v}})} />
-                    <ConfigSwitch label="Sigle / Abréviation" checked={config.schoolInfo.sigle} onChange={(v) => setConfig({...config, schoolInfo: {...config.schoolInfo, sigle: v}})} />
-                    <ConfigSwitch label="Devise de l'école" checked={config.schoolInfo.devise} onChange={(v) => setConfig({...config, schoolInfo: {...config.schoolInfo, devise: v}})} />
-                    <ConfigSwitch label="Coordonnées" checked={config.schoolInfo.contacts} onChange={(v) => setConfig({...config, schoolInfo: {...config.schoolInfo, contacts: v}})} />
-                    <ConfigSwitch label="Arrêté d'ouverture" checked={config.schoolInfo.arrete} onChange={(v) => setConfig({...config, schoolInfo: {...config.schoolInfo, arrete: v}})} />
+                <div className="p-8 space-y-8 bg-gray-50/30 animate-in fade-in duration-500">
+                  <div className="flex justify-between items-center bg-white p-6 rounded-[24px] border border-gray-100 shadow-sm">
+                    <span className="text-[10px] font-black uppercase text-gray-400">En-tête Ministériel (Bilingue)</span>
+                    <button
+                        onClick={() => setConfig({...config, showMinisterialHeader: !config.showMinisterialHeader})}
+                        className={clsx("w-12 h-6 rounded-full relative transition-all", config.showMinisterialHeader ? "bg-accent" : "bg-gray-200")}
+                    >
+                        <div className={clsx("absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all", config.showMinisterialHeader ? "left-7" : "left-1")} />
+                    </button>
                   </div>
 
-                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                  <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm space-y-6">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-2">Marges de sécurité (mm)</p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gray-50 p-5 rounded-2xl flex justify-between items-center">
+                            <span className="text-[9px] font-black text-gray-400">HAUT</span>
+                            <input type="number" className="w-12 text-right bg-transparent font-black text-black" value={config.margins.top} onChange={(e) => setConfig({...config, margins: {...config.margins, top: parseInt(e.target.value)}})} />
+                        </div>
+                        <div className="bg-gray-50 p-5 rounded-2xl flex justify-between items-center">
+                            <span className="text-[9px] font-black text-gray-400">BAS</span>
+                            <input type="number" className="w-12 text-right bg-transparent font-black text-black" value={config.margins.bottom} onChange={(e) => setConfig({...config, margins: {...config.margins, bottom: parseInt(e.target.value)}})} />
+                        </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm space-y-6">
+                    <div className="grid grid-cols-2 gap-x-12 gap-y-6">
+                        <ConfigSwitch label="Nom Établissement" checked={config.schoolInfo.name} onChange={(v) => setConfig({...config, schoolInfo: {...config.schoolInfo, name: v}})} />
+                        <ConfigSwitch label="Sigle / Abréviation" checked={config.schoolInfo.sigle} onChange={(v) => setConfig({...config, schoolInfo: {...config.schoolInfo, sigle: v}})} />
+                        <ConfigSwitch label="Devise de l'école" checked={config.schoolInfo.devise} onChange={(v) => setConfig({...config, schoolInfo: {...config.schoolInfo, devise: v}})} />
+                        <ConfigSwitch label="Coordonnées" checked={config.schoolInfo.contacts} onChange={(v) => setConfig({...config, schoolInfo: {...config.schoolInfo, contacts: v}})} />
+                        <ConfigSwitch label="Arrêté d'ouverture" checked={config.schoolInfo.arrete} onChange={(v) => setConfig({...config, schoolInfo: {...config.schoolInfo, arrete: v}})} />
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm space-y-6">
                     <ConfigSwitch label="Logo Officiel" checked={config.schoolInfo.logo} onChange={(v) => setConfig({...config, schoolInfo: {...config.schoolInfo, logo: v}})} />
                     {config.schoolInfo.logo && (
-                        <div className="flex bg-gray-100 p-1 rounded-xl ml-8">
+                        <div className="flex bg-gray-50 p-2 rounded-2xl">
                             {['LEFT', 'CENTER_WATERMARK', 'RIGHT'].map(pos => (
                                 <button
                                     key={pos}
                                     onClick={() => setConfig({...config, schoolInfo: {...config.schoolInfo, logoPosition: pos as any}})}
                                     className={clsx(
-                                        "flex-1 py-2 rounded-lg text-[8px] font-black uppercase transition-all",
-                                        config.schoolInfo.logoPosition === pos ? "bg-white text-black shadow-sm" : "text-gray-400"
+                                        "flex-1 py-4 rounded-xl text-[9px] font-black uppercase transition-all",
+                                        config.schoolInfo.logoPosition === pos ? "bg-white text-black shadow-lg scale-[1.02]" : "text-gray-400 hover:text-gray-600"
                                     )}
                                 >
                                     {pos.replace('_', ' ')}
@@ -366,422 +513,172 @@ const BulletinConfigPage: React.FC = () => {
                         <div className="grid grid-cols-2 gap-4 ml-8">
                             <ConfigSwitch label="Moyennes" checked={config.stats.showAverages} onChange={(v) => setConfig({...config, stats: {...config.stats, showAverages: v}})} />
                             <ConfigSwitch label="Max / Min" checked={config.stats.showMaxMin} onChange={(v) => setConfig({...config, stats: {...config.stats, showMaxMin: v}})} />
+                            <ConfigSwitch label="Rang de l'élève" checked={config.stats.showRank} onChange={(v) => setConfig({...config, stats: {...config.stats, showRank: v}})} />
+                            <ConfigSwitch label="Moyenne de Classe" checked={config.stats.showClassAverage} onChange={(v) => setConfig({...config, stats: {...config.stats, showClassAverage: v}})} />
                             <ConfigSwitch label="Taux Réussite" checked={config.stats.showSuccessRate} onChange={(v) => setConfig({...config, stats: {...config.stats, showSuccessRate: v}})} />
                         </div>
                     )}
                     <ConfigSwitch label="Graphiques Analytiques" checked={config.stats.showCharts} onChange={(v) => setConfig({...config, stats: {...config.stats, showCharts: v}})} />
-                    {config.stats.showCharts && (
-                        <div className="flex gap-4 ml-8">
-                             <button
-                                onClick={() => setConfig({...config, stats: {...config.stats, chartType: 'BAR'}})}
-                                className={clsx("flex-1 p-3 rounded-xl border text-[8px] font-black uppercase transition-all", config.stats.chartType === 'BAR' ? "bg-black text-white" : "bg-white text-gray-400")}
-                            >Bâtons</button>
-                            <button
-                                onClick={() => setConfig({...config, stats: {...config.stats, chartType: 'RADAR'}})}
-                                className={clsx("flex-1 p-3 rounded-xl border text-[8px] font-black uppercase transition-all", config.stats.chartType === 'RADAR' ? "bg-black text-white" : "bg-white text-gray-400")}
-                            >Radar</button>
-                        </div>
-                    )}
-                </div>
-              )}
-
-              {/* Accordion E: Bas de page */}
-              <AccordionHeader id="E" title="Bas de page & Décisions" icon={CheckSquare} />
-              {openAccordions.includes('E') && (
-                <div className="p-8 space-y-6 bg-gray-50/30">
-                    <ConfigSwitch label="Appréciations Enseignants" checked={config.footer.showAppreciations} onChange={(v) => setConfig({...config, footer: {...config.footer, showAppreciations: v}})} />
-                    <ConfigSwitch label="Tableau de Discipline" checked={config.footer.showDiscipline} onChange={(v) => setConfig({...config, footer: {...config.footer, showDiscipline: v}})} />
-                    {config.footer.showDiscipline && (
-                        <div className="grid grid-cols-2 gap-4 ml-8">
-                            <ConfigSwitch label="Absences" checked={config.footer.showAbsences} onChange={(v) => setConfig({...config, footer: {...config.footer, showAbsences: v}})} />
-                            <ConfigSwitch label="Conduite / Sanctions" checked={config.footer.showConduct} onChange={(v) => setConfig({...config, footer: {...config.footer, showConduct: v}})} />
-                        </div>
-                    )}
-                    <ConfigSwitch label="Décisions du Conseil" checked={config.footer.showDecisions} onChange={(v) => setConfig({...config, footer: {...config.footer, showDecisions: v}})} />
-
-                    <div className="pt-4 border-t border-gray-100 space-y-4">
-                        <label className="text-[10px] font-black uppercase text-gray-400 block">Espaces de Signature</label>
-                        <div className="grid grid-cols-2 gap-3">
-                            <ConfigSwitch label="Parent" checked={config.footer.signatures.parent} onChange={(v) => setConfig({...config, footer: {...config.footer, signatures: {...config.footer.signatures, parent: v}}})} />
-                            <ConfigSwitch label="Enseignant" checked={config.footer.signatures.teacher} onChange={(v) => setConfig({...config, footer: {...config.footer, signatures: {...config.footer.signatures, teacher: v}}})} />
-                            <ConfigSwitch label="Principal" checked={config.footer.signatures.principal} onChange={(v) => setConfig({...config, footer: {...config.footer, signatures: {...config.footer.signatures, principal: v}}})} />
-                            <ConfigSwitch label="Signature Numérisée" checked={config.footer.signatures.useDigitalSign} onChange={(v) => setConfig({...config, footer: {...config.footer, signatures: {...config.footer.signatures, useDigitalSign: v}}})} />
-                        </div>
-                    </div>
                 </div>
               )}
             </div>
-          ) : (
-            <div className="p-8 grid grid-cols-1 gap-6 bg-gray-50/50 flex-1 h-full overflow-y-auto">
-                <div className="flex items-center space-x-3 mb-4">
-                    <Grid size={20} className="text-accent" />
-                    <h3 className="font-black uppercase tracking-tighter text-lg">Maquettes Prédéfinies</h3>
+          </div>
+
+          {/* Templates & Shortcuts */}
+          <div className="lg:col-span-4 space-y-8">
+            <div className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-50">
+                <h3 className="text-xs font-black uppercase tracking-widest mb-6 flex items-center">
+                    <Copy size={16} className="mr-3 text-accent" />
+                    Modèles Prédéfinis
+                </h3>
+                <div className="space-y-4">
+                    {templates.map(t => (
+                        <button
+                            key={t.id}
+                            onClick={() => setConfig(t.config)}
+                            className="w-full text-left p-6 rounded-[30px] border border-gray-100 hover:border-black transition-all group"
+                        >
+                            <p className="text-[10px] font-black uppercase tracking-tight group-hover:text-accent transition-colors">{t.name}</p>
+                            <p className="text-[8px] text-gray-400 mt-1 font-medium leading-relaxed">{t.description}</p>
+                        </button>
+                    ))}
                 </div>
-                {templates.map((tpl) => (
-                    <div
-                        key={tpl.id}
-                        onClick={() => handleApplyTemplate(tpl)}
-                        className="p-8 bg-white border border-gray-100 rounded-[32px] cursor-pointer hover:border-black hover:shadow-2xl transition-all group relative overflow-hidden"
-                    >
-                        <div className="flex items-start justify-between mb-4">
-                            <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:bg-black group-hover:text-white transition-all shadow-inner">
-                                <Layout size={28} />
-                            </div>
-                            <div className="bg-accent/10 text-accent px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest">Premium</div>
-                        </div>
-                        <h4 className="font-black uppercase tracking-tight text-md text-black mb-2">{tpl.name}</h4>
-                        <p className="text-[11px] font-medium text-gray-400 leading-relaxed uppercase tracking-wide">{tpl.description}</p>
-
-                        <div className="absolute right-0 bottom-0 p-8 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all">
-                            <div className="bg-black text-white p-3 rounded-full shadow-xl">
-                                <Eye size={20} />
-                            </div>
-                        </div>
-                    </div>
-                ))}
             </div>
-          )}
 
-          {/* Persistent Action Bar */}
-          <div className="mt-auto p-8 border-t border-gray-100 bg-white sticky bottom-0 shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
-             <div className="flex gap-4 mb-4">
-                <input
-                    type="text"
-                    placeholder="NOMMER CE PROFIL..."
-                    className="flex-1 bg-gray-50 border border-gray-100 px-6 py-4 rounded-[18px] text-xs font-black uppercase tracking-widest outline-none focus:bg-white focus:border-black transition-all"
-                    value={config.profileName}
-                    onChange={(e) => setConfig({...config, profileName: e.target.value})}
-                />
-             </div>
-             <div className="flex gap-4">
-                <button className="flex-1 py-5 bg-black text-white rounded-[20px] font-black uppercase text-xs tracking-[0.2em] shadow-2xl hover:scale-[1.02] transition-all flex items-center justify-center space-x-3">
-                    <Save size={18} />
-                    <span>Sauvegarder</span>
-                </button>
-             </div>
+            {/* Quick Actions */}
+            <div className="bg-black text-white p-8 rounded-[40px] shadow-2xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-accent/20 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-all duration-700" />
+                <h3 className="text-xs font-black uppercase tracking-widest mb-4 relative z-10">Status des Données</h3>
+                <div className="space-y-4 relative z-10">
+                    <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-gray-400 font-bold uppercase tracking-widest">Saisies de notes</span>
+                        <span className="font-black text-green-400 flex items-center"><CheckCircle2 size={12} className="mr-1" /> OK</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-gray-400 font-bold uppercase tracking-widest">Calculs moyennes</span>
+                        <span className="font-black text-green-400 flex items-center"><CheckCircle2 size={12} className="mr-1" /> OK</span>
+                    </div>
+                    <div className="h-px bg-white/10 my-4" />
+                    <button className="w-full py-4 bg-accent hover:bg-white hover:text-black rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] transition-all">
+                        Actualiser le Cockpit
+                    </button>
+                </div>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Right Panel: The Dynamic A4 Preview */}
-        <div className="w-[60%] bg-[#E5E7EB] overflow-auto flex items-center justify-center p-20 custom-scrollbar relative">
-            <div className="absolute top-10 left-1/2 -translate-x-1/2 flex items-center space-x-3 bg-white/50 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500">Preview Temps Réel (Rayonné)</span>
-            </div>
-
-            {/* A4 Paper */}
-            <div
-                className="w-[794px] min-h-[1123px] bg-white shadow-[0_40px_100px_rgba(0,0,0,0.1)] p-[50px] flex flex-col transition-all duration-700 ease-in-out border-2 border-transparent"
-                style={{ borderColor: config.profileName ? '#000' : 'transparent' }}
-            >
-                {/* Accordion B: Header Logic */}
-                <div className={clsx(
-                    "flex justify-between items-start pb-6 mb-8",
-                    config.schoolInfo.logo && config.schoolInfo.logoPosition === 'CENTER_WATERMARK' && "relative"
-                )} style={{ borderBottom: `${config.body.tableBorderWidth} solid black` }}>
-                    {config.showMinisterialHeader && (
-                        <div className="w-1/3 text-[7px] font-black uppercase leading-[1.4] space-y-1">
-                            <p>REPUBLIQUE DU CAMEROUN</p>
-                            <p className="text-gray-400">REPUBLIC OF CAMEROON</p>
-                            <p>Paix - Travail - Patrie</p>
-                            <p className="text-gray-400 italic">Peace - Work - Fatherland</p>
-                        </div>
-                    )}
-
-                    <div className={clsx(
-                        "flex flex-col items-center flex-1 text-center",
-                        config.schoolInfo.logo && config.schoolInfo.logoPosition === 'LEFT' && "order-first",
-                        config.schoolInfo.logo && config.schoolInfo.logoPosition === 'RIGHT' && "order-last"
-                    )}>
-                        {config.schoolInfo.logo && config.schoolInfo.logoPosition !== 'CENTER_WATERMARK' && (
-                            <div className="w-20 h-20 bg-gray-50 rounded-2xl mb-3 flex items-center justify-center border border-gray-100 shadow-inner">
-                                <ImageIcon className="text-gray-200" size={32} />
-                            </div>
-                        )}
-                        {config.schoolInfo.name && (
-                            <h2 className="text-lg font-black uppercase tracking-tighter leading-none mb-1">
-                                {schoolData?.nomFr || "NOM DE L'ÉTABLISSEMENT"}
-                            </h2>
-                        )}
-                        {config.schoolInfo.sigle && <p className="text-[10px] font-black text-accent uppercase tracking-[0.3em] mb-2">{schoolData?.abreviation || "SIGLE"}</p>}
-                        {config.schoolInfo.devise && (
-                            <p className="text-[8px] font-bold italic text-gray-400 uppercase tracking-widest px-4 border-t border-gray-100 pt-2">
-                                "{schoolData?.deviseFr || "Savoir - Travail - Succès"}"
-                            </p>
-                        )}
-                        {config.schoolInfo.arrete && <p className="text-[7px] font-medium text-gray-400 mt-1 uppercase">Arrêté : {schoolData?.arrete || "N° 001/MINESEC/CAB"}</p>}
+      {/* Perimeter Selection Sheet (Overlay) */}
+      {showPerimeterSheet && (
+        <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+                    <div>
+                        <h3 className="text-sm font-black uppercase tracking-widest">Sélectionner {config.selectedPerimeter}</h3>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Choisissez l'élément cible pour la génération</p>
                     </div>
-
-                    {config.showMinisterialHeader && (
-                        <div className="w-1/3 text-[7px] font-black uppercase text-right leading-[1.4] space-y-1">
-                            <p>MINISTERE DES ENSEIGNEMENTS SECONDAIRES</p>
-                            <p className="text-gray-400">MINISTRY OF SECONDARY EDUCATION</p>
-                            <p>DELEGATION REGIONALE DU CENTRE</p>
-                        </div>
-                    )}
-
-                    {config.schoolInfo.logo && config.schoolInfo.logoPosition === 'CENTER_WATERMARK' && (
-                        <div className="absolute inset-0 flex items-center justify-center opacity-[0.05] pointer-events-none scale-150 rotate-[-15deg]">
-                            <ImageIcon size={400} />
-                        </div>
-                    )}
+                    <button onClick={() => setShowPerimeterSheet(false)} className="p-3 hover:bg-white rounded-full transition-all">
+                        <AlertCircle size={20} className="text-gray-400" />
+                    </button>
                 </div>
 
-                {/* Bulletin Title */}
-                <div className="mb-10 text-center">
-                    <div className="inline-block bg-black text-white px-10 py-5 rounded-[20px] shadow-xl">
-                        <h1 className="text-2xl font-black uppercase tracking-[0.4em] mb-1">Bulletin de Notes</h1>
-                        <p className="text-[9px] font-bold uppercase tracking-[0.5em] text-white/50">
-                            {config.periodType} — ANNÉE {selectedYear?.libelleAnneeScolaire || "2024-2025"}
-                        </p>
-                    </div>
-                </div>
-
-                {/* Accordion C: Student Info */}
-                <div className="flex gap-10 mb-12 bg-gray-50/50 p-8 rounded-[32px] border border-gray-100">
-                    {config.body.showStudentPhoto && (
-                        <div className="w-32 h-32 bg-white border-4 border-white shadow-xl rounded-[24px] flex items-center justify-center text-gray-200">
-                            <Users size={48} />
-                        </div>
-                    )}
-                    <div className="flex-1 grid grid-cols-2 gap-10">
-                        <div className="space-y-4">
-                            <div className="space-y-1">
-                                <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Élève</span>
-                                <p className="text-lg font-black uppercase tracking-tight">KOUAMÉ Jean-Luc</p>
-                            </div>
-                            <div className="space-y-1">
-                                <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Matricule</span>
-                                <p className="text-xs font-black">SCH24-00159</p>
-                            </div>
-                        </div>
-                        <div className="space-y-4">
-                            <div className="space-y-1">
-                                <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Classe / Effectif</span>
-                                <p className="text-lg font-black uppercase tracking-tight">6ème ALFA — 42 Élèves</p>
-                            </div>
-                            {config.body.showMainTeacher && (
-                                <div className="space-y-1">
-                                    <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Prof Principal</span>
-                                    <p className="text-xs font-black uppercase">M. NJIPDI Armand</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Accordion C: Grades Table */}
-                <div className="flex-1 mb-10 overflow-hidden">
-                    <table
-                        className="w-full border-collapse"
-                        style={{ borderColor: config.body.tableBorderColor }}
-                    >
-                        <thead>
-                            <tr className="bg-black text-white">
-                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-left" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}` }}>Matières / Compétences</th>
-                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-center w-24" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}` }}>Note /20</th>
-                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-center w-16" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}` }}>Coef</th>
-                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-center w-24" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}` }}>Points</th>
-                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-left" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}` }}>Appréciations</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {[
-                                { m: "Mathématiques", n: 14.5, c: 5 },
-                                { m: "Langue Française", n: 9.25, c: 4 },
-                                { m: "Histoire-Géo", n: 12.0, c: 2 }
-                            ].map((row, i) => (
-                                <React.Fragment key={i}>
-                                    <tr className={clsx(i % 2 === 0 ? "bg-white" : "bg-gray-50")}>
-                                        <td className="p-4" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}` }}>
-                                            <p className="text-[11px] font-black uppercase mb-1">{row.m}</p>
-                                            {config.body.showSubjectTeachers && <p className="text-[8px] font-bold text-gray-400 uppercase">M. Professeur {i+1}</p>}
-                                        </td>
-                                        <td className="p-4 text-center text-sm font-black" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}`, color: row.n >= config.body.passingGrade ? config.body.successColor : config.body.failColor }}>
-                                            {row.n.toFixed(2)}
-                                        </td>
-                                        <td className="p-4 text-center font-bold text-xs" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}` }}>{row.c}</td>
-                                        <td className="p-4 text-center font-black" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}` }}>{(row.n * row.c).toFixed(1)}</td>
-                                        <td className="p-4" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}` }}>
-                                            <p className="text-[9px] font-bold uppercase">{row.n >= 12 ? "Très Satisfaisant" : "À renforcer"}</p>
-                                        </td>
-                                    </tr>
-                                    {config.calcMode === 'HYBRID' && (
-                                        <tr>
-                                            <td colSpan={5} className="p-0" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}` }}>
-                                                <div className="flex bg-gray-100/50 p-2 gap-2">
-                                                    {config.body.apcMode === 'BLOCKS' ? (
-                                                        <>
-                                                            <div className="flex-1 h-3 bg-green-500 rounded-full" />
-                                                            <div className="flex-1 h-3 bg-green-200 rounded-full" />
-                                                            <div className="flex-1 h-3 bg-gray-200 rounded-full" />
-                                                        </>
-                                                    ) : (
-                                                        <p className="text-[7px] font-bold text-accent px-2 uppercase tracking-widest italic">
-                                                            Compétence transversale {i+1} : Acquisition en cours de validation
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
+                <div className="p-8 max-h-[500px] overflow-y-auto custom-scrollbar">
+                    {config.selectedPerimeter === 'SALLE' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {classes.flatMap(c => (c.salles || c.Salles || []).map((s: any) => (
+                                <button
+                                    key={s.idSalle}
+                                    onClick={() => {
+                                        setConfig({...config, selectedId: s.idSalle});
+                                        setShowPerimeterSheet(false);
+                                    }}
+                                    className={clsx(
+                                        "p-5 rounded-2xl border-2 text-left transition-all group",
+                                        config.selectedId === s.idSalle ? "border-black bg-black text-white" : "border-gray-100 bg-white hover:border-gray-300"
                                     )}
-                                </React.Fragment>
+                                >
+                                    <p className="text-[10px] font-black uppercase tracking-tight">{s.nomSalle}</p>
+                                    <p className={clsx("text-[8px] mt-1 uppercase font-bold tracking-widest", config.selectedId === s.idSalle ? "text-white/50" : "text-gray-400")}>
+                                        Effectif: {s.effectif || 0} Élèves
+                                    </p>
+                                </button>
+                            )))}
+                        </div>
+                    )}
+
+                    {config.selectedPerimeter === 'CLASSE' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {classes.map(c => (
+                                <button
+                                    key={c.idClasse}
+                                    onClick={() => {
+                                        setConfig({...config, selectedId: c.idClasse});
+                                        setShowPerimeterSheet(false);
+                                    }}
+                                    className={clsx(
+                                        "p-5 rounded-2xl border-2 text-left transition-all",
+                                        config.selectedId === c.idClasse ? "border-black bg-black text-white" : "border-gray-100 bg-white hover:border-gray-300"
+                                    )}
+                                >
+                                    <p className="text-[10px] font-black uppercase tracking-tight">{c.libelleClasseFr}</p>
+                                    <p className={clsx("text-[8px] mt-1 uppercase font-bold tracking-widest", config.selectedId === c.idClasse ? "text-white/50" : "text-gray-400")}>
+                                        Total: {(c.salles || c.Salles || []).length} Salles
+                                    </p>
+                                </button>
                             ))}
-                        </tbody>
-                        <tfoot className="bg-gray-100">
-                            <tr>
-                                <td className="p-4 font-black text-xs uppercase text-right" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}` }}>Moyenne Générale</td>
-                                <td className="p-4 text-center font-black text-lg" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}` }}>11.91</td>
-                                <td className="p-4 text-center font-bold" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}` }}>11</td>
-                                <td className="p-4 text-center font-black" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}` }}>131.0</td>
-                                <td className="p-4 font-black text-xs uppercase text-accent" style={{ border: `${config.body.tableBorderWidth} solid ${config.body.tableBorderColor}` }}>Passable</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-
-                {/* Accordion D: Stats & Charts */}
-                <div className="grid grid-cols-2 gap-10 mb-10">
-                    {config.stats.showGlobalStats && (
-                        <div className="p-6 border-2 border-black rounded-[24px] space-y-4">
-                            <h4 className="text-[10px] font-black uppercase underline text-center mb-4">Profil de la Classe</h4>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="text-center">
-                                    <p className="text-[8px] font-black text-gray-400 uppercase">Min / Max</p>
-                                    <p className="text-xs font-black">04.50 / 18.25</p>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-[8px] font-black text-gray-400 uppercase">Rang</p>
-                                    <p className="text-xs font-black">12ème / 42</p>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-[8px] font-black text-gray-400 uppercase">Moyenne Classe</p>
-                                    <p className="text-xs font-black">10.45</p>
-                                </div>
-                                {config.stats.showSuccessRate && (
-                                    <div className="text-center">
-                                        <p className="text-[8px] font-black text-gray-400 uppercase">Taux Réussite</p>
-                                        <p className="text-xs font-black">64.28 %</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                    {config.stats.showCharts && (
-                        <div className="flex items-center justify-center p-6 bg-gray-50 rounded-[24px] border-2 border-dashed border-gray-200">
-                            <div className="text-center opacity-30">
-                                {config.stats.chartType === 'BAR' ? <BarChart3 size={40} className="mx-auto mb-2" /> : <Zap size={40} className="mx-auto mb-2" />}
-                                <p className="text-[8px] font-black uppercase">{config.stats.chartType} CHART AREA</p>
-                            </div>
                         </div>
                     )}
                 </div>
 
-                {/* Accordion E: Discipline & Decisions */}
-                {(config.footer.showDiscipline || config.footer.showDecisions) && (
-                    <div className="grid grid-cols-2 gap-10 mb-10">
-                        {config.footer.showDiscipline && (
-                            <div className="space-y-4">
-                                <h4 className="text-[10px] font-black uppercase underline">Discipline / Conduite</h4>
-                                <table className="w-full text-[9px] font-bold border-collapse border border-gray-200">
-                                    <tbody>
-                                        {config.footer.showAbsences && (
-                                            <>
-                                                <tr>
-                                                    <td className="p-2 border border-gray-200 uppercase">Absences Justifiées</td>
-                                                    <td className="p-2 border border-gray-200 text-center">02h</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="p-2 border border-gray-200 uppercase">Absences Non Justifiées</td>
-                                                    <td className="p-2 border border-gray-200 text-center">04h</td>
-                                                </tr>
-                                            </>
-                                        )}
-                                        {config.footer.showConduct && (
-                                            <>
-                                                <tr>
-                                                    <td className="p-2 border border-gray-200 uppercase">Heures de Colle</td>
-                                                    <td className="p-2 border border-gray-200 text-center">00h</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="p-2 border border-gray-200 uppercase">Avertissements</td>
-                                                    <td className="p-2 border border-gray-200 text-center">Néant</td>
-                                                </tr>
-                                            </>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                        {config.footer.showDecisions && (
-                            <div className="space-y-4">
-                                <h4 className="text-[10px] font-black uppercase underline">Décisions du Conseil</h4>
-                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex flex-wrap gap-2">
-                                    <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[8px] font-black uppercase">Félicitations</div>
-                                    <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-[8px] font-black uppercase">Tableau d'Honneur</div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Accordion E: Footer */}
-                <div className="grid grid-cols-3 gap-8 mt-auto">
-                    {config.footer.signatures.parent && (
-                        <div className="p-4 border-2 border-black rounded-[20px] min-h-[120px] flex flex-col items-center">
-                            <p className="text-[9px] font-black uppercase underline mb-4">Visa du Parent</p>
-                        </div>
-                    )}
-                    {config.footer.signatures.teacher && (
-                        <div className="p-4 border-2 border-black rounded-[20px] min-h-[120px] flex flex-col items-center">
-                            <p className="text-[9px] font-black uppercase underline mb-4">Professeur Principal</p>
-                        </div>
-                    )}
-                    {config.footer.signatures.principal && (
-                        <div className="p-4 border-2 border-black rounded-[20px] min-h-[120px] flex flex-col items-center bg-gray-50 relative">
-                            <p className="text-[9px] font-black uppercase underline mb-4">Le Chef d'Établissement</p>
-                            <div className="opacity-[0.05] mt-2">
-                                <Signature size={48} />
-                            </div>
-                            {config.footer.signatures.useDigitalSign && (
-                                <div className="absolute bottom-4 text-[8px] font-black uppercase text-red-600 border border-red-600 px-2 py-1 rotate-[-10deg]">
-                                    Signé numériquement
-                                </div>
-                            )}
-                        </div>
-                    )}
+                <div className="p-8 bg-gray-50/50 border-t border-gray-50 flex justify-end">
+                    <button
+                        onClick={() => setShowPerimeterSheet(false)}
+                        className="px-8 py-4 bg-black text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
+                    >Fermer</button>
                 </div>
             </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
-const ConfigSwitch: React.FC<{ label: string, checked: boolean, onChange: (v: boolean) => void }> = ({ label, checked, onChange }) => (
-    <div className="flex items-center justify-between group cursor-pointer" onClick={() => onChange(!checked)}>
-        <span className="text-[11px] font-bold uppercase tracking-tight text-gray-600 group-hover:text-black transition-colors">{label}</span>
-        <div className={clsx(
-            "w-10 h-5 rounded-full relative transition-all duration-300",
-            checked ? "bg-black shadow-[0_0_10px_rgba(0,0,0,0.2)]" : "bg-gray-200"
-        )}>
-            <div className={clsx(
-                "w-3 h-3 bg-white rounded-full absolute top-1 transition-all duration-300",
-                checked ? "right-1" : "left-1"
-            )} />
+const AccordionHeader: React.FC<{ id: string, title: string, icon: any }> = ({ id, title, icon: Icon }) => (
+    <div className="p-8 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-all border-b border-gray-50">
+        <div className="flex items-center space-x-4">
+            <div className="w-10 h-10 bg-black text-white rounded-xl flex items-center justify-center shadow-lg">
+                <Icon size={20} />
+            </div>
+            <h3 className="text-sm font-black uppercase tracking-widest text-black">{title}</h3>
         </div>
     </div>
 );
 
+const ConfigSwitch: React.FC<{ label: string, checked: boolean, onChange: (v: boolean) => void }> = ({ label, checked, onChange }) => (
+    <button
+        onClick={() => onChange(!checked)}
+        className="flex justify-between items-center w-full group"
+    >
+        <span className={clsx("text-[10px] font-black uppercase tracking-widest transition-all", checked ? "text-black" : "text-gray-400")}>{label}</span>
+        <div className={clsx(
+            "w-12 h-6 rounded-full relative transition-all",
+            checked ? "bg-accent" : "bg-gray-200"
+        )}>
+            <div className={clsx(
+                "absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all",
+                checked ? "left-7" : "left-1"
+            )} />
+        </div>
+    </button>
+);
+
 const ColorPicker: React.FC<{ label: string, color: string, onChange: (c: string) => void }> = ({ label, color, onChange }) => (
-    <div className="flex items-center space-x-3">
-        <input
-            type="color"
-            value={color}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-8 h-8 rounded-lg cursor-pointer overflow-hidden border-none p-0"
-        />
-        <span className="text-[10px] font-black uppercase text-gray-500">{label}</span>
+    <div className="space-y-2">
+        <label className="text-[8px] font-black uppercase text-gray-400 ml-1">{label}</label>
+        <div className="flex items-center space-x-3 bg-gray-50 p-2 rounded-xl">
+            <input type="color" value={color} onChange={(e) => onChange(e.target.value)} className="w-8 h-8 rounded-lg cursor-pointer border-none" />
+            <span className="text-[10px] font-black uppercase text-gray-400">{color}</span>
+        </div>
     </div>
 );
 

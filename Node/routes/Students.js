@@ -9,6 +9,8 @@ router.post("/register-enroll", verifyToken, checkPermission("REGISTER_STUDENT")
 router.get("/room/:idAnneeScolaire/:idSalle", verifyToken, controller.getStudentsByRoom);
 router.get("/search/:idAnneeScolaire", verifyToken, controller.searchStudents);
 router.get("/all/:idAnneeScolaire", verifyToken, controller.getStudentsBySchoolYear);
+router.get("/global/search", verifyToken, controller.globalSearchStudents);
+router.get("/:idEleve", verifyToken, controller.getStudentById);
 
 router.put("/:idEleve", verifyToken, controller.updateStudent);
 router.delete("/enrollment/:idEleve/:idAnneeScolaire", verifyToken, controller.deleteEnrollment);

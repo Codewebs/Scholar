@@ -129,7 +129,8 @@ data class SchoolInfo(
     val name: String,
     val nameEn: String? = null,
     val ministry: String?,
-    val motto: String? = "Discipline - Travail - Succès",
+    val motto: String? = null,
+    val devise: String? = null,
     val address: String?,
     val bp: String?,
     val phones: String?,
@@ -150,10 +151,11 @@ data class StudentReceiptInfo(
     val matricule: String,
     val fullName: String,
     val classLabel: String,
-    val cycleLabel: String?,
+    val cycleLabel: String? = null,
     val dateNaissance: String? = null,
     val lieuNaissance: String? = null,
-    val sexe: String? = null
+    val sexe: String? = null,
+    val redoublant: String? = null
 )
 
 data class FinancialReceiptDetail(
@@ -165,8 +167,13 @@ data class FinancialReceiptDetail(
     val remaining: Int,
     val penalties: Int = 0,
     val printedBy: String = "ADMINISTRATEUR",
-    val todayBreakdown: List<FeePaymentDetail> = emptyList(),
+    val todayBreakdown: List<FeeBreakdownDetail> = emptyList(),
     val fullHistory: List<FeeHistoryDetail> = emptyList()
+)
+
+data class FeeBreakdownDetail(
+    val libelle: String,
+    val montantAlloue: Int
 )
 
 data class FeeHistoryDetail(
@@ -222,6 +229,7 @@ data class PaiementFraisGlobalEntity(
     val referenceTransaction: String?,
     val idEleve: Long,
     val createdAt: String,
+    val annule: Boolean = false,
     val Eleve: SimpleEleve? = null
 )
 

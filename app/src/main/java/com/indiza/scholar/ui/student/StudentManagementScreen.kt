@@ -186,7 +186,7 @@ fun StudentManagementScreen(
                         ExposedDropdownMenu(expanded = expandedSalle, onDismissRequest = { expandedSalle = false }) {
                             DropdownMenuItem(text = { Text("Toutes les salles") }, onClick = { selectedSalleName = "Toutes les salles"; expandedSalle = false })
                             salles.filter { it.classeLabel == selectedClasseName || selectedClasseName == "Toutes les classes" }.forEach { salle ->
-                                DropdownMenuItem(text = { Text(salle.nomSalle) }, onClick = { selectedSalleName = salle.nomSalle; expandedSalle = false })
+                                DropdownMenuItem(text = { Text("${salle.classeLabel} ${salle.nomSalle}") }, onClick = { selectedSalleName = salle.nomSalle; expandedSalle = false })
                             }
                         }
                     }
@@ -343,7 +343,7 @@ fun StudentTableLayout(eleves: List<EleveUiModel>, onStudentClick: (EleveUiModel
 
                     // Cellule Classe
                     Text(
-                        text = eleve.classeLabel,
+                        text = "${eleve.classeLabel} ${eleve.salleLabel ?: ""}",
                         modifier = Modifier.width(classeWidth),
                         color = MaterialTheme.colorScheme.secondary,
                         textAlign = TextAlign.Center
@@ -458,14 +458,29 @@ fun StudentActionBottomSheet(
             if (hasPrintPerm) {
                 ActionItem(
                     icon = Icons.Default.Print,
-                    label = "Ré-imprimer le reçu d'inscription",
+                    label = "Fiche d'Inscription (Sans finance)",
                     onClick = {
-                        android.util.Log.d("StudentAction", "👉 Action: Ré-imprimer reçu")
-                        viewModel.getReceiptData(student.idEleve, idAnneeScolaire) { data ->
+                        android.util.Log.d("StudentAction", "👉 Action: Imprimer fiche inscription")
+                        viewModel.getReceiptData(student.idEleve, idAnneeScolaire, isSimple = true) { data ->
                             if (data != null) {
                                 com.indiza.scholar.utils.ReceiptUtils.generateAndOpenRegistrationReceipt(context, data)
                             } else {
-                                Toast.makeText(context, "Erreur lors de la récupération des données du reçu.", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Erreur lors de la récupération de la fiche.", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+                )
+                
+                ActionItem(
+                    icon = Icons.Default.Print,
+                    label = "Reçu de Paiement (Complet)",
+                    onClick = {
+                        android.util.Log.d("StudentAction", "👉 Action: Imprimer reçu paiement")
+                        viewModel.getReceiptData(student.idEleve, idAnneeScolaire, isSimple = false) { data ->
+                            if (data != null) {
+                                com.indiza.scholar.utils.ReceiptUtils.generateAndOpenRegistrationReceipt(context, data)
+                            } else {
+                                Toast.makeText(context, "Erreur lors de la récupération du reçu.", Toast.LENGTH_LONG).show()
                             }
                         }
                     }
@@ -499,9 +514,9 @@ fun StudentActionBottomSheet(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.deleteEnrollment(student.idEleve, idAnneeScolaire) { success ->
+                        viewModel.deleteEnrollment(student.idEleve, idAnneeScolaire) { success, error ->
                             if (success) onDismiss()
-                            else Toast.makeText(context, "Erreur lors de la suppression.", Toast.LENGTH_LONG).show()
+                            else Toast.makeText(context, error ?: "Erreur lors de la suppression.", Toast.LENGTH_LONG).show()
                         }
                         showDeleteConfirm = false
                     },

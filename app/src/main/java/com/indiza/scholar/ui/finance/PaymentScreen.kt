@@ -166,12 +166,15 @@ fun PaymentScreen(
                 if (selectedEleve != null && !hasExigiblesConfigured) {
                     Text("Frais exigibles non configurés", color = Color.Red, fontSize = 10.sp, modifier = Modifier.padding(bottom = 4.dp))
                 }
+                
+                val isExigibleSolded = selectedEleve?.isSolded == true
+                
                 ExtendedFloatingActionButton(
-                    onClick = { if (selectedEleve != null && hasExigiblesConfigured) showPaymentSheet = true },
-                    icon = { Icon(Icons.Default.Payments, null) },
-                    text = { Text("Payer frais exigibles") },
+                    onClick = { if (selectedEleve != null && hasExigiblesConfigured && !isExigibleSolded) showPaymentSheet = true },
+                    icon = { Icon(if (isExigibleSolded) Icons.Default.CheckCircle else Icons.Default.Payments, null) },
+                    text = { Text(if (isExigibleSolded) "Scolarité soldée" else "Payer frais exigibles") },
                     expanded = selectedEleve != null,
-                    containerColor = if (selectedEleve != null && hasExigiblesConfigured) Color(0xFF1ABC9C) else Color.Gray,
+                    containerColor = if (selectedEleve != null && hasExigiblesConfigured && !isExigibleSolded) Color(0xFF1ABC9C) else Color.Gray,
                     contentColor = Color.White,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -329,10 +332,12 @@ fun PaymentBottomSheet(
     val paymentState by viewModel.paymentState.collectAsState()
     val lastPaymentId by viewModel.lastPaymentId.collectAsState()
     val details by viewModel.studentPaymentDetails.collectAsState()
+    val transactions by viewModel.studentTransactions.collectAsState()
 
     LaunchedEffect(eleve.idEleve) {
         if (isPeriscolaire) viewModel.loadStudentPeriscolaireDetails(eleve.idEleve, idAnneeScolaire)
         else viewModel.loadStudentPaymentDetails(eleve.idEleve, idAnneeScolaire)
+        viewModel.loadStudentTransactions(eleve.idEleve, idAnneeScolaire)
         viewModel.resetPaymentState()
     }
 
@@ -423,11 +428,58 @@ fun PaymentBottomSheet(
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
-                enabled = montant.isNotBlank() && (montant.toIntOrNull() ?: 0) > 0 && paymentState !is SaveState.SAVING_REMOTE,
+                enabled = montant.isNotBlank() && (montant.toIntOrNull() ?: 0) > 0 && paymentState !is SaveState.SAVING_REMOTE && (details?.resteGlobal ?: 0) > 0,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2ECC71))
             ) {
                 if (paymentState is SaveState.SAVING_REMOTE) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                 else Text("Valider le versement")
+            }
+
+            // Historique des transactions
+            if (transactions.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Historique des transactions", style = MaterialTheme.typography.titleMedium, color = Color.LightGray)
+                val canCancel = com.indiza.scholar.SessionManager.hasPermission(com.indiza.scholar.model.AcademicPermission.CANCEL_PAYMENT)
+                val validTxIds = transactions.filter { !it.annule }.map { it.idPaiementFraisGlobal }
+                val mostRecentValidId = validTxIds.firstOrNull() // transactions est trié par DESC date
+
+                transactions.forEach { tx ->
+                    val isMostRecentValid = !tx.annule && tx.idPaiementFraisGlobal == mostRecentValidId
+                    
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (tx.annule) Color.Red.copy(alpha = 0.1f) else Color(0xFF2C3E50).copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = if (tx.annule) Icons.Default.Cancel else Icons.Default.ReceiptLong,
+                                contentDescription = null,
+                                tint = if (tx.annule) Color.Red else Color(0xFF1ABC9C)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("${tx.montantTotal} CFA (${tx.modePaiement})", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text(tx.createdAt, color = Color.Gray, fontSize = 10.sp)
+                                if (tx.annule) Text("ANNULÉ", color = Color.Red, fontWeight = FontWeight.Black, fontSize = 10.sp)
+                            }
+                            if (!tx.annule && canCancel) {
+                                IconButton(
+                                    onClick = { viewModel.annulerPaiement(tx.idPaiementFraisGlobal, eleve.idEleve, idAnneeScolaire) },
+                                    enabled = isMostRecentValid
+                                ) {
+                                    Icon(
+                                        Icons.Default.Delete, 
+                                        "Annuler", 
+                                        tint = if (isMostRecentValid) Color.Gray else Color.Gray.copy(alpha = 0.2f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
             }
             
             Spacer(modifier = Modifier.height(32.dp))

@@ -26,6 +26,9 @@ class FinanceViewModel(private val api: ApiService) : ViewModel() {
     private val _studentPaymentDetails = MutableStateFlow<com.indiza.scholar.model.StudentPaymentDetails?>(null)
     val studentPaymentDetails: StateFlow<com.indiza.scholar.model.StudentPaymentDetails?> = _studentPaymentDetails.asStateFlow()
 
+    private val _studentTransactions = MutableStateFlow<List<com.indiza.scholar.model.PaiementFraisGlobalEntity>>(emptyList())
+    val studentTransactions: StateFlow<List<com.indiza.scholar.model.PaiementFraisGlobalEntity>> = _studentTransactions.asStateFlow()
+
     private val _paymentType = MutableStateFlow("EXIGIBLE")
     val paymentType: StateFlow<String> = _paymentType.asStateFlow()
 
@@ -61,6 +64,42 @@ class FinanceViewModel(private val api: ApiService) : ViewModel() {
                     _studentPaymentDetails.value = response.body()
                 }
             } catch (e: Exception) {}
+        }
+    }
+
+    fun loadStudentTransactions(idEleve: Long, idAnneeScolaire: Long) {
+        viewModelScope.launch {
+            try {
+                val response = api.getStudentTransactions(idEleve, idAnneeScolaire)
+                if (response.isSuccessful) {
+                    _studentTransactions.value = response.body() ?: emptyList()
+                }
+            } catch (e: Exception) {}
+        }
+    }
+
+    fun annulerPaiement(idPaiement: Long, idEleve: Long, idAnneeScolaire: Long) {
+        viewModelScope.launch {
+            try {
+                val response = api.annulerPaiement(idPaiement)
+                if (response.isSuccessful) {
+                    // Refresh everything
+                    loadStudentTransactions(idEleve, idAnneeScolaire)
+                    if (_paymentType.value == "EXIGIBLE") loadStudentPaymentDetails(idEleve, idAnneeScolaire)
+                    else loadStudentPeriscolaireDetails(idEleve, idAnneeScolaire)
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    val errorMsg = try {
+                        if (errorBody != null) org.json.JSONObject(errorBody).getString("error")
+                        else "Erreur inconnue"
+                    } catch (e: Exception) {
+                        "Erreur lors de l'annulation"
+                    }
+                    _paymentState.value = SaveState.ERROR(errorMsg)
+                }
+            } catch (e: Exception) {
+                _paymentState.value = SaveState.ERROR(e.localizedMessage ?: "Erreur réseau")
+            }
         }
     }
 

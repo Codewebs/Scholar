@@ -47,6 +47,9 @@ export const financeService = {
   getStudentPeriscolaireDetails: (idEleve: number, idAnneeScolaire: number) =>
     api.get<any>(`/finance/paiements/periscolaires/details/${idEleve}/${idAnneeScolaire}`),
 
+  getStudentTransactions: (idEleve: number, idAnneeScolaire: number) =>
+    api.get<any[]>(`/finance/paiements/transactions/${idEleve}/${idAnneeScolaire}`),
+
   payerFraisExigibles: (payload: any) =>
     api.post('/finance/paiements/exigibles', payload),
 
@@ -55,4 +58,13 @@ export const financeService = {
 
   getRegistrationReceiptData: (idEleve: number, idAnneeScolaire: number) =>
     api.get(`/finance/receipt/registration/${idEleve}/${idAnneeScolaire}`),
+
+  getRegistrationReceiptSimple: (idEleve: number, idAnneeScolaire: number) =>
+    api.get(`/finance/receipt/registration-simple/${idEleve}/${idAnneeScolaire}`),
+
+  annulerPaiement: (idPaiementFraisGlobal: number) =>
+    api.post(`/finance/paiements/annuler/${idPaiementFraisGlobal}`),
+
+  getBilanJournalier: (idAnneeScolaire: number, date?: string) =>
+    api.get(`/finance/reports/bilan/journalier/${idAnneeScolaire}`, { params: { date } }),
 };

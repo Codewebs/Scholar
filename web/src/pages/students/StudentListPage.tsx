@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSchoolYear } from '../../context/SchoolYearContext';
 import { studentService } from '../../api/studentService';
+import { financeService } from '../../api/financeService';
 import { EleveUiModel } from '../../types/student';
 import {
   Search,
@@ -14,10 +15,12 @@ import {
   ChevronRight,
   Download,
   ArrowRightLeft,
-  Printer
+  Printer,
+  FileDown
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Link } from 'react-router-dom';
+import RegistrationReceipt from '../../components/students/RegistrationReceipt';
 
 const StudentListPage: React.FC = () => {
   const { selectedYear } = useSchoolYear();
@@ -27,6 +30,9 @@ const StudentListPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Receipt state
+  const [receiptData, setReceiptData] = useState<any>(null);
+
   // Transfer state
   const [transferringStudent, setTransferringStudent] = useState<EleveUiModel | null>(null);
   const [targetRoom, setTargetRoom] = useState<number>(0);
@@ -34,7 +40,6 @@ const StudentListPage: React.FC = () => {
 
   useEffect(() => {
     if (selectedYear) {
-      console.log("[StudentList] Loading data for Year:", selectedYear.idServeur || selectedYear.idAnneeScolaire);
       loadRooms();
       loadStudents();
     }
@@ -44,9 +49,7 @@ const StudentListPage: React.FC = () => {
     const yId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
     if (!yId) return;
     try {
-      console.log("[StudentList] Fetching rooms for YearID:", yId);
       const res = await studentService.getRooms(yId);
-      console.log("[StudentList] Rooms loaded:", res.data.length);
       setRooms(res.data);
     } catch (error) {
       console.error("[StudentList] Error loading rooms:", error);
@@ -58,11 +61,9 @@ const StudentListPage: React.FC = () => {
     if (!yId) return;
     setLoading(true);
     try {
-      console.log("[StudentList] Fetching students (RoomID:", selectedRoom, ")");
       const res = selectedRoom > 0
         ? await studentService.getStudentsByRoom(yId, selectedRoom)
         : await studentService.getAllStudents(yId);
-      console.log("[StudentList] Students loaded:", res.data.length);
       setStudents(res.data);
     } catch (error) {
       console.error("[StudentList] Error loading students:", error);
@@ -74,15 +75,18 @@ const StudentListPage: React.FC = () => {
   const handleDelete = async (student: EleveUiModel) => {
     const yId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
     if (!yId) return;
-    console.log("[StudentList] Attempting to delete enrollment for student:", student.idEleve);
+
+    if (student.hasGrades || student.hasAnyPayment) {
+        alert("Impossible de retirer cet élève : il possède des notes ou des paiements actifs pour cette année scolaire.");
+        return;
+    }
+
     if (window.confirm(`Êtes-vous sûr de vouloir retirer l'élève ${student.nomComplet} de cette année scolaire ?`)) {
       try {
         await studentService.deleteEnrollment(student.idEleve, yId);
-        console.log("[StudentList] Delete success");
         loadStudents();
-      } catch (error) {
-        console.error("[StudentList] Delete failed:", error);
-        alert("Erreur lors de la suppression de l'inscription");
+      } catch (error: any) {
+        alert(error.response?.data?.error || "Erreur lors de la suppression de l'inscription");
       }
     }
   };
@@ -91,54 +95,115 @@ const StudentListPage: React.FC = () => {
     const yId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
     if (!yId || !transferringStudent || !targetRoom) return;
 
-    console.log("[StudentList] Transferring student:", transferringStudent.idEleve, "to Room:", targetRoom);
-    if (transferringStudent.hasGrades || transferringStudent.hasAnyPayment) {
-        console.warn("[StudentList] Transfer aborted: student has grades or payments");
-        alert("Impossible de transférer l'élève car il possède déjà des notes ou des paiements.");
-        return;
-    }
-
+    setLoading(true);
     try {
-        // Logic: Update student with new salle
         await studentService.updateStudent(transferringStudent.idEleve, {
+            ...transferringStudent,
             idSalle: targetRoom,
             idAnneeScolaire: yId,
-            nom: transferringStudent.nomComplet.split(' ')[0],
-            sexe: transferringStudent.sexe,
-            dateNaissance: transferringStudent.dateNaissance || '',
-            lieuNaissance: transferringStudent.lieuNaissance || '',
+            nom: transferringStudent.nom || transferringStudent.nomComplet.split(' ')[0],
+            prenom: transferringStudent.prenom || transferringStudent.nomComplet.split(' ').slice(1).join(' '),
             nouveau: false
         } as any);
-        console.log("[StudentList] Transfer success");
         setIsTransferModalOpen(false);
         loadStudents();
-    } catch (error) {
+    } catch (error: any) {
         console.error("[StudentList] Transfer failed:", error);
-        alert("Erreur lors du transfert");
+        const apiError = error.response?.data?.error || error.message || "Une erreur inconnue est survenue";
+        alert(`Erreur lors du transfert : ${apiError}`);
+    } finally {
+        setLoading(false);
     }
   };
 
   const handlePrintReceipt = async (student: EleveUiModel) => {
     const yId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
     if (!yId) return;
-    console.log("[StudentList] Fetching receipt data for student:", student.idEleve);
     try {
-        const res = await studentService.getRegistrationReceiptData(student.idEleve, yId);
-        console.log("[StudentList] Receipt data received:", res.data);
-        alert("Génération du reçu (Simulée) : " + JSON.stringify(res.data).substring(0, 100) + "...");
+        const res = await financeService.getRegistrationReceiptSimple(student.idEleve, yId);
+        setReceiptData(res.data);
     } catch (error) {
-        console.error("[StudentList] Error fetching receipt:", error);
-        alert("Erreur lors de la récupération du reçu");
+        alert("Erreur lors de la récupération de la fiche d'inscription");
     }
   };
 
-  const filteredStudents = students.filter(s =>
-    s.nomComplet.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.matricule.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleExportPDF = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const roomLabel = selectedRoom > 0 ? rooms.find(r => r.idServeur === selectedRoom)?.nomSalle : "Tous les élèves";
+
+    const content = `
+      <html>
+        <head>
+          <title>Liste des élèves - ${roomLabel}</title>
+          <style>
+            body { font-family: sans-serif; padding: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid black; padding: 8px; text-align: left; font-size: 10px; }
+            th { background-color: #f2f2f2; text-transform: uppercase; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .header h1 { margin: 0; text-transform: uppercase; font-size: 18px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Liste des élèves - ${selectedYear?.libelleAnneeScolaire}</h1>
+            <p>${roomLabel}</p>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Matricule</th>
+                <th>Nom Complet</th>
+                <th>Sexe</th>
+                <th>Classe / Salle</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredStudents.map(s => `
+                <tr>
+                  <td>${s.matricule}</td>
+                  <td>${s.nomComplet}</td>
+                  <td>${s.sexe}</td>
+                  <td>${s.classeLabel} ${s.salleLabel}</td>
+                  <td>${s.statutInscription}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <script>window.print();</script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(content);
+    printWindow.document.close();
+  };
+
+  const filteredStudents = useMemo(() => {
+    let result = students.filter(s =>
+      s.nomComplet.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.matricule.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Default sort by dateInscription DESC (most recent)
+    result.sort((a, b) => {
+        const dateA = new Date(a.dateInscription || 0).getTime();
+        const dateB = new Date(b.dateInscription || 0).getTime();
+        return dateB - dateA;
+    });
+
+    return result;
+  }, [students, searchQuery]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      {receiptData && (
+          <RegistrationReceipt data={receiptData} onClose={() => setReceiptData(null)} />
+      )}
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -148,9 +213,12 @@ const StudentListPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <button className="flex items-center space-x-2 px-4 py-2 border border-border rounded-sharp hover:bg-gray-50 transition-colors text-[10px] font-black uppercase tracking-widest">
-            <Download size={16} />
-            <span>Exporter PDF</span>
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center space-x-2 px-4 py-2 border border-border rounded-sharp hover:bg-gray-50 transition-colors text-[10px] font-black uppercase tracking-widest"
+          >
+            <FileDown size={16} />
+            <span>Exporter Liste</span>
           </button>
           <Link to="/app/students/register" className="btn-primary flex items-center space-x-2">
             <UserPlus size={18} />
@@ -175,13 +243,15 @@ const StudentListPage: React.FC = () => {
             <div className="relative">
             <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9E9E9E]" size={20} />
             <select
-                className="input-field pl-12 appearance-none cursor-pointer font-bold"
+                className="input-field pl-12 cursor-pointer font-bold"
                 value={selectedRoom}
                 onChange={(e) => setSelectedRoom(Number(e.target.value))}
             >
                 <option value="0">Toutes les classes</option>
                 {rooms.map(room => (
-                <option key={room.idServeur} value={room.idServeur}>{room.nomSalle}</option>
+                    <option key={room.idSalle} value={room.idSalle}>
+                        {room.Classe?.libelleClasseFr} {room.nomSalle}
+                    </option>
                 ))}
             </select>
             </div>
@@ -215,7 +285,7 @@ const StudentListPage: React.FC = () => {
                     <h3 className="font-black text-sm uppercase tracking-tight truncate">{student.nomComplet}</h3>
                     <p className="text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest">{student.matricule}</p>
                     <p className="text-[10px] font-black text-black mt-1 uppercase bg-gray-50 inline-block px-2 py-0.5 rounded-sharp">
-                      {student.salleLabel || student.classeLabel}
+                      {student.classeLabel} {student.salleLabel}
                     </p>
                   </div>
                </div>
@@ -253,9 +323,9 @@ const StudentListPage: React.FC = () => {
                     <button
                       onClick={() => handlePrintReceipt(student)}
                       className="p-2 hover:bg-gray-100 rounded-sharp transition-colors text-[#9E9E9E] hover:text-black"
-                      title="Imprimer Reçu"
+                      title="Fiche d'Inscription"
                     >
-                      <Printer size={16} />
+                      <FileText size={16} />
                     </button>
                     <button
                       onClick={() => handleDelete(student)}
@@ -266,7 +336,7 @@ const StudentListPage: React.FC = () => {
                     </button>
                   </div>
                   <Link
-                    to={`/app/finance/payments?idEleve=${student.idEleve}`}
+                    to={`/app/finance/payments?idEleve=${student.idEleve}&highlight=true`}
                     className="flex items-center text-[10px] font-black uppercase tracking-widest text-black hover:text-accent transition-colors"
                   >
                     <span>Fiche Financière</span>
@@ -290,21 +360,24 @@ const StudentListPage: React.FC = () => {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-[24px] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95">
                   <h2 className="text-2xl font-black uppercase tracking-tighter mb-4">Transfert de Salle</h2>
-                  <p className="text-xs font-black uppercase tracking-widest text-[#9E9E9E] mb-8">
-                      Déplacer {transferringStudent?.nomComplet} vers une autre salle
+                  <p className="text-xs font-black uppercase tracking-widest text-[#9E9E9E] mb-8 leading-relaxed">
+                      Déplacer {transferringStudent?.nomComplet} vers une autre salle.<br/>
+                      <span className="text-red-500 font-bold italic underline">Note :</span> Le transfert n'est possible que si l'élève n'a pas de notes ni de paiements actifs.
                   </p>
 
                   <div className="space-y-6">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">Nouvelle Salle</label>
                         <select
-                            className="input-field appearance-none cursor-pointer font-bold"
+                            className="w-full h-14 px-4 bg-white border border-gray-100 rounded-sharp text-sm font-bold focus:border-black focus:ring-1 focus:ring-black outline-none transition-all cursor-pointer"
                             value={targetRoom}
                             onChange={(e) => setTargetRoom(Number(e.target.value))}
                         >
                             <option value="0">Sélectionner...</option>
                             {rooms.map(r => (
-                                <option key={r.idServeur} value={r.idServeur}>{r.nomSalle}</option>
+                                <option key={r.idSalle} value={r.idSalle}>
+                                    {r.Classe?.libelleClasseFr} {r.nomSalle}
+                                </option>
                             ))}
                         </select>
                       </div>

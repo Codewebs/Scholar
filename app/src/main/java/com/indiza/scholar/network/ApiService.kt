@@ -87,6 +87,9 @@ interface ApiService {
     @GET("finance/receipt/registration/{idEleve}/{idAnneeScolaire}")
     suspend fun getRegistrationReceiptData(@Path("idEleve") idEleve: Long, @Path("idAnneeScolaire") idAnneeScolaire: Long): Response<com.indiza.scholar.model.ReceiptData>
 
+    @GET("finance/receipt/registration-simple/{idEleve}/{idAnneeScolaire}")
+    suspend fun getSimpleRegistrationReceiptData(@Path("idEleve") idEleve: Long, @Path("idAnneeScolaire") idAnneeScolaire: Long): Response<com.indiza.scholar.model.ReceiptData>
+
     // --- System ---
     @GET("system/stats")
     suspend fun getSystemStats(): Response<SystemStats>
@@ -361,6 +364,15 @@ interface ApiService {
         @Path("idEleve") idEleve: Long,
         @Path("idAnneeScolaire") idAnneeScolaire: Long
     ): Response<com.indiza.scholar.model.StudentPaymentDetails>
+
+    @GET("finance/paiements/transactions/{idEleve}/{idAnneeScolaire}")
+    suspend fun getStudentTransactions(
+        @Path("idEleve") idEleve: Long,
+        @Path("idAnneeScolaire") idAnneeScolaire: Long
+    ): Response<List<com.indiza.scholar.model.PaiementFraisGlobalEntity>>
+
+    @POST("finance/paiements/annuler/{idPaiementFraisGlobal}")
+    suspend fun annulerPaiement(@Path("idPaiementFraisGlobal") id: Long): Response<Unit>
 
     // --- Reports & Analytics ---
     @GET("finance/reports/bilan/journalier/{idAnneeScolaire}")

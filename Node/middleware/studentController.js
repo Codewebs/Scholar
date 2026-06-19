@@ -229,40 +229,88 @@ exports.getStudentsBySchoolYear = async (req, res) => {
 
         const result = await Promise.all(inscriptions.map(async (ins) => {
             const idEleve = ins.Eleve.idEleve;
+            const idInscription = ins.idInscription;
             const idClasse = ins.Salle?.Classe?.idClasse;
 
-            // Calcul rapide du statut de paiement exigible
+            const {
+                TarifFraisExigible,
+                PaiementFraisExigible,
+                PaiementFraisGlobal,
+                PaiementFraisPeriscolaire,
+                PaiementTransport,
+                Note
+            } = require("../models");
+
+            // 1. Calcul rapide du statut de paiement exigible
             let isSolded = false;
-            let hasAnyPayment = false;
+            let totalPayeExigible = 0;
+            let totalDuExigible = 0;
 
             if (idClasse) {
-                const { TarifFraisExigible, PaiementFraisExigible, PaiementFraisGlobal } = require("../models");
-                const totalDu = await TarifFraisExigible.sum('montantFraisExigible', {
+                totalDuExigible = await TarifFraisExigible.sum('montantFraisExigible', {
                     where: { idClasse, idAnneeScolaire, supprimer: false }
                 }) || 0;
 
-                const totalPaye = await PaiementFraisExigible.sum('montantAlloue', {
+                totalPayeExigible = await PaiementFraisExigible.sum('montantAlloue', {
+                    where: { annule: false },
                     include: [{
                         model: PaiementFraisGlobal,
                         where: { idEleve, idAnneeScolaire, annule: false }
                     }]
                 }) || 0;
 
-                isSolded = totalDu > 0 && totalPaye >= totalDu;
-                hasAnyPayment = totalPaye > 0;
+                isSolded = totalDuExigible > 0 && totalPayeExigible >= totalDuExigible;
             }
+
+            // 2. Vérification de l'existence de PAIEMENTS ACTIFS (Tous types)
+            const hasAnyPayment = (totalPayeExigible > 0) ||
+                (await PaiementFraisPeriscolaire.count({
+                    where: { annule: false },
+                    include: [{
+                        model: PaiementFraisGlobal,
+                        where: { idEleve, idAnneeScolaire, annule: false }
+                    }]
+                }) > 0) ||
+                (await PaiementTransport.count({
+                    where: { annule: false },
+                    include: [{
+                        model: PaiementFraisGlobal,
+                        where: { idEleve, idAnneeScolaire, annule: false }
+                    }]
+                }) > 0);
+
+            // 3. Vérification de l'existence de NOTES
+            const hasGrades = await Note.count({
+                where: { idInscription, idAnneeScolaire, supprimer: false }
+            }) > 0;
 
             return {
                 idEleve: ins.Eleve.idEleve,
+                idInscription: ins.idInscription,
                 matricule: ins.Eleve.matricule || "N/A",
+                nom: ins.Eleve.nom,
+                prenom: ins.Eleve.prenom,
                 nomComplet: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(),
                 sexe: ins.Eleve.sexe,
                 statutInscription: ins.statut,
                 idClasse: idClasse || 0,
-                classeLabel: ins.Salle ? `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}` : "N/A",
+                idSalle: ins.idSalle,
+                salleLabel: ins.Salle?.nomSalle,
+                classeLabel: ins.Salle ? `${ins.Salle.Classe.libelleClasseFr}` : "N/A",
                 dateInscription: ins.createdAt,
+                dateNaissance: ins.Eleve.dateNaissance,
+                lieuNaissance: ins.Eleve.lieuNaissance,
+                nomPere: ins.Eleve.nomPere,
+                telephonePere: ins.Eleve.telephonePere,
+                nomMere: ins.Eleve.nomMere,
+                telephoneMere: ins.Eleve.telephoneMere,
+                nomTuteur: ins.Eleve.nomTuteur,
+                telephoneTuteur: ins.Eleve.telephoneTuteur,
+                quartier: ins.Eleve.quartier,
+                ancienEtablissement: ins.ancienEtablissement,
                 isSolded,
-                hasAnyPayment
+                hasAnyPayment,
+                hasGrades
             };
         }));
 
@@ -281,6 +329,51 @@ exports.updateStudent = async (req, res) => {
     console.log(`📝 [PUT] /student/${idEleve} - Utilisateur ID: ${userId}, Rôle: ${role}`);
     const t = await sequelize.transaction();
     try {
+        const { Inscription, Note, PaiementFraisGlobal, PaiementFraisExigible, PaiementFraisPeriscolaire, PaiementTransport } = require("../models");
+
+        const currentIns = await Inscription.findOne({
+            where: { idEleve, idAnneeScolaire: data.idAnneeScolaire, supprimer: false }
+        });
+
+        // Si on tente de changer de salle (Transfert)
+        if (currentIns && data.idSalle && parseInt(data.idSalle) !== currentIns.idSalle) {
+            console.log(`🚀 Tentative de transfert: Salle ${currentIns.idSalle} -> ${data.idSalle}`);
+
+            // 1. Vérification des NOTES
+            const gradeCount = await Note.count({
+                where: { idInscription: currentIns.idInscription, supprimer: false },
+                transaction: t
+            });
+
+            if (gradeCount > 0) {
+                throw new Error("Impossible de transférer un élève ayant déjà des notes enregistrées.");
+            }
+
+            // 2. Vérification des PAIEMENTS ACTIFS
+            const hasPayments = (await PaiementFraisExigible.count({
+                where: { annule: false },
+                include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire: data.idAnneeScolaire, annule: false } }],
+                transaction: t
+            }) > 0) || (await PaiementFraisPeriscolaire.count({
+                where: { annule: false },
+                include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire: data.idAnneeScolaire, annule: false } }],
+                transaction: t
+            }) > 0) || (await PaiementTransport.count({
+                where: { annule: false },
+                include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire: data.idAnneeScolaire, annule: false } }],
+                transaction: t
+            }) > 0);
+
+            if (hasPayments) {
+                throw new Error("Impossible de transférer un élève ayant des paiements actifs. Veuillez d'abord annuler ses transactions financières.");
+            }
+
+            await Inscription.update(
+                { idSalle: data.idSalle, ancienEtablissement: data.ancienEtablissement },
+                { where: { idEleve, idAnneeScolaire: data.idAnneeScolaire }, transaction: t }
+            );
+        }
+
         await Eleve.update({
             nom: data.nom,
             prenom: data.prenom,
@@ -296,19 +389,12 @@ exports.updateStudent = async (req, res) => {
             quartier: data.quartier
         }, { where: { idEleve }, transaction: t });
 
-        // Mise à jour de la salle si nécessaire
-        if (data.idSalle && data.idAnneeScolaire) {
-            await Inscription.update(
-                { idSalle: data.idSalle, ancienEtablissement: data.ancienEtablissement },
-                { where: { idEleve, idAnneeScolaire: data.idAnneeScolaire }, transaction: t }
-            );
-        }
-
         await t.commit();
-        res.json({ message: "Élève mis à jour avec succès" });
+        res.json({ message: "Fiche élève mise à jour avec succès" });
     } catch (error) {
         if (t) await t.rollback();
-        res.status(500).json({ error: error.message });
+        console.error("❌ Erreur updateStudent:", error.message);
+        res.status(400).json({ error: error.message });
     }
 };
 
@@ -318,17 +404,118 @@ exports.deleteEnrollment = async (req, res) => {
     const { userId, role } = req.user;
     console.log(`🗑️ [DELETE] /enrollment/${idEleve}/${idAnneeScolaire} - Utilisateur ID: ${userId}, Rôle: ${role}`);
     try {
+        const { Inscription, Note, PaiementFraisGlobal, PaiementFraisExigible, PaiementFraisPeriscolaire, PaiementTransport } = require("../models");
+
+        const ins = await Inscription.findOne({ where: { idEleve, idAnneeScolaire, supprimer: false } });
+        if (!ins) return res.status(404).json({ error: "Inscription introuvable" });
+
+        // 1. Check Grades
+        const gradeCount = await Note.count({ where: { idInscription: ins.idInscription, supprimer: false } });
+        if (gradeCount > 0) return res.status(400).json({ error: "Impossible de supprimer l'inscription: des notes sont déjà enregistrées." });
+
+        // 2. Check Payments
+        const hasPayments = (await PaiementFraisExigible.count({
+            where: { annule: false },
+            include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire, annule: false } }]
+        }) > 0) || (await PaiementFraisPeriscolaire.count({
+            where: { annule: false },
+            include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire, annule: false } }]
+        }) > 0) || (await PaiementTransport.count({
+            where: { annule: false },
+            include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire, annule: false } }]
+        }) > 0);
+
+        if (hasPayments) return res.status(400).json({ error: "Impossible de supprimer l'inscription: des paiements actifs existent." });
+
         // On ne supprime pas physiquement l'élève, juste son inscription pour cette année
-        const result = await Inscription.update(
+        await Inscription.update(
             { supprimer: true, statut: 'DESACTIVE' },
             { where: { idEleve, idAnneeScolaire } }
         );
 
-        if (result[0] > 0) {
-            res.json({ message: "Inscription désactivée avec succès" });
-        } else {
-            res.status(404).json({ error: "Inscription introuvable" });
-        }
+        res.json({ message: "Inscription désactivée avec succès" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 7. RÉCUPÉRER UN ÉLÈVE PAR SON ID
+exports.getStudentById = async (req, res) => {
+    const { idEleve } = req.params;
+    try {
+        const { Inscription, Salle, Classe } = require("../models");
+        const student = await Eleve.findByPk(idEleve, {
+            include: [{
+                model: Inscription,
+                where: { supprimer: false },
+                required: false,
+                include: [{
+                    model: Salle,
+                    include: [{ model: Classe, as: 'Classe' }]
+                }]
+            }]
+        });
+
+        if (!student) return res.status(404).json({ error: "Élève non trouvé." });
+
+        const lastIns = student.Inscriptions && student.Inscriptions.length > 0 ? student.Inscriptions[0] : null;
+
+        res.json({
+            ...student.toJSON(),
+            idSalle: lastIns ? lastIns.idSalle : null,
+            classeLabel: lastIns && lastIns.Salle ? `${lastIns.Salle.Classe.libelleClasseFr}` : null,
+            nomComplet: `${student.nom} ${student.prenom || ""}`.trim()
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 8. RECHERCHE GLOBALE D'ÉLÈVES (AVEC STATUT INSCRIPTION ANNÉE COURANTE)
+exports.globalSearchStudents = async (req, res) => {
+    const { q, idAnneeScolaire } = req.query;
+    try {
+        const { Inscription, Salle, Classe } = require("../models");
+        const students = await Eleve.findAll({
+            where: {
+                [Op.or]: [
+                    { nom: { [Op.like]: `%${q}%` } },
+                    { prenom: { [Op.like]: `%${q}%` } }
+                ],
+                supprimer: false
+            },
+            include: [{
+                model: Inscription,
+                where: { idAnneeScolaire, supprimer: false },
+                required: false,
+                include: [{ model: Salle, include: [{ model: Classe, as: 'Classe' }] }]
+            }],
+            limit: 10
+        });
+
+        const result = students.map(s => {
+            const currentIns = s.Inscriptions && s.Inscriptions.length > 0 ? s.Inscriptions[0] : null;
+            return {
+                idEleve: s.idEleve,
+                nom: s.nom,
+                prenom: s.prenom,
+                nomComplet: `${s.nom} ${s.prenom || ""}`.trim(),
+                sexe: s.sexe,
+                dateNaissance: s.dateNaissance,
+                lieuNaissance: s.lieuNaissance,
+                quartier: s.quartier,
+                nomPere: s.nomPere,
+                telephonePere: s.telephonePere,
+                nomMere: s.nomMere,
+                telephoneMere: s.telephoneMere,
+                nomTuteur: s.nomTuteur,
+                telephoneTuteur: s.telephoneTuteur,
+                isInscribed: !!currentIns,
+                classeLabel: currentIns && currentIns.Salle ? `${currentIns.Salle.Classe.libelleClasseFr} ${currentIns.Salle.nomSalle}` : null
+            };
+        });
+
+        res.json(result);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

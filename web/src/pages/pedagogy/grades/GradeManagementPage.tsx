@@ -99,6 +99,7 @@ const GradeManagementPage: React.FC = () => {
     const [completionPercentage, setCompletionPercentage] = useState(0);
 
     const [loading, setLoading] = useState(false);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     // Sorting State
     const [salleSort, setSalleSort] = useState<{ field: SalleSortField, order: SortOrder }>({ field: 'NAME', order: 'ASC' });
@@ -276,19 +277,30 @@ const GradeManagementPage: React.FC = () => {
     }, [selectedSalle, selectedSequence, selectedMatiere, yearId]);
 
     const loadNotesForProgress = async () => {
-        console.log("🔍 [Progress] Fetching notes for progress calculation...");
+        console.log("🔍 [Progress] Fetching data for progress calculation...");
         try {
-            const res = await gradeService.getNotesByMatiere(
-                selectedSalle!.idSalle,
-                selectedMatiere!.idMatiere,
-                selectedSequence!.idSousPeriode,
-                yearId!
-            );
-            console.log(`📥 [Progress] ${res.data.length} notes fetched for room ${selectedSalle?.nomSalle}`);
+            const [notesRes, compsRes] = await Promise.all([
+                gradeService.getNotesByMatiere(
+                    selectedSalle!.idSalle,
+                    selectedMatiere!.idMatiere,
+                    selectedSequence!.idSousPeriode,
+                    yearId!
+                ),
+                matiereService.getRepartitionCompetences({
+                    repartitionMatiereId: selectedMatiere!.idMatiere,
+                    sequenceId: selectedSequence!.idSousPeriode
+                })
+            ]);
+
+            const currentNotes = notesRes.data;
+            const currentComps = compsRes.data;
+            setCompetences(currentComps);
+
+            console.log(`📥 [Progress] ${currentNotes.length} notes and ${currentComps.length} competencies fetched.`);
 
             // Group notes by student to see which competencies are covered
             const studentNotesMap = new Map<number, any[]>();
-            res.data.forEach((n: any) => {
+            currentNotes.forEach((n: any) => {
                 if (!studentNotesMap.has(n.idInscription)) {
                     studentNotesMap.set(n.idInscription, []);
                 }
@@ -301,14 +313,14 @@ const GradeManagementPage: React.FC = () => {
 
                     // Determine missing competencies for this student
                     let missing;
-                    if (competences.length === 0) {
+                    if (currentComps.length === 0) {
                         // Standard mode: check if there's at least one note without competenceId
-                        const hasNote = studentGrades.some(g => !g.idCompetence && g.note !== null);
+                        const hasNote = studentGrades.some(g => !g.idCompetence && (g.note !== null || g.nonClasse));
                         missing = hasNote ? [] : [{ idCompetence: null, label: 'Générale' }];
                     } else {
                         // APC mode: check each competence
-                        missing = competences
-                            .filter(c => !studentGrades.some(g => g.idCompetence === c.idCompetence && g.note !== null))
+                        missing = currentComps
+                            .filter(c => !studentGrades.some(g => g.idCompetence === c.idCompetence && (g.note !== null || g.nonClasse)))
                             .map(c => ({ idCompetence: c.idCompetence, label: c.Competence?.abreviation || c.Competence?.libelle?.substring(0, 3) }));
                     }
 
@@ -316,7 +328,7 @@ const GradeManagementPage: React.FC = () => {
 
                     return {
                         ...e,
-                        note: isComplete ? 1 : null, // Used for completion check
+                        note: isComplete ? 1 : null,
                         isComplete,
                         missingCompetencies: missing
                     };
@@ -327,7 +339,7 @@ const GradeManagementPage: React.FC = () => {
                 return updated;
             });
         } catch (error) {
-            console.error('❌ [Progress Error] Erreur chargement notes:', error);
+            console.error('❌ [Progress Error] Erreur chargement données:', error);
         }
     };
 
@@ -418,7 +430,7 @@ const GradeManagementPage: React.FC = () => {
                             note: note?.note ?? null,
                             idNote: note?.idNote,
                             idCompetence: c.idCompetence,
-                            idRepartitionCompetence: c.idRepartitionCompetence,
+                            idRepartitionCompetence: c.id,
                             competenceLabel: c.Competence?.libelle,
                             coef: selectedMatiere?.coef
                         });
@@ -453,6 +465,7 @@ const GradeManagementPage: React.FC = () => {
             }],
             idSequence: selectedSequence!.idSousPeriode,
             idAnneeScolaire: yearId!,
+            idRepartitionMatiere: selectedMatiere!.idMatiere,
             modeSaisie: mode === 'DECIMAL' ? 'NUMERIC' : 'ALPHABETIC'
         };
 
@@ -469,6 +482,7 @@ const GradeManagementPage: React.FC = () => {
             newModalItems[index].cote = cote;
             setModalItems(newModalItems);
 
+            setRefreshTrigger(prev => prev + 1);
             loadNotesForProgress();
         } catch (err) {
             console.error(`❌ [Modal Save Error] Failed for ${item.nomComplet}:`, err);
@@ -754,10 +768,20 @@ const GradeManagementPage: React.FC = () => {
             {/* Main Content Area */}
             <div className="min-h-[60vh]">
                 {selectedSalle && selectedSequence && activeView === 'matiere' && (
-                    <SaisieMatiereView salle={selectedSalle} sequence={selectedSequence} matiere={selectedMatiere} />
+                    <SaisieMatiereView
+                        salle={selectedSalle}
+                        sequence={selectedSequence}
+                        matiere={selectedMatiere}
+                        refreshTrigger={refreshTrigger}
+                    />
                 )}
                 {selectedSalle && activeView === 'eleve' && (
-                    <SaisieEleveView salle={selectedSalle} eleve={selectedEleve} sequence={selectedSequence} />
+                    <SaisieEleveView
+                        salle={selectedSalle}
+                        eleve={selectedEleve}
+                        sequence={selectedSequence}
+                        refreshTrigger={refreshTrigger}
+                    />
                 )}
                 {activeView === 'absences' && (
                     <AbsenceView />

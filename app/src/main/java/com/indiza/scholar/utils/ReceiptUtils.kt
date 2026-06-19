@@ -135,8 +135,8 @@ object ReceiptUtils {
 
         val centerTextCell = Cell().setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.CENTER)
         centerTextCell.add(Paragraph(data.schoolInfo.name.uppercase()).setBold().setFontSize(10f).setMargin(0f))
-        centerTextCell.add(Paragraph(data.schoolInfo.motto ?: "Discipline - Travail - Succès").setItalic().setBold().setFontSize(7f).setMargin(0f))
-        centerTextCell.add(Paragraph("BP : ${data.schoolInfo.bp ?: "----"} YAOUNDE Tél : ${data.schoolInfo.phones ?: "----"}").setFontSize(6.5f).setMargin(0f))
+        centerTextCell.add(Paragraph(data.schoolInfo.devise ?: data.schoolInfo.motto ?: "Discipline - Travail - Succès").setItalic().setBold().setFontSize(7f).setMargin(0f))
+        centerTextCell.add(Paragraph("BP : ${data.schoolInfo.bp ?: "----"} ${data.schoolInfo.address ?: ""} Tél : ${data.schoolInfo.phones ?: "----"}").setFontSize(6.5f).setMargin(0f))
         headerTable.addCell(centerTextCell)
 
         val rightSchoolYearCell = Cell().setBorder(Border.NO_BORDER).setVerticalAlignment(VerticalAlignment.BOTTOM).setTextAlignment(TextAlignment.RIGHT)
@@ -178,7 +178,7 @@ object ReceiptUtils {
         leftTable.addHeaderCell(createCell("Répartition du montant reçu", true, 6f, 2, TextAlignment.CENTER).setBackgroundColor(grayHeader).setFontColor(ColorConstants.WHITE))
         data.financialDetail.todayBreakdown.forEach { item ->
             leftTable.addCell(createCell(item.libelle, false, 6.5f))
-            leftTable.addCell(createCell(item.montantPaye.toString(), false, 6.5f, align = TextAlignment.CENTER))
+            leftTable.addCell(createCell(item.montantAlloue.toString(), false, 6.5f, align = TextAlignment.CENTER))
         }
         leftTable.addCell(createCell("Total", true, 7f).setBackgroundColor(lightGray))
         leftTable.addCell(createCell("${data.financialDetail.amountDigits}", true, 7f, align = TextAlignment.CENTER).setBackgroundColor(yellowColor))

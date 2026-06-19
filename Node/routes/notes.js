@@ -19,6 +19,7 @@ router.post("/absences/save", verifyToken, checkPermission("MANAGE_ABSENCES"), c
 
 // PV et Rapports
 router.get("/pv", verifyToken, controller.getPVData);
+router.get("/bulletins/export", verifyToken, controller.exportBulletins);
 
 // Justifications
 router.get("/justifications", verifyToken, controller.getJustifications);

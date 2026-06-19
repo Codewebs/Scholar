@@ -29,9 +29,10 @@ interface SaisieMatiereViewProps {
     salle?: any;
     sequence?: any;
     matiere?: any;
+    refreshTrigger?: number;
 }
 
-const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle, sequence: propSequence, matiere: propMatiere }) => {
+const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle, sequence: propSequence, matiere: propMatiere, refreshTrigger }) => {
   const { selectedYear } = useSchoolYear();
   const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
@@ -129,20 +130,16 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
     if (selectedSalleId && selectedRepartitionId && selectedSequenceId) {
         handleLoadNotes();
     }
-  }, [selectedSalleId, selectedRepartitionId, selectedSequenceId]);
+  }, [selectedSalleId, selectedRepartitionId, selectedSequenceId, refreshTrigger]);
 
   const handleLoadNotes = async () => {
     setLoading(true);
     setError(null);
-    console.log(`🔍 [SaisieMatiere] Loading notes for Salle: ${selectedSalleId}, Repartition: ${selectedRepartitionId}, Sequence: ${selectedSequenceId}`);
+    console.log(`🔍 [SaisieMatiere] Loading data for Salle: ${selectedSalleId}, Repartition: ${selectedRepartitionId}, Sequence: ${selectedSequenceId}`);
     try {
-      // 1. Get room students
-      const studentsRes = await studentService.getStudentsByRoom(yearId!, selectedSalleId!);
-      const roomStudents = studentsRes.data;
-      console.log(`👥 [SaisieMatiere] ${roomStudents.length} students found in room`);
-
-      // 2. Get existing notes for this subject and sequence
-      const [notesRes, compsRes] = await Promise.all([
+      // 1. Get room students and data in parallel
+      const [studentsRes, notesRes, compsRes] = await Promise.all([
+          studentService.getStudentsByRoom(yearId!, selectedSalleId!),
           gradeService.getNotesByMatiere(
               selectedSalleId!,
               selectedRepartitionId!,
@@ -155,21 +152,26 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
           })
       ]);
 
+      const roomStudents = studentsRes.data;
       const existingNotes = notesRes.data;
       const comps = compsRes.data;
-      console.log(`📚 [SaisieMatiere] ${existingNotes.length} existing notes found. ${comps.length} competencies defined for this sequence.`);
+
+      console.log(`👥 [SaisieMatiere] ${roomStudents.length} students found. ${existingNotes.length} notes found. ${comps.length} competencies.`);
       setCompetences(comps);
 
-      // 3. Flatten: Iterate over students, then subject competencies
+      // 2. Flatten: Iterate over students, then subject competencies
       const gridNotes: any[] = [];
       roomStudents.forEach((s: any) => {
+          const idInscription = Number(s.idInscription || s.idEleve || s.id);
           const studentName = s.nomComplet || `${s.nom || ''} ${s.prenom || ''}`.trim() || "Élève inconnu";
-          const studentNotes = existingNotes.filter((n: any) => n.idInscription === s.idInscription);
+
+          // Match notes using Number conversion for safety
+          const studentNotes = existingNotes.filter((n: any) => Number(n.idInscription) === idInscription);
 
           // Calculate missing competencies for the "chips" display
           const missing = comps.length === 0
-              ? (studentNotes.some(n => !n.idCompetence && n.note !== null) ? [] : [{ label: 'GÉN' }])
-              : comps.filter(c => !studentNotes.some(n => n.idCompetence === c.idCompetence && n.note !== null))
+              ? (studentNotes.some(n => !n.idCompetence && (n.note !== null || n.nonClasse)) ? [] : [{ label: 'GÉN' }])
+              : comps.filter(c => !studentNotes.some(n => Number(n.idCompetence) === Number(c.idCompetence) && (n.note !== null || n.nonClasse)))
                      .map(c => ({ label: c.Competence?.abreviation || c.Competence?.libelle?.substring(0, 3) }));
 
           if (comps.length === 0) {
@@ -177,7 +179,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
               const note = studentNotes.find((n: any) => !n.idCompetence);
               gridNotes.push({
                   ...s,
-                  idInscription: s.idInscription,
+                  idInscription: idInscription,
                   nomComplet: studentName,
                   matricule: s.matricule,
                   idNote: note?.idNote,
@@ -191,11 +193,11 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
               // APC mode
               comps.forEach(c => {
                   const note = studentNotes.find((n: any) =>
-                      n.idCompetence === c.idCompetence
+                      Number(n.idCompetence) === Number(c.idCompetence)
                   );
                   gridNotes.push({
                       ...s,
-                      idInscription: s.idInscription,
+                      idInscription: idInscription,
                       nomComplet: studentName,
                       matricule: s.matricule,
                       idNote: note?.idNote,
@@ -204,7 +206,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
                       nonClasse: note?.nonClasse || false,
                       idJustification: note?.idJustification,
                       idCompetence: c.idCompetence,
-                      idRepartitionCompetence: c.idRepartitionCompetence,
+                      idRepartitionCompetence: c.id,
                       competenceLabel: c.Competence?.libelle,
                       missingCompetencies: missing
                   });
@@ -271,6 +273,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
         })),
         idSequence: selectedSequenceId!,
         idAnneeScolaire: yearId!,
+        idRepartitionMatiere: selectedRepartitionId!,
         modeSaisie: 'NUMERIC'
       };
 
@@ -310,6 +313,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
         }],
         idSequence: selectedSequenceId!,
         idAnneeScolaire: yearId!,
+        idRepartitionMatiere: selectedRepartitionId!,
         modeSaisie: mode === 'DECIMAL' ? 'NUMERIC' : 'ALPHABETIC'
     };
 
@@ -477,7 +481,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {notes.map((n, idx) => (
-                                    <tr key={`${n.idInscription}-${n.idCompetence || 'general'}`} className={clsx("hover:bg-gray-50/50 transition-colors", n.nonClasse && "bg-orange-50/30")}>
+                                    <tr key={`${n.idInscription}-${n.idCompetence || 'gen'}-${idx}`} className={clsx("hover:bg-gray-50/50 transition-colors", n.nonClasse && "bg-orange-50/30")}>
                                         <td className="px-8 py-6">
                                             <div className="flex items-center space-x-4">
                                                 <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center font-black text-gray-400">

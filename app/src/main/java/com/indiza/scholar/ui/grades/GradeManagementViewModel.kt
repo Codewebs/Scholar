@@ -385,7 +385,7 @@ class GradeManagementViewModel(private val api: ApiService) : ViewModel() {
         }
     }
 
-    fun updateStatusLocally(index: Int, nonClasse: Boolean, idJustif: Long?) {
+    fun updateStatusLocally(index: Int, nonClasse: Boolean, idJustif: Long?, idComp: Long? = null, idRepComp: Long? = null) {
         val currentList = _notes.value.toMutableList()
         if (index in currentList.indices) {
             currentList[index] = currentList[index].copy(
@@ -393,6 +393,8 @@ class GradeManagementViewModel(private val api: ApiService) : ViewModel() {
                 idJustification = idJustif,
                 note = if (nonClasse) 0.0 else currentList[index].note,
                 cote = if (nonClasse) "F-" else currentList[index].cote,
+                idCompetence = idComp ?: currentList[index].idCompetence,
+                idRepartitionCompetence = idRepComp ?: currentList[index].idRepartitionCompetence,
                 isDirty = true
             )
             _notes.value = currentList
@@ -423,7 +425,7 @@ class GradeManagementViewModel(private val api: ApiService) : ViewModel() {
         }
     }
 
-    fun updateStudentStatusLocally(index: Int, nonClasse: Boolean, idJustif: Long?) {
+    fun updateStudentStatusLocally(index: Int, nonClasse: Boolean, idJustif: Long?, idComp: Long? = null, idRepComp: Long? = null) {
         val currentList = _studentNotes.value.toMutableList()
         if (index in currentList.indices) {
             currentList[index] = currentList[index].copy(
@@ -431,6 +433,8 @@ class GradeManagementViewModel(private val api: ApiService) : ViewModel() {
                 idJustification = idJustif,
                 note = if (nonClasse) 0.0 else currentList[index].note,
                 cote = if (nonClasse) "F-" else currentList[index].cote,
+                idCompetence = idComp ?: currentList[index].idCompetence,
+                idRepartitionCompetence = idRepComp ?: currentList[index].idRepartitionCompetence,
                 isDirty = true
             )
             _studentNotes.value = currentList

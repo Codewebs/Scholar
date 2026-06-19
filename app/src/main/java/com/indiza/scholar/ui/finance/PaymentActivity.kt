@@ -54,11 +54,13 @@ class PaymentActivity : ComponentActivity() {
 
     private fun generateAndShowReceipt(idEleve: Long, idAnneeScolaire: Long) {
         lifecycleScope.launch {
+            android.util.Log.d("PaymentActivity", "📡 [Receipt] Requesting data for Student:$idEleve Year:$idAnneeScolaire")
             try {
                 val receiptResp = api.getRegistrationReceiptData(idEleve, idAnneeScolaire)
                 val detailsResp = api.getStudentPaymentDetails(idEleve, idAnneeScolaire)
 
                 if (receiptResp.isSuccessful && detailsResp.isSuccessful) {
+                    android.util.Log.d("PaymentActivity", "✅ [Receipt] Successfully fetched receipt and details data")
                     val school = withContext(Dispatchers.IO) {
                         AppDatabase.getInstance(this@PaymentActivity).etablissementDao().getEtablissementSync()
                     } ?: EtablissementEntity(nomFr = "Scholar School", telephone1 = 0L)
@@ -85,15 +87,22 @@ class PaymentActivity : ComponentActivity() {
                     }
 
                     if (uri != null) {
+                        android.util.Log.d("PaymentActivity", "📄 [Receipt] PDF generated at: $uri")
                         val intent = Intent(this@PaymentActivity, com.indiza.scholar.ui.components.PdfViewerActivity::class.java).apply {
                             setDataAndType(uri, "application/pdf")
                             putExtra(Intent.EXTRA_STREAM, uri)
                             flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
                         }
                         startActivity(intent)
+                    } else {
+                        android.util.Log.e("PaymentActivity", "❌ [Receipt] Failed to create PDF file/URI")
                     }
+                } else {
+                    android.util.Log.e("PaymentActivity", "❌ [Receipt] API error - Receipt: ${receiptResp.code()}, Details: ${detailsResp.code()}")
+                    Toast.makeText(this@PaymentActivity, "Erreur serveur lors de la récupération des données", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
+                android.util.Log.e("PaymentActivity", "🔥 [Receipt] Exception during generation: ${e.localizedMessage}", e)
                 Toast.makeText(this@PaymentActivity, "Erreur: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }

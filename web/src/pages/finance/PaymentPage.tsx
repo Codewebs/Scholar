@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useSearchParams } from 'react-router-dom';
 import { financeService } from '../../api/financeService';
 import { studentService } from '../../api/studentService';
 import { StudentPaymentDetails, PaiementPayload } from '../../types/finance';
@@ -25,13 +26,17 @@ import {
   CircleDollarSign,
   Pending,
   X,
-  CreditCard as CardIcon
+  CreditCard as CardIcon,
+  RefreshCw,
+  Trash2
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const PaymentPage: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const yearId = Number(localStorage.getItem('year_id') || 0);
+  const transactionRef = useRef<HTMLDivElement>(null);
 
   // Lists & Filtering
   const [allStudents, setAllStudents] = useState<EleveUiModel[]>([]);
@@ -41,6 +46,7 @@ const PaymentPage: React.FC = () => {
   // Selected Data
   const [selectedStudent, setSelectedStudent] = useState<EleveUiModel | null>(null);
   const [details, setDetails] = useState<StudentPaymentDetails | null>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
 
   // States
   const [loading, setLoading] = useState(false);
@@ -52,19 +58,34 @@ const PaymentPage: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [receiptData, setReceiptData] = useState<any | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [highlightActive, setHighlightActive] = useState(false);
 
   useEffect(() => {
     if (yearId) {
-      console.log("[PaymentPage] 🔄 Chargement des élèves pour l'année:", yearId);
       loadStudents();
     }
   }, [yearId]);
+
+  // Handle Query Params
+  useEffect(() => {
+    const idEleve = searchParams.get('idEleve');
+    const highlight = searchParams.get('highlight');
+    if (idEleve && allStudents.length > 0) {
+        const student = allStudents.find(s => s.idEleve === Number(idEleve));
+        if (student) {
+            setSelectedStudent(student);
+            if (highlight === 'true') {
+                setHighlightActive(true);
+                setTimeout(() => setHighlightActive(false), 2000);
+            }
+        }
+    }
+  }, [searchParams, allStudents]);
 
   const loadStudents = async () => {
     setLoadingList(true);
     try {
       const res = await studentService.getAllStudents(yearId);
-      console.log("[PaymentPage] 📥 Élèves chargés:", res.data.length);
       setAllStudents(res.data);
     } catch (error) {
       console.error("[PaymentPage] ❌ Erreur chargement élèves:", error);
@@ -95,13 +116,13 @@ const PaymentPage: React.FC = () => {
   useEffect(() => {
     if (selectedStudent && yearId) {
       loadDetails();
+      loadTransactions();
     }
   }, [selectedStudent, isPeriscolaire, yearId]);
 
   const loadDetails = async () => {
     if (!selectedStudent) return;
     setLoading(true);
-    console.log(`[PaymentPage] 🔍 Chargement détails ${isPeriscolaire ? 'Périscolaires' : 'Exigibles'} pour:`, selectedStudent.nomComplet);
     try {
       const res = isPeriscolaire
         ? await financeService.getStudentPeriscolaireDetails(selectedStudent.idEleve, yearId)
@@ -114,12 +135,21 @@ const PaymentPage: React.FC = () => {
     }
   };
 
+  const loadTransactions = async () => {
+    if (!selectedStudent) return;
+    try {
+      const res = await financeService.getStudentTransactions(selectedStudent.idEleve, yearId);
+      setTransactions(res.data);
+    } catch (error) {
+      console.error("[PaymentPage] ❌ Erreur chargement transactions:", error);
+    }
+  };
+
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudent || !amount || Number(amount) <= 0) return;
 
     setLoading(true);
-    console.log("[PaymentPage] 💸 Tentative de paiement:", { amount, isPeriscolaire, student: selectedStudent.nomComplet });
     const payload: PaiementPayload = {
       idEleve: selectedStudent.idEleve,
       idAnneeScolaire: yearId,
@@ -133,11 +163,11 @@ const PaymentPage: React.FC = () => {
         ? financeService.payerFraisPeriscolaires(payload)
         : financeService.payerFraisExigibles(payload));
 
-      console.log("[PaymentPage] ✅ Paiement réussi");
       setSuccess(true);
       setAmount('');
       loadDetails();
-      loadStudents(); // Refresh list to update status
+      loadTransactions();
+      loadStudents();
     } catch (error) {
       console.error("[PaymentPage] ❌ Échec du paiement:", error);
       alert("Erreur lors du paiement");
@@ -149,7 +179,6 @@ const PaymentPage: React.FC = () => {
   const handleReprint = async () => {
       if (!selectedStudent) return;
       setLoading(true);
-      console.log("[PaymentPage] 🖨️ Ré-impression pour:", selectedStudent.nomComplet);
       try {
           const recRes = await financeService.getRegistrationReceiptData(selectedStudent.idEleve, yearId);
           setReceiptData(recRes.data);
@@ -161,6 +190,23 @@ const PaymentPage: React.FC = () => {
           setLoading(false);
       }
   };
+
+  const handleCancelPayment = async (id: number) => {
+      if (!window.confirm("Voulez-vous vraiment annuler ce paiement ?")) return;
+      try {
+          await financeService.annulerPaiement(id);
+          alert("Paiement annulé");
+          loadDetails();
+          loadTransactions();
+          loadStudents();
+      } catch (error: any) {
+          console.error("[PaymentPage] ❌ Erreur annulation:", error);
+          alert(error.response?.data?.error || "Erreur lors de l'annulation");
+      }
+  };
+
+  const canCancel = user?.permissions?.includes('CANCEL_PAYMENT');
+  const validTransactions = transactions.filter(tx => !tx.annule);
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] animate-in fade-in duration-500 overflow-hidden">
@@ -367,16 +413,76 @@ const PaymentPage: React.FC = () => {
                                     ))}
                                 </div>
                             </div>
+
+                            {/* Historique des transactions */}
+                            <div
+                                ref={transactionRef}
+                                className={clsx(
+                                    "space-y-4 mt-10 p-4 rounded-[32px] transition-all duration-500",
+                                    highlightActive ? "bg-accent/10 border-2 border-accent shadow-[0_0_30px_rgba(124,58,237,0.2)]" : "bg-transparent border-2 border-transparent"
+                                )}
+                            >
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary ml-2 flex items-center gap-2">
+                                    <History size={14} /> Historique des transactions
+                                </h4>
+                                <div className="space-y-2">
+                                    {transactions.map((tx, index) => {
+                                        const isMostRecentValid = !tx.annule && tx.idPaiementFraisGlobal === validTransactions[0]?.idPaiementFraisGlobal;
+
+                                        return (
+                                            <div key={tx.idPaiementFraisGlobal} className={clsx(
+                                                "p-4 rounded-[20px] border flex items-center justify-between transition-all",
+                                                tx.annule ? "bg-red-50/30 border-red-100 opacity-60" : "bg-white border-gray-100 hover:border-gray-200"
+                                            )}>
+                                                <div className="flex items-center space-x-4">
+                                                    <div className={clsx(
+                                                        "w-10 h-10 rounded-xl flex items-center justify-center",
+                                                        tx.annule ? "bg-red-100 text-red-500" : "bg-gray-50 text-secondary"
+                                                    )}>
+                                                        {tx.annule ? <X size={20} /> : <Receipt size={20} />}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-[11px] uppercase tracking-tight">
+                                                            {tx.modePaiement} - {tx.montantTotal.toLocaleString()} FCFA
+                                                            {tx.annule && <span className="ml-2 text-red-500 text-[8px] tracking-widest">[ANNULÉ]</span>}
+                                                        </p>
+                                                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
+                                                            {new Date(tx.createdAt).toLocaleString()} • Réf: #FS-{tx.idPaiementFraisGlobal}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {!tx.annule && canCancel && (
+                                                    <button
+                                                        onClick={() => handleCancelPayment(tx.idPaiementFraisGlobal)}
+                                                        className={clsx(
+                                                            "p-2 transition-colors",
+                                                            isMostRecentValid ? "text-gray-300 hover:text-red-500" : "text-gray-100 cursor-not-allowed"
+                                                        )}
+                                                        title={isMostRecentValid ? "Annuler ce paiement" : "Seule la transaction la plus récente peut être annulée"}
+                                                        disabled={!isMostRecentValid}
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         </div>
 
                         {/* Quick Actions (Floating feel) */}
                         <div className="w-16 flex flex-col gap-4">
                             <button
                                 onClick={() => { setSuccess(false); setShowPaymentModal(true); }}
-                                className="w-16 h-16 bg-accent text-white rounded-[24px] shadow-xl shadow-accent/30 hover:scale-110 active:scale-95 transition-all flex items-center justify-center group"
-                                title="Encaisser"
+                                disabled={details?.resteGlobal === 0}
+                                className={clsx(
+                                    "w-16 h-16 rounded-[24px] shadow-xl transition-all flex items-center justify-center group",
+                                    details?.resteGlobal === 0 ? "bg-gray-100 text-gray-300 cursor-not-allowed" : "bg-accent text-white shadow-accent/30 hover:scale-110 active:scale-95"
+                                )}
+                                title={details?.resteGlobal === 0 ? "Déjà soldé" : "Encaisser"}
                             >
-                                <Plus size={28} className="group-hover:rotate-90 transition-transform duration-500" />
+                                <Plus size={28} className={clsx(!details?.resteGlobal === 0 && "group-hover:rotate-90 transition-transform duration-500")} />
                             </button>
                             <button
                                 onClick={handleReprint}

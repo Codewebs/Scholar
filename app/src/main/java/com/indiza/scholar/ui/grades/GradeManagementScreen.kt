@@ -615,9 +615,23 @@ fun GradeEntryBySubject(
                                     isSelected = showSequentialEntry && currentSequentialIndex == index,
                                     noteSur = selectedRepartition?.noteSur ?: 20,
                                     missingCompetencies = missingByStudent[note.idInscription] ?: emptyList(),
-                                    onNoteChange = { n, c -> viewModel.updateNoteLocally(index, n, c) },
+                                    onNoteChange = { n, c -> 
+                                        viewModel.updateNoteLocally(
+                                            index = index, 
+                                            newNote = n, 
+                                            newCote = c,
+                                            idComp = selectedCompetence?.idCompetence,
+                                            idRepComp = selectedCompetence?.id
+                                        ) 
+                                    },
                                     onStatusChange = { nonClasse, idJustif ->
-                                        viewModel.updateStatusLocally(index, nonClasse, idJustif)
+                                        viewModel.updateStatusLocally(
+                                            index = index, 
+                                            nonClasse = nonClasse, 
+                                            idJustif = idJustif,
+                                            idComp = selectedCompetence?.idCompetence,
+                                            idRepComp = selectedCompetence?.id
+                                        )
                                     },
                                     onClick = {
                                         currentSequentialIndex = index
@@ -673,8 +687,21 @@ fun GradeEntryBySubject(
                 isLast = currentSequentialIndex == notes.size - 1 && currentCompIndex == (if (isMultiComp) currentCompetences.size - 1 else 0),
                 onDismiss = { showSequentialEntry = false },
                 onNext = { n, c, nc ->
-                    viewModel.updateNoteLocally(currentSequentialIndex, n, c)
-                    viewModel.updateStatusLocally(currentSequentialIndex, nc, null)
+                    val comp = currentCompetences.getOrNull(currentCompIndex)
+                    viewModel.updateNoteLocally(
+                        index = currentSequentialIndex, 
+                        newNote = n, 
+                        newCote = c,
+                        idComp = comp?.idCompetence,
+                        idRepComp = comp?.id
+                    )
+                    viewModel.updateStatusLocally(
+                        index = currentSequentialIndex, 
+                        nonClasse = nc, 
+                        idJustif = null,
+                        idComp = comp?.idCompetence,
+                        idRepComp = comp?.id
+                    )
                     
                     if (isMultiComp && currentCompIndex < currentCompetences.size - 1) {
                         isFading = true

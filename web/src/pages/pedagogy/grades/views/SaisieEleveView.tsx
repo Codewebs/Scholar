@@ -29,9 +29,10 @@ interface SaisieEleveViewProps {
     salle?: any;
     eleve?: any;
     sequence?: any;
+    refreshTrigger?: number;
 }
 
-const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, eleve: propEleve, sequence: propSequence }) => {
+const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, eleve: propEleve, sequence: propSequence, refreshTrigger }) => {
   const { selectedYear } = useSchoolYear();
   const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
@@ -126,12 +127,12 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
     if (selectedStudentId && selectedSequenceId) {
         handleLoadNotes();
     }
-  }, [selectedStudentId, selectedSequenceId]);
+  }, [selectedStudentId, selectedSequenceId, refreshTrigger]);
 
   const handleLoadNotes = async () => {
     setLoading(true);
     setError(null);
-    console.log(`🔍 [SaisieEleve] Loading notes for Student: ${selectedStudentId}, Sequence: ${selectedSequenceId}`);
+    console.log(`🔍 [SaisieEleve] Loading data for Student: ${selectedStudentId}, Sequence: ${selectedSequenceId}`);
     try {
       const salle = salles.find(s => s.idSalle === selectedSalleId);
       if (!salle) {
@@ -139,22 +140,22 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
           return;
       }
 
-      // 1. Get class subjects (repartition)
-      const repartitionRes = await matiereService.getRepartition(yearId!, salle.idClasse);
+      // 1. Get class subjects (repartition) and notes in parallel
+      const [repartitionRes, notesRes] = await Promise.all([
+          matiereService.getRepartition(yearId!, salle.idClasse),
+          gradeService.getNotesByStudent(
+            selectedStudentId!,
+            selectedSequenceId!,
+            yearId!,
+            salle.idClasse
+          )
+      ]);
+
       const repartitions = repartitionRes.data;
-      console.log(`📚 [SaisieEleve] ${repartitions.length} subjects found for class ${salle.Classe?.nomClasse}`);
-
-      // 2. Get existing notes for this student in this sequence
-      const notesRes = await gradeService.getNotesByStudent(
-        selectedStudentId!,
-        selectedSequenceId!,
-        yearId!,
-        salle.idClasse
-      );
       const existingNotes = notesRes.data;
-      console.log(`📝 [SaisieEleve] ${existingNotes.length} existing notes found for this student/sequence`);
+      console.log(`📚 [SaisieEleve] ${repartitions.length} subjects found. ${existingNotes.length} notes found.`);
 
-      // 3. Load competences for each subject in this sequence
+      // 2. Load competences for each subject in this sequence
       const compsMap: {[key: number]: any[]} = {};
       await Promise.all(repartitions.map(async (r: any) => {
           const cRes = await matiereService.getRepartitionCompetences({
@@ -165,14 +166,16 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
       }));
       setMatiereCompetences(compsMap);
 
-      // 4. Flatten: Iterate over subjects, then their competencies
+      // 3. Flatten: Iterate over subjects, then their competencies
       const gridNotes: any[] = [];
       repartitions.forEach((r: any) => {
           const comps = compsMap[r.idRepartitionMatiere] || [];
 
           if (comps.length === 0) {
               // Standard mode
-              const note = existingNotes.find((n: any) => n.idRepartitionMatiere === r.idRepartitionMatiere && !n.idCompetence);
+              const note = existingNotes.find((n: any) =>
+                  Number(n.idRepartitionMatiere) === Number(r.idRepartitionMatiere) && !n.idCompetence
+              );
               gridNotes.push({
                   ...r,
                   idInscription: selectedStudentId!,
@@ -186,8 +189,8 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
               // APC mode
               comps.forEach(c => {
                   const note = existingNotes.find((n: any) =>
-                      n.idRepartitionMatiere === r.idRepartitionMatiere &&
-                      n.idCompetence === c.idCompetence
+                      Number(n.idRepartitionMatiere) === Number(r.idRepartitionMatiere) &&
+                      Number(n.idCompetence) === Number(c.idCompetence)
                   );
                   gridNotes.push({
                       ...r,
@@ -198,7 +201,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
                       cote: note?.cote,
                       nonClasse: note?.nonClasse || false,
                       idCompetence: c.idCompetence,
-                      idRepartitionCompetence: c.idRepartitionCompetence,
+                      idRepartitionCompetence: c.id,
                       competenceLabel: c.Competence?.libelle
                   });
               });
@@ -279,6 +282,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
         notes: [{
             idRepartitionMatiere: newNotes[index].idRepartitionMatiere,
             idCompetence: competenceId,
+            idRepartitionCompetence: newNotes[index].idRepartitionCompetence,
             note: note,
             idNote: newNotes[index].idNote,
             nonClasse: false,
@@ -431,7 +435,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {notes.map((n, idx) => (
-                                    <tr key={`${n.idRepartitionMatiere}-${n.idCompetence}`} className="hover:bg-gray-50/50 transition-colors">
+                                    <tr key={`${n.idRepartitionMatiere}-${n.idCompetence || 'gen'}-${idx}`} className="hover:bg-gray-50/50 transition-colors">
                                         <td className="px-8 py-6">
                                             <div className="flex items-center space-x-4">
                                                 <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400">

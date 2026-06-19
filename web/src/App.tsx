@@ -25,6 +25,7 @@ import SettingsPage from './pages/admin/SettingsPage';
 import StaffManagementPage from './pages/admin/StaffManagementPage';
 import ApcConfigurationPage from './pages/admin/ApcConfigurationPage';
 import BulletinConfigPage from './pages/pedagogy/BulletinConfigPage';
+import BulletinPrintPage from './pages/pedagogy/BulletinPrintPage';
 import FinanceLibraryPage from './pages/finance/FinanceLibraryPage';
 import AcademicStructurePage from './pages/pedagogy/AcademicStructurePage';
 import PeriodeManagementPage from './pages/pedagogy/PeriodeManagementPage';
@@ -41,6 +42,14 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/waiting-room" element={<WaitingRoom />} />
             <Route path="/initial-config" element={<InitialConfig />} />
+
+            <Route path="/app/pedagogy/bulletins/print" element={
+              <SessionGuard>
+                <ProtectedRoute permission={AcademicPermission.MANAGE_GRADES}>
+                  <BulletinPrintPage />
+                </ProtectedRoute>
+              </SessionGuard>
+            } />
 
             <Route path="/app" element={
               <SessionGuard>

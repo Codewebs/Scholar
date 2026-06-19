@@ -14,6 +14,7 @@ const Note = sequelize.define("Note", {
   idInscription: { type: DataTypes.BIGINT, allowNull: true },
   idJustification: { type: DataTypes.BIGINT, allowNull: true },
   idSequence: { type: DataTypes.BIGINT, allowNull: true },
+  idRepartitionMatiere: { type: DataTypes.BIGINT, allowNull: true },
   idCompetence: { type: DataTypes.BIGINT, allowNull: true },
   idRepartitionCompetence: { type: DataTypes.BIGINT, allowNull: true } // Gardé mais peut devenir optionnel
 }, {
@@ -23,7 +24,7 @@ const Note = sequelize.define("Note", {
     {
       name: 'idx_unique_note_entry',
       unique: true,
-      fields: ['idInscription', 'idSequence', 'idAnneeScolaire', 'idRepartitionCompetence'],
+      fields: ['idInscription', 'idSequence', 'idAnneeScolaire', 'idRepartitionMatiere', 'idRepartitionCompetence'],
       where: { supprimer: false }
     }
   ]

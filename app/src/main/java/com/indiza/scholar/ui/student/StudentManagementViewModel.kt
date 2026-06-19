@@ -126,54 +126,85 @@ class StudentManagementViewModel(
         }
     }
 
-    fun updateStudent(idEleve: Long, payload: StudentRegistrationPayload, onResult: (Boolean) -> Unit) {
+    fun updateStudent(idEleve: Long, payload: StudentRegistrationPayload, onResult: (Boolean, String?) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val response = api.updateStudent(idEleve, payload)
+                val errorMsg = if (!response.isSuccessful) {
+                    val errorBody = response.errorBody()?.string()
+                    try {
+                        val json = org.json.JSONObject(errorBody)
+                        json.getString("error")
+                    } catch (e: Exception) {
+                        "Erreur serveur (${response.code()})"
+                    }
+                } else null
+
                 withContext(Dispatchers.Main) {
-                    onResult(response.isSuccessful)
+                    onResult(response.isSuccessful, errorMsg)
                 }
                 if (response.isSuccessful) {
                     chargerElevesParSalle(payload.idAnneeScolaire, 0L)
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    onResult(false)
+                    onResult(false, e.localizedMessage)
                 }
             }
         }
     }
 
-    fun deleteEnrollment(idEleve: Long, idAnneeScolaire: Long, onResult: (Boolean) -> Unit) {
+    fun deleteEnrollment(idEleve: Long, idAnneeScolaire: Long, onResult: (Boolean, String?) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val response = api.deleteEnrollment(idEleve, idAnneeScolaire)
+                val errorMsg = if (!response.isSuccessful) {
+                    val errorBody = response.errorBody()?.string()
+                    // Essayer d'extraire le message d'erreur JSON
+                    try {
+                        val json = org.json.JSONObject(errorBody)
+                        json.getString("error")
+                    } catch (e: Exception) {
+                        "Erreur serveur (${response.code()})"
+                    }
+                } else null
+
                 withContext(Dispatchers.Main) {
-                    onResult(response.isSuccessful)
+                    onResult(response.isSuccessful, errorMsg)
                 }
                 if (response.isSuccessful) {
                     chargerElevesParSalle(idAnneeScolaire, 0L)
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    onResult(false)
+                    onResult(false, e.localizedMessage)
                 }
             }
         }
     }
 
-    fun getReceiptData(idEleve: Long, idAnneeScolaire: Long, onResult: (ReceiptData?) -> Unit) {
+    fun getReceiptData(idEleve: Long, idAnneeScolaire: Long, isSimple: Boolean = false, onResult: (ReceiptData?) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
+            android.util.Log.d("StudentVM", "📡 [Receipt] Requesting data for Student:$idEleve Year:$idAnneeScolaire (Simple:$isSimple)")
             try {
-                val response = api.getRegistrationReceiptData(idEleve, idAnneeScolaire)
+                val response = if (isSimple) {
+                    api.getSimpleRegistrationReceiptData(idEleve, idAnneeScolaire)
+                } else {
+                    api.getRegistrationReceiptData(idEleve, idAnneeScolaire)
+                }
+                
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
+                        android.util.Log.d("StudentVM", "✅ [Receipt] Data received successfully")
                         onResult(response.body())
                     } else {
+                        val errorBody = response.errorBody()?.string()
+                        android.util.Log.e("StudentVM", "❌ [Receipt] Error ${response.code()}: $errorBody")
                         onResult(null)
                     }
                 }
             } catch (e: Exception) {
+                android.util.Log.e("StudentVM", "🔥 [Receipt] Exception: ${e.localizedMessage}", e)
                 withContext(Dispatchers.Main) {
                     onResult(null)
                 }
