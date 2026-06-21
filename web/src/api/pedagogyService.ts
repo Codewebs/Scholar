@@ -74,4 +74,17 @@ export const pedagogyService = {
 
   deleteClasse: (id: number) =>
     api.delete(`/academic-structure/classes/${id}`),
+
+  // Reports
+  getReportData: (reportId: string, params: { idClasse: number, idAnneeScolaire: number }) => {
+    let endpoint = '';
+    switch (reportId) {
+      case 'alpha_global': endpoint = '/pedagogy/reports/alphabetical'; break;
+      case 'attendance_monthly': endpoint = '/pedagogy/reports/attendance'; break;
+      case 'gender_split': endpoint = '/pedagogy/reports/gender-split'; break;
+      case 'trombinoscope': endpoint = '/pedagogy/reports/trombinoscope'; break;
+      default: endpoint = '/pedagogy/reports/alphabetical';
+    }
+    return api.get<any[]>(endpoint, { params });
+  }
 };

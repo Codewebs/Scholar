@@ -3,7 +3,7 @@ import { School } from '../types/models';
 
 export const schoolService = {
   getSchool: (id: number) =>
-    api.get<School>(`/etablissement/search`, { params: { id } }), // Based on backend route structure
+    api.get<School>(`/etablissement/${id}`),
 
   getUserSchools: (userId: number) =>
     api.get<School[]>(`/etablissement/user/${userId}`),

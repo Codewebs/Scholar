@@ -21,6 +21,7 @@ const competences = require("./competences");
 const periodes = require("./periodes");
 const notes = require("./notes");
 const annonces = require("./annonces");
+const reports = require("./reportRoutes");
 
 // Montage des endpoints
 app.use((req, res, next) => {
@@ -42,6 +43,7 @@ app.use("/pedagogy/matieres", matieres);
 app.use("/pedagogy/competences", competences);
 app.use("/pedagogy/periodes", periodes);
 app.use("/pedagogy/notes", notes);
+app.use("/pedagogy/reports", reports);
 app.use("/annonces", annonces);
 
 // Routes montées sur la racine

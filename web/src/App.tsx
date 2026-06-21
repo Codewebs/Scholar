@@ -26,6 +26,7 @@ import StaffManagementPage from './pages/admin/StaffManagementPage';
 import ApcConfigurationPage from './pages/admin/ApcConfigurationPage';
 import BulletinConfigPage from './pages/pedagogy/BulletinConfigPage';
 import BulletinPrintPage from './pages/pedagogy/BulletinPrintPage';
+import ReportPrintPage from './pages/reports/ReportPrintPage';
 import FinanceLibraryPage from './pages/finance/FinanceLibraryPage';
 import AcademicStructurePage from './pages/pedagogy/AcademicStructurePage';
 import PeriodeManagementPage from './pages/pedagogy/PeriodeManagementPage';
@@ -55,6 +56,14 @@ function App() {
               <SessionGuard>
                 <ProtectedRoute permission={AcademicPermission.MANAGE_GRADES}>
                   <BulletinPrintPage />
+                </ProtectedRoute>
+              </SessionGuard>
+            } />
+
+            <Route path="/app/reports/print" element={
+              <SessionGuard>
+                <ProtectedRoute permission={AcademicPermission.DASHBOARD_ETABLISSEMENT}>
+                  <ReportPrintPage />
                 </ProtectedRoute>
               </SessionGuard>
             } />

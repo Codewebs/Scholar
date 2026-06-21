@@ -16,7 +16,15 @@ import {
   Trash2,
   X,
   Save,
-  Sparkles
+  Sparkles,
+  FileText,
+  MoreVertical,
+  Printer,
+  FileSpreadsheet,
+  FileDown,
+  Search,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import AuthInput from '../../components/ui/AuthInput';
@@ -44,6 +52,49 @@ interface Cycle {
     libelleCycle: string;
 }
 
+const reportCategories = [
+    {
+        name: "I. Listes Administratives & Effectifs",
+        reports: [
+            { id: 'alpha_global', name: "Liste alphabétique globale", type: 'A' },
+            { id: 'attendance_monthly', name: "Fiche de présence / Émégement mensuel", type: 'B' },
+            { id: 'level_complete', name: "Liste des élèves par Cycle / Niveau complet", type: 'A' },
+            { id: 'gender_split', name: "Liste de répartition par genre", type: 'A' },
+            { id: 'trombinoscope', name: "Trombinoscope de la salle", type: 'C' },
+            { id: 'new_vs_repeater', name: "Liste des nouveaux inscrits vs redoublants", type: 'A' },
+        ]
+    },
+    {
+        name: "💰 II. Listes Financières & Recouvrement",
+        reports: [
+            { id: 'insolvent_fees', name: "Liste des insolvables – Frais exigibles", type: 'A' },
+            { id: 'insolvent_perischool', name: "Liste des insolvables – Frais périscolaires", type: 'A' },
+            { id: 'global_financial', name: "Liste de situation financière globale", type: 'A' },
+            { id: 'scholarship', name: "Liste des élèves boursiers / Exemptés", type: 'A' },
+        ]
+    },
+    {
+        name: "🩺 III. Listes Sanitaires & Contacts",
+        reports: [
+            { id: 'emergency_contacts', name: "Fiche d'urgence et contacts des parents", type: 'A' },
+            { id: 'medical_emergencies', name: "Registre des allergies et urgences médicales", type: 'A' },
+            { id: 'exit_auth', name: "Liste des autorisations de sortie", type: 'A' },
+        ]
+    },
+    {
+        name: "📊 V. Statistiques & Histogrammes",
+        reports: [
+            { id: 'age_pyramid', name: "Histogramme de la pyramide des âges", type: 'C' },
+        ]
+    },
+    {
+        name: "🛠️ VI. Logistique",
+        reports: [
+            { id: 'material_dist', name: "Liste de distribution du matériel", type: 'B' },
+        ]
+    }
+];
+
 const ClasseManagementPage: React.FC = () => {
   const navigate = useNavigate();
   const { selectedYear } = useSchoolYear();
@@ -65,6 +116,13 @@ const ClasseManagementPage: React.FC = () => {
     abreviation: '',
     capacite: 0
   });
+
+  // Report States
+  const [activeReportMenu, setActiveReportMenu] = useState<number | null>(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [previewSearch, setPreviewSearch] = useState("");
+  const [previewData, setPreviewData] = useState<any[]>([]);
 
   useEffect(() => {
     if (yearId) {
@@ -175,6 +233,37 @@ const ClasseManagementPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const handleOpenReport = async (report: any, classeId: number) => {
+    if (!yearId) return;
+    setLoading(true);
+    try {
+        const res = await pedagogyService.getReportData(report.id, {
+            idClasse: classeId,
+            idAnneeScolaire: yearId
+        });
+
+        setSelectedReport({ ...report, classeId });
+        setPreviewData(res.data);
+        setIsPreviewModalOpen(true);
+        setActiveReportMenu(null);
+    } catch (error) {
+        console.error("Erreur lors de la récupération du rapport:", error);
+        alert("Impossible de charger les données du rapport");
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleExport = (format: 'pdf' | 'excel' | 'print') => {
+    if (format === 'print' && selectedReport && selectedClassId) {
+        const url = `/app/reports/print?reportId=${selectedReport.id}&idClasse=${selectedClassId}&idAnneeScolaire=${yearId}&name=${encodeURIComponent(selectedReport.name)}&type=${selectedReport.type}&yearLabel=${encodeURIComponent(selectedYear?.libelleAnneeScolaire || '')}`;
+        window.open(url, '_blank');
+        return;
+    }
+    console.log(`Exporting ${selectedReport?.name} in ${format} format...`);
+    alert(`Exportation lancée au format ${format.toUpperCase()}`);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -229,9 +318,9 @@ const ClasseManagementPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-8 items-start relative">
-        {/* Left Column: Square Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_800px] gap-8 items-start relative">
+        {/* Left Column: Cards Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-1 2xl:grid-cols-2 gap-4">
           {stats.map((item, idx) => {
             const isActive = selectedClassId === item.idClasse;
             return (
@@ -239,7 +328,7 @@ const ClasseManagementPage: React.FC = () => {
                 key={item.idClasse}
                 onClick={() => handleSelectClass(item.idClasse)}
                 className={clsx(
-                  "bg-white border rounded-[32px] p-6 transition-all shadow-sm overflow-hidden relative cursor-pointer aspect-square flex flex-col justify-between group",
+                  "bg-white border rounded-[32px] p-6 transition-all shadow-sm overflow-hidden relative cursor-pointer flex flex-col justify-between group h-[280px]",
                   isActive ? "border-black shadow-xl scale-[1.02] z-10" : "border-gray-100 hover:border-gray-300 hover:shadow-md"
                 )}
               >
@@ -255,7 +344,7 @@ const ClasseManagementPage: React.FC = () => {
                     )}>
                        <DoorOpen size={24} />
                     </div>
-                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity relative">
                        <button
                         onClick={(e) => { e.stopPropagation(); handleOpenEdit(item); }}
                         className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-black transition-all"
@@ -309,71 +398,130 @@ const ClasseManagementPage: React.FC = () => {
         </div>
 
         {/* Right Column: Floating/Sticky Detail Panel */}
-        <div className="xl:sticky xl:top-8 space-y-6 self-start">
-          <div className="bg-white border border-gray-100 rounded-[40px] p-8 shadow-2xl shadow-gray-200/50 animate-in slide-in-from-right-8 duration-500">
-            <div className="flex flex-col gap-4 mb-6">
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.35em] text-[#9E9E9E]">Classe sélectionnée</p>
-                <h2 className="text-3xl font-black uppercase tracking-tight text-black mt-2">{selectedClass ? selectedClass.nomClasse : 'Aucune classe'}</h2>
-                {selectedClass && (
-                  <div className="flex flex-col gap-1 mt-4">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
-                        Enseignement : <span className="text-black">{selectedClass.enseignementLabel || 'N/A'}</span>
-                    </p>
-                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
-                        Cycle : <span className="text-black">{selectedClass.cycleLabel || 'N/A'}</span>
-                    </p>
-                  </div>
-                )}
-              </div>
-              <div className="bg-accent/5 p-4 rounded-3xl border border-accent/10 flex justify-between items-center mt-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-accent">Évaluations actives</span>
-                <p className="text-2xl font-black text-accent">{sequenceCount}</p>
-              </div>
+        <div className="xl:sticky xl:top-8 grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 self-start">
+          <div className="space-y-6">
+            <div className="bg-white border border-gray-100 rounded-[40px] p-8 shadow-2xl shadow-gray-200/50 animate-in slide-in-from-right-8 duration-500">
+                <div className="flex flex-col gap-4 mb-6">
+                <div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.35em] text-[#9E9E9E]">Classe sélectionnée</p>
+                    <h2 className="text-3xl font-black uppercase tracking-tight text-black mt-2">{selectedClass ? selectedClass.nomClasse : 'Aucune classe'}</h2>
+                    {selectedClass && (
+                    <div className="flex flex-col gap-1 mt-4">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+                            Enseignement : <span className="text-black">{selectedClass.enseignementLabel || 'N/A'}</span>
+                        </p>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+                            Cycle : <span className="text-black">{selectedClass.cycleLabel || 'N/A'}</span>
+                        </p>
+                    </div>
+                    )}
+                </div>
+                <div className="bg-accent/5 p-4 rounded-3xl border border-accent/10 flex justify-between items-center mt-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-accent">Évaluations actives</span>
+                    <p className="text-2xl font-black text-accent">{sequenceCount}</p>
+                </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-[10px] uppercase tracking-[0.2em] font-black text-[#9E9E9E]">
+                <div className="bg-gray-50 rounded-[32px] p-6 border border-gray-100">
+                    <p className="text-black text-3xl font-black mb-1">{selectedClass?.nbSalles ?? 0}</p>
+                    <p>Salles</p>
+                </div>
+                <div className="bg-gray-50 rounded-[32px] p-6 border border-gray-100">
+                    <p className="text-black text-3xl font-black mb-1">{selectedClass?.effectif ?? 0}</p>
+                    <p>Élèves</p>
+                </div>
+                </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-[10px] uppercase tracking-[0.2em] font-black text-[#9E9E9E]">
-              <div className="bg-gray-50 rounded-[32px] p-6 border border-gray-100">
-                <p className="text-black text-3xl font-black mb-1">{selectedClass?.nbSalles ?? 0}</p>
-                <p>Salles</p>
-              </div>
-              <div className="bg-gray-50 rounded-[32px] p-6 border border-gray-100">
-                <p className="text-black text-3xl font-black mb-1">{selectedClass?.effectif ?? 0}</p>
-                <p>Élèves</p>
-              </div>
+            <div className="bg-white border border-gray-100 rounded-[40px] p-8 shadow-sm">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.35em] mb-6 text-[#9E9E9E] flex items-center gap-2">
+                    <LayoutGrid size={14} /> Liste des Salles
+                </h3>
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                {rooms.length > 0 ? rooms.map(room => (
+                    <div key={room.idSalle} className="bg-gray-50/50 border border-gray-100 rounded-[28px] p-5 flex flex-col gap-4 hover:border-black transition-all group">
+                    <div className="flex items-center justify-between">
+                        <div>
+                        <p className="text-sm font-black uppercase text-black group-hover:text-accent transition-colors">{room.nomSalle}</p>
+                        <p className="text-[9px] uppercase tracking-[0.2em] text-[#9E9E9E] mt-1">Capacité : {room.capacite || '–'} places</p>
+                        </div>
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-gray-400 group-hover:text-black">
+                            <Users size={18} />
+                        </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                        <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                            <span className="text-[10px] font-black text-black uppercase tracking-widest">{room.elevesInscrits || 0} Inscrits</span>
+                        </div>
+                        <span className="text-[9px] font-bold text-gray-400 uppercase">{Math.round(((room.elevesInscrits || 0) / (room.capacite || 1)) * 100)}%</span>
+                    </div>
+                    </div>
+                )) : (
+                    <div className="border-2 border-dashed border-gray-100 rounded-[32px] p-12 text-center text-[#9E9E9E]">
+                    <p className="font-black uppercase tracking-[0.3em] text-[10px]">Sélectionnez une classe</p>
+                    </div>
+                )}
+                </div>
             </div>
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-[40px] p-8 shadow-sm">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.35em] mb-6 text-[#9E9E9E] flex items-center gap-2">
-                <LayoutGrid size={14} /> Liste des Salles
-            </h3>
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-              {rooms.length > 0 ? rooms.map(room => (
-                <div key={room.idSalle} className="bg-gray-50/50 border border-gray-100 rounded-[28px] p-5 flex flex-col gap-4 hover:border-black transition-all group">
-                  <div className="flex items-center justify-between">
+          {/* Right Column inside the detail area: Report Menu */}
+          <div className="bg-white border border-gray-100 rounded-[40px] p-8 shadow-2xl shadow-gray-200/50 flex flex-col h-full overflow-hidden">
+             <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center space-x-3 text-green-600">
+                    <FileText size={20} />
+                    <span className="text-[11px] font-black uppercase tracking-[0.4em]">Bibliothèque de Listes</span>
+                </div>
+                <div className="bg-gray-50 px-3 py-1 rounded-full text-[9px] font-black uppercase text-gray-400 tracking-widest border border-gray-100">
+                   Prêt à imprimer
+                </div>
+             </div>
+
+             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-8">
+                {reportCategories.map((cat, cIdx) => (
+                    <div key={cIdx} className="space-y-4">
+                        <h4 className="text-[10px] font-black text-green-600 uppercase tracking-[0.2em] flex items-center gap-2">
+                            <div className="w-1 h-4 bg-green-600 rounded-full"></div>
+                            {cat.name}
+                        </h4>
+                        <div className="grid grid-cols-1 gap-2">
+                            {cat.reports.map(report => (
+                                <button
+                                    key={report.id}
+                                    onClick={() => selectedClassId && handleOpenReport(report, selectedClassId)}
+                                    disabled={!selectedClassId}
+                                    className={clsx(
+                                        "w-full text-left px-6 py-4 rounded-2xl transition-all flex items-center justify-between group/btn",
+                                        selectedClassId ? "hover:bg-gray-50 bg-gray-50/30 border border-transparent hover:border-gray-200" : "opacity-40 cursor-not-allowed"
+                                    )}
+                                >
+                                    <div className="flex items-center space-x-4">
+                                        <div className="w-2 h-2 rounded-full bg-gray-200 group-hover/btn:bg-black group-hover/btn:scale-125 transition-all"></div>
+                                        <span className="text-xs font-bold text-gray-600 group-hover/btn:text-black uppercase tracking-tight">{report.name}</span>
+                                    </div>
+                                    <div className="opacity-0 group-hover/btn:opacity-100 transition-opacity translate-x-2 group-hover/btn:translate-x-0 transition-transform">
+                                        <ChevronRight size={14} className="text-black" />
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+             </div>
+
+             <div className="mt-8 p-6 bg-accent/5 rounded-[32px] border border-accent/10">
+                <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-accent text-white rounded-xl flex items-center justify-center shadow-lg shadow-accent/20">
+                        <Zap size={20} />
+                    </div>
                     <div>
-                      <p className="text-sm font-black uppercase text-black group-hover:text-accent transition-colors">{room.nomSalle}</p>
-                      <p className="text-[9px] uppercase tracking-[0.2em] text-[#9E9E9E] mt-1">Capacité : {room.capacite || '–'} places</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-accent">Génération Intelligente</p>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight mt-0.5">Données synchronisées en temps réel</p>
                     </div>
-                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-gray-400 group-hover:text-black">
-                        <Users size={18} />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                     <div className="flex items-center gap-2">
-                         <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                         <span className="text-[10px] font-black text-black uppercase tracking-widest">{room.elevesInscrits || 0} Inscrits</span>
-                     </div>
-                     <span className="text-[9px] font-bold text-gray-400 uppercase">{Math.round(((room.elevesInscrits || 0) / (room.capacite || 1)) * 100)}%</span>
-                  </div>
                 </div>
-              )) : (
-                <div className="border-2 border-dashed border-gray-100 rounded-[32px] p-12 text-center text-[#9E9E9E]">
-                  <p className="font-black uppercase tracking-[0.3em] text-[10px]">Sélectionnez une classe</p>
-                </div>
-              )}
-            </div>
+             </div>
           </div>
         </div>
       </div>
@@ -471,6 +619,257 @@ const ClasseManagementPage: React.FC = () => {
               </form>
            </div>
         </div>
+      )}
+
+      {/* Preview Modal */}
+      {isPreviewModalOpen && selectedReport && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-10 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
+              <div className="w-full max-w-6xl h-full max-h-[90vh] bg-white rounded-[56px] shadow-2xl relative overflow-hidden flex flex-col border border-gray-100">
+
+                  {/* Modal Header */}
+                  <div className="p-8 md:p-12 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gray-50/50">
+                      <div>
+                          <div className="flex items-center space-x-3 text-green-600 mb-2">
+                              <FileText size={20} />
+                              <span className="text-[10px] font-black uppercase tracking-[0.4em]">Aperçu Direct</span>
+                          </div>
+                          <h2 className="text-3xl font-black uppercase tracking-tight text-black">{selectedReport.name}</h2>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                              Classe : {stats.find(s => s.idClasse === selectedReport.classeId)?.nomClasse} • {selectedYear?.libelleAnneeScolaire}
+                          </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            onClick={() => handleExport('pdf')}
+                            className="bg-red-50 text-red-600 p-4 rounded-2xl flex items-center gap-2 hover:bg-red-100 transition-all font-black uppercase text-[10px] tracking-widest"
+                          >
+                              <FileDown size={18} /> PDF
+                          </button>
+                          <button
+                            onClick={() => handleExport('excel')}
+                            className="bg-green-50 text-green-700 p-4 rounded-2xl flex items-center gap-2 hover:bg-green-100 transition-all font-black uppercase text-[10px] tracking-widest"
+                          >
+                              <FileSpreadsheet size={18} /> Excel
+                          </button>
+                          <button
+                            onClick={() => handleExport('print')}
+                            className="bg-black text-white p-4 rounded-2xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all font-black uppercase text-[10px] tracking-widest"
+                          >
+                              <Printer size={18} /> Imprimer
+                          </button>
+                          <button
+                            onClick={() => setIsPreviewModalOpen(false)}
+                            className="p-4 bg-white border border-gray-200 text-gray-400 hover:text-black rounded-2xl transition-all"
+                          >
+                              <X size={24} />
+                          </button>
+                      </div>
+                  </div>
+
+                  {/* Search and Filters */}
+                  <div className="px-12 py-6 bg-white flex items-center gap-4">
+                      <div className="relative flex-1">
+                          <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                          <input
+                            type="text"
+                            placeholder="RECHERCHER UN ÉLÈVE, UN STATUT..."
+                            className="w-full pl-16 pr-8 py-5 bg-gray-50 rounded-[24px] text-sm font-bold border-2 border-transparent focus:border-black focus:bg-white transition-all outline-none"
+                            value={previewSearch}
+                            onChange={(e) => setPreviewSearch(e.target.value)}
+                          />
+                      </div>
+                  </div>
+
+                  {/* Data Content */}
+                  <div className="flex-1 overflow-y-auto px-12 pb-12 custom-scrollbar">
+                      {previewData.map((section: any, sIdx: number) => (
+                          <div key={section.idSalle || sIdx} className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${sIdx * 100}ms` }}>
+                              {/* Room Header */}
+                              <div className="flex items-center justify-between px-8 py-5 bg-gray-50 rounded-3xl border border-gray-100 mb-6">
+                                  <div className="flex items-center gap-4">
+                                      <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-sm text-green-600">
+                                          <DoorOpen size={20} />
+                                      </div>
+                                      <div>
+                                          <h3 className="text-sm font-black uppercase text-black">Salle : {section.nomSalle}</h3>
+                                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Capacité : {section.capacite || '–'} places</p>
+                                      </div>
+                                  </div>
+                                  <div className="text-right">
+                                      <span className="text-[10px] font-black bg-green-600 text-white px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg shadow-green-100">
+                                          {section.eleves?.length || section.stats?.total || 0} Inscrits
+                                      </span>
+                                  </div>
+                              </div>
+
+                              {selectedReport.type === 'A' && section.eleves && (
+                                  <div className="bg-white border border-gray-100 rounded-[32px] overflow-hidden shadow-sm">
+                                      <table className="w-full text-left">
+                                          <thead className="bg-gray-50/50 border-b border-gray-100">
+                                              <tr>
+                                                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">ID</th>
+                                                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Matricule</th>
+                                                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Élève</th>
+                                                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Sexe</th>
+                                                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Statut</th>
+                                                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] text-right">Montant Dû</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-gray-50">
+                                              {section.eleves.filter((d: any) => d.nom.toLowerCase().includes(previewSearch.toLowerCase())).map((item: any) => (
+                                                  <tr key={item.id} className="hover:bg-gray-50/50 transition-colors group">
+                                                      <td className="px-8 py-6 text-sm font-bold text-gray-400">{item.id}</td>
+                                                      <td className="px-8 py-6 text-sm font-black text-black">{item.matricule}</td>
+                                                      <td className="px-8 py-6">
+                                                          <div className="font-black uppercase text-black group-hover:text-green-600 transition-colors">{item.nom} {item.prenom}</div>
+                                                          <div className="text-[9px] text-gray-400 uppercase tracking-widest font-bold mt-0.5">Né(e) le {new Date(item.date).toLocaleDateString()}</div>
+                                                      </td>
+                                                      <td className="px-8 py-6 text-center">
+                                                          <span className={clsx(
+                                                              "px-3 py-1 rounded-full text-[9px] font-black uppercase",
+                                                              item.sexe === 'M' ? "bg-blue-50 text-blue-600" : "bg-pink-50 text-pink-600"
+                                                          )}>{item.sexe === 'M' ? 'M' : 'F'}</span>
+                                                      </td>
+                                                      <td className="px-8 py-6">
+                                                          <div className="flex items-center gap-2">
+                                                              {item.statut === 'Nouveau' ? <Zap size={12} className="text-yellow-500" /> : <MoreVertical size={12} className="text-gray-300" />}
+                                                              <span className="text-[10px] font-black uppercase tracking-widest">{item.statut}</span>
+                                                          </div>
+                                                      </td>
+                                                      <td className="px-8 py-6 text-right font-black text-sm">
+                                                          {item.solde > 0 ? (
+                                                              <span className="text-red-500">{item.solde.toLocaleString()} FCFA</span>
+                                                          ) : (
+                                                              <span className="text-green-600 flex items-center justify-end gap-2">
+                                                                  <CheckCircle2 size={14} /> SOLDÉ
+                                                              </span>
+                                                          )}
+                                                      </td>
+                                                  </tr>
+                                              ))}
+                                          </tbody>
+                                      </table>
+                                      <div className="p-6 bg-gray-50/30 border-t border-gray-100 flex justify-end">
+                                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total : {section.eleves.length} élèves</p>
+                                      </div>
+                                  </div>
+                              )}
+
+                              {selectedReport.id === 'gender_split' && section.stats && (
+                                  <div className="space-y-6">
+                                      <div className="grid grid-cols-3 gap-6">
+                                          <div className="bg-pink-50 border border-pink-100 p-6 rounded-[32px]">
+                                              <p className="text-[10px] font-black text-pink-600 uppercase tracking-widest">Filles</p>
+                                              <p className="text-3xl font-black text-pink-700 mt-2">{section.stats.girls} ({section.stats.girlsPercent}%)</p>
+                                          </div>
+                                          <div className="bg-blue-50 border border-blue-100 p-6 rounded-[32px]">
+                                              <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Garçons</p>
+                                              <p className="text-3xl font-black text-blue-700 mt-2">{section.stats.boys} ({section.stats.boysPercent}%)</p>
+                                          </div>
+                                          <div className="bg-gray-50 border border-gray-100 p-6 rounded-[32px]">
+                                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Effectif Total</p>
+                                              <p className="text-3xl font-black text-black mt-2">{section.stats.total}</p>
+                                          </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                          <div className="bg-white border border-gray-100 rounded-[32px] overflow-hidden">
+                                              <div className="px-8 py-4 bg-pink-50/50 border-b border-pink-100 flex justify-between items-center">
+                                                  <span className="text-[10px] font-black uppercase text-pink-600">Liste des Filles</span>
+                                                  <span className="text-[10px] font-bold text-pink-400 uppercase">{section.girls.length} ÉLÈVES</span>
+                                              </div>
+                                              <table className="w-full text-left">
+                                                  <tbody className="divide-y divide-gray-50">
+                                                      {section.girls.map((f: any, idx: number) => (
+                                                          <tr key={idx}>
+                                                              <td className="px-8 py-3 text-xs font-bold text-gray-400 w-12">{idx + 1}</td>
+                                                              <td className="px-4 py-3 text-[11px] font-black uppercase text-black">{f.nom} {f.prenom}</td>
+                                                          </tr>
+                                                      ))}
+                                                  </tbody>
+                                              </table>
+                                          </div>
+                                          <div className="bg-white border border-gray-100 rounded-[32px] overflow-hidden">
+                                              <div className="px-8 py-4 bg-blue-50/50 border-b border-blue-100 flex justify-between items-center">
+                                                  <span className="text-[10px] font-black uppercase text-blue-600">Liste des Garçons</span>
+                                                  <span className="text-[10px] font-bold text-blue-400 uppercase">{section.boys.length} ÉLÈVES</span>
+                                              </div>
+                                              <table className="w-full text-left">
+                                                  <tbody className="divide-y divide-gray-50">
+                                                      {section.boys.map((m: any, idx: number) => (
+                                                          <tr key={idx}>
+                                                              <td className="px-8 py-3 text-xs font-bold text-gray-400 w-12">{idx + 1}</td>
+                                                              <td className="px-4 py-3 text-[11px] font-black uppercase text-black">{m.nom} {m.prenom}</td>
+                                                          </tr>
+                                                      ))}
+                                                  </tbody>
+                                              </table>
+                                          </div>
+                                      </div>
+                                  </div>
+                              )}
+
+                              {selectedReport.id === 'trombinoscope' && section.eleves && (
+                                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                                      {section.eleves.map((eleve: any) => (
+                                          <div key={eleve.id} className="bg-white border border-gray-100 p-4 rounded-3xl text-center group hover:border-black transition-all">
+                                              <div className="aspect-square bg-gray-100 rounded-2xl mb-4 overflow-hidden relative">
+                                                  {eleve.photo ? (
+                                                      <img src={eleve.photo} alt={eleve.nom} className="w-full h-full object-cover" />
+                                                  ) : (
+                                                      <div className="absolute inset-0 flex items-center justify-center">
+                                                          <Users size={40} className="text-gray-300" />
+                                                      </div>
+                                                  )}
+                                              </div>
+                                              <p className="text-[11px] font-black uppercase text-black truncate">{eleve.nom} {eleve.prenom}</p>
+                                              <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase">{eleve.matricule}</p>
+                                          </div>
+                                      ))}
+                                  </div>
+                              )}
+
+                              {selectedReport.id === 'attendance_monthly' && section.eleves && (
+                                  <div className="bg-white border border-gray-100 rounded-[32px] overflow-x-auto shadow-sm">
+                                      <table className="w-full text-left border-collapse min-w-[1200px]">
+                                          <thead>
+                                              <tr className="bg-gray-50/50">
+                                                  <th className="border-r border-gray-100 px-6 py-4 text-[9px] font-black uppercase tracking-widest w-[250px]">Nom de l'élève</th>
+                                                  {[...Array(31)].map((_, i) => (
+                                                      <th key={i} className="border-r border-gray-100 px-0 py-4 text-center text-[7px] font-black uppercase w-[40px]">
+                                                          <div className="mb-1">{i + 1}</div>
+                                                          <div className="flex border-t border-gray-100">
+                                                              <span className="flex-1 border-r border-gray-100">M</span>
+                                                              <span className="flex-1">S</span>
+                                                          </div>
+                                                      </th>
+                                                  ))}
+                                              </tr>
+                                          </thead>
+                                          <tbody>
+                                              {section.eleves.map((item: any) => (
+                                                  <tr key={item.id} className="border-t border-gray-100">
+                                                      <td className="border-r border-gray-100 px-6 py-3 font-black uppercase text-[10px]">{item.nom} {item.prenom}</td>
+                                                      {[...Array(31)].map((_, i) => (
+                                                          <td key={i} className="border-r border-gray-100 p-0 h-10">
+                                                              <div className="flex h-full">
+                                                                  <div className="flex-1 border-r border-gray-50 bg-white group-hover:bg-gray-50/30"></div>
+                                                                  <div className="flex-1 bg-white group-hover:bg-gray-50/30"></div>
+                                                              </div>
+                                                          </td>
+                                                      ))}
+                                                  </tr>
+                                              ))}
+                                          </tbody>
+                                      </table>
+                                  </div>
+                              )}
+                          </div>
+                      ))}
+                  </div>
+              </div>
+          </div>
       )}
     </div>
   );

@@ -31,7 +31,9 @@ import {
     Check,
     LayoutGrid,
     List,
-    Download
+    Download,
+    BarChart3,
+    Zap
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -984,153 +986,234 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
 };
 
 const StatisticsPage: React.FC<{ data: BulletinData, config: any }> = ({ data, config }) => {
-    // 1. Prepare Bar Chart Data
-    const barData = data.performance.groups.map(group => ({
-        name: group.name,
-        élève: group.groupAverage || 0,
-        classe: data.stats.avgMoy || 0,
-        max: data.stats.maxMoy || 20
-    }));
+    const getPerformanceColor = (avg: number) => {
+        if (avg < 10) return '#EF4444'; // Rouge: Sous-moyenne
+        if (avg < 12) return '#3B82F6'; // Bleu: Juste la moyenne/Passable
+        return '#10B981'; // Vert: Bien/Au-dessus
+    };
 
-    // Comparative Data for Specific Mode
-    const comparativeData = data.performance.groups.flatMap(group =>
-        group.subjects.map(sub => ({
-            name: sub.name,
-            seq1: sub.note1 || 0,
-            seq2: sub.note2 || 0,
-            avg: sub.total || 0
-        }))
-    );
+    // 1. Bar Chart Data with Proportionality (Weight) and Colors
+    const barData = data.performance.groups.map(group => {
+        const avg = group.groupAverage || 0;
+        return {
+            name: group.name,
+            élève: avg,
+            classe: data.stats.avgMoy || 0,
+            weight: group.groupTotalCoef || 1,
+            color: getPerformanceColor(avg),
+            pointsEarned: group.groupTotalPoints || 0,
+            maxPoints: (group.groupTotalCoef || 1) * 20
+        };
+    });
 
-    // 2. Prepare Radar Chart Data (Profiling)
-    const radarData = data.performance.groups.map(group => ({
-        subject: group.name,
-        score: group.groupAverage || 0,
-        fullMark: 20
-    }));
+    // 2. Comparative Data for Radar (Seq 1 vs Seq 2)
+    // We need to calculate averages per group for each sequence
+    const radarData = data.performance.groups.map(group => {
+        const getSeqGroupAvg = (seqIndex: number) => {
+            const notes = group.subjects.map(s => seqIndex === 1 ? s.note1 : s.note2).filter(v => v !== null) as number[];
+            if (notes.length === 0) return 0;
+            // Weighted average for the group in this sequence
+            let sumPts = 0;
+            let sumCoef = 0;
+            group.subjects.forEach(s => {
+                const val = seqIndex === 1 ? s.note1 : s.note2;
+                if (val !== null) {
+                    sumPts += (val * s.coef);
+                    sumCoef += s.coef;
+                }
+            });
+            return sumCoef > 0 ? (sumPts / sumCoef) : 0;
+        };
+
+        return {
+            subject: group.name,
+            seq1: getSeqGroupAvg(1),
+            seq2: getSeqGroupAvg(2),
+            full: group.groupAverage || 0,
+            weight: group.groupTotalCoef || 1
+        };
+    });
+
+    const isComparative = config?.periodType === 'TRIMESTER' && data.period.subPeriods && data.period.subPeriods.length >= 1;
 
     return (
-        <div className="bulletin-page w-[210mm] min-h-[297mm] bg-white shadow-2xl flex flex-col p-[20mm] print:shadow-none print:w-[210mm] print:page-break-before-always relative overflow-hidden">
+        <div className="bulletin-page w-[210mm] min-h-[297mm] bg-white shadow-2xl flex flex-col p-[15mm] print:shadow-none print:w-[210mm] print:page-break-before-always relative overflow-hidden">
             {/* Header Profil */}
-            <div className="flex justify-between items-center mb-10 border-b-2 border-black pb-4">
+            <div className="flex justify-between items-end mb-8 border-b-2 border-black pb-4">
                 <div>
-                    <h2 className="text-2xl font-black uppercase tracking-tighter">Profil de Performance</h2>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Analyse graphique individuelle — {data.student.nomComplet}</p>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter">Diagnostic de Performance</h2>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Analyse pondérée par coefficients — {data.student.nomComplet}</p>
                 </div>
-                <div className="text-right">
-                    <span className="px-4 py-2 bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest">
+                <div className="text-right space-y-1">
+                    <div className="px-4 py-1 bg-black text-white rounded-lg text-[9px] font-black uppercase tracking-widest inline-block">
                         {data.period.label}
-                    </span>
+                    </div>
+                    <p className="text-[8px] font-black text-accent uppercase tracking-widest block">Moyenne Générale : {data.performance.average.toFixed(2)}</p>
                 </div>
             </div>
 
-            <div className="flex-1 space-y-12">
-                {/* 1. Bar Chart Section */}
-                <div className="bg-gray-50/50 p-8 rounded-[40px] border border-gray-100">
-                    <div className="flex items-center justify-between mb-8">
+            <div className="flex-1 space-y-8">
+                {/* 1. Bar Chartpondéré */}
+                <div className="bg-gray-50/50 p-6 rounded-[32px] border border-gray-100">
+                    <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h3 className="text-sm font-black uppercase tracking-widest text-black flex items-center gap-2">
-                                <LayoutGrid size={18} className="text-accent" />
-                                {config?.stats?.chartScope === 'SPECIFIC' ? 'Comparaison des Séquences' : 'Positionnement par rapport à la classe'}
+                            <h3 className="text-xs font-black uppercase tracking-widest text-black flex items-center gap-2">
+                                <BarChart3 size={16} className="text-accent" />
+                                Bilan des Pôles d'Apprentissage
                             </h3>
-                            <p className="text-[8px] font-medium text-gray-400 uppercase tracking-widest mt-1">Visualisation des moyennes par {config?.stats?.chartScope === 'SPECIFIC' ? 'matière' : 'pôle d\'enseignement'}</p>
+                            <p className="text-[7px] font-medium text-gray-400 uppercase tracking-widest mt-1">La largeur des barres indique le poids (Coefficients) du groupe</p>
                         </div>
                     </div>
 
-                    <div className="h-[255px] w-full">
+                    <div className="h-[240px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            {config?.stats?.chartScope === 'SPECIFIC' ? (
-                                <BarChart data={comparativeData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                                    <XAxis dataKey="name" tick={{fontSize: 7, fontWeight: 800}} interval={0} angle={-45} textAnchor="end" height={60} />
-                                    <YAxis domain={[0, 20]} tick={{fontSize: 8, fontWeight: 800}} />
-                                    <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}} />
-                                    <Legend wrapperStyle={{fontSize: '9px', fontWeight: 900, paddingTop: '20px'}} />
-                                    <Bar dataKey="seq1" name="Séquence 1" fill="#94a3b8" radius={[4, 4, 0, 0]} />
-                                    <Bar dataKey="seq2" name="Séquence 2" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            ) : (
-                                <BarChart data={barData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                                    <XAxis dataKey="name" tick={{fontSize: 8, fontWeight: 800}} />
-                                    <YAxis domain={[0, 20]} tick={{fontSize: 8, fontWeight: 800}} />
-                                    <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}} />
-                                    <Legend wrapperStyle={{fontSize: '9px', fontWeight: 900, paddingTop: '10px'}} />
-                                    <Bar dataKey="élève" name="Moyenne Élève" fill="#000" radius={[4, 4, 0, 0]} barSize={40} />
-                                    <Bar dataKey="classe" name="Moyenne Classe" fill="#94a3b8" radius={[4, 4, 0, 0]} barSize={40} />
-                                </BarChart>
-                            )}
+                            <BarChart data={barData} barGap={8}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                                <XAxis
+                                    dataKey="name"
+                                    tick={{fontSize: 7, fontWeight: 900}}
+                                    height={40}
+                                />
+                                <YAxis domain={[0, 20]} tick={{fontSize: 8, fontWeight: 800}} />
+                                <Tooltip
+                                    cursor={{fill: 'transparent'}}
+                                    content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                            const d = payload[0].payload;
+                                            return (
+                                                <div className="bg-white p-3 rounded-xl shadow-xl border border-gray-100">
+                                                    <p className="text-[9px] font-black uppercase mb-1">{d.name}</p>
+                                                    <div className="space-y-1">
+                                                        <p className="text-[8px] font-bold text-gray-500">Moyenne: <span className="text-black">{d.élève.toFixed(2)}/20</span></p>
+                                                        <p className="text-[8px] font-bold text-gray-500">Poids: <span className="text-black">Coef. {d.weight}</span></p>
+                                                        <p className="text-[8px] font-bold text-gray-500">Points: <span className="text-black">{d.pointsEarned.toFixed(1)} / {d.maxPoints}</span></p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    }}
+                                />
+                                <Bar
+                                    dataKey="élève"
+                                    name="Moyenne Élève"
+                                    radius={[4, 4, 0, 0]}
+                                >
+                                    {barData.map((entry, index) => (
+                                        <rect
+                                            key={`cell-${index}`}
+                                            fill={entry.color}
+                                            // On simule la largeur par rapport au poids (coef)
+                                            width={20 + (entry.weight * 2)}
+                                        />
+                                    ))}
+                                </Bar>
+                                <Bar dataKey="classe" name="Moyenne Classe" fill="#e2e8f0" radius={[4, 4, 0, 0]} barSize={15} />
+                            </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                {/* 2. Radar Chart Section */}
-                {config?.stats?.chartType === 'RADAR' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[340px]">
-                        <div className="bg-black text-white p-8 rounded-[40px] relative overflow-hidden flex flex-col">
-                            <div className="relative z-10">
-                                <h3 className="text-sm font-black uppercase tracking-widest text-accent mb-2">Analyse Radiale</h3>
-                                <p className="text-[10px] font-medium text-gray-400 leading-relaxed">
-                                    Ce diagramme illustre l'équilibre des compétences. Un radar étendu vers les bords indique une maîtrise homogène, tandis que des pics isolés révèlent des pôles d'excellence spécifiques.
-                                </p>
-                            </div>
+                {/* 2. Radar Chart Comparatif Pondéré */}
+                <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
+                    <div className="bg-black text-white p-6 rounded-[32px] relative overflow-hidden flex flex-col h-[320px]">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 rounded-full blur-3xl" />
 
-                            <div className="flex-1 mt-4">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                                        <PolarGrid stroke="#333" />
-                                        <PolarAngleAxis dataKey="subject" tick={{fill: '#94a3b8', fontSize: 8, fontWeight: 800}} />
+                        <div className="relative z-10 mb-4">
+                            <h3 className="text-xs font-black uppercase tracking-widest text-accent flex items-center gap-2">
+                                <Zap size={14} />
+                                {isComparative ? "Radar de Progression" : "Analyse d'Équilibre"}
+                            </h3>
+                            <p className="text-[8px] font-medium text-gray-400 leading-relaxed mt-1">
+                                Visualisation de la maîtrise des compétences par pôle. {isComparative && "Comparaison entre les évaluations."}
+                            </p>
+                        </div>
+
+                        <div className="flex-1">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
+                                    <PolarGrid stroke="#333" />
+                                    <PolarAngleAxis dataKey="subject" tick={{fill: '#94a3b8', fontSize: 7, fontWeight: 900}} />
+                                    <PolarRadiusAxis angle={30} domain={[0, 20]} tick={false} axisLine={false} />
+
+                                    {isComparative ? (
+                                        <>
+                                            <Radar
+                                                name={data.period.subPeriods?.[0]?.abrev || "Seq 1"}
+                                                dataKey="seq1"
+                                                stroke="#94a3b8"
+                                                fill="#94a3b8"
+                                                fillOpacity={0.3}
+                                            />
+                                            <Radar
+                                                name={data.period.subPeriods?.[1]?.abrev || "Seq 2"}
+                                                dataKey="seq2"
+                                                stroke="#3b82f6"
+                                                fill="#3b82f6"
+                                                fillOpacity={0.5}
+                                            />
+                                        </>
+                                    ) : (
                                         <Radar
-                                            name="Score"
-                                            dataKey="score"
+                                            name="Performance"
+                                            dataKey="full"
                                             stroke="#10b981"
                                             fill="#10b981"
                                             fillOpacity={0.5}
                                         />
-                                    </RadarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-
-                        <div className="bg-white border-2 border-black p-8 rounded-[40px] flex flex-col justify-between">
-                            <div>
-                                <h3 className="text-sm font-black uppercase tracking-widest mb-6">Forces & Faiblesses</h3>
-                                <div className="space-y-6">
-                                    {radarData.sort((a, b) => b.score - a.score).slice(0, 3).map((item, idx) => (
-                                        <div key={idx} className="flex items-center gap-4">
-                                            <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-600 font-black text-[10px]">
-                                                +{idx+1}
-                                            </div>
-                                            <div>
-                                                <p className="text-[9px] font-black uppercase">{item.subject}</p>
-                                                <div className="w-32 h-1 bg-gray-100 rounded-full mt-1">
-                                                    <div className="h-full bg-green-500 rounded-full" style={{width: `${(item.score/20)*100}%`}} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="pt-8 border-t border-gray-100 mt-8">
-                                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
-                                    L'élève présente un profil {data.performance.average >= 14 ? 'EXCELLENT' : data.performance.average >= 10 ? 'ÉQUILIBRÉ' : 'À SOUTENIR'}.
-                                    {config?.stats?.showRadarAnalysis && (
-                                        <span className="block mt-2 text-black">
-                                            Dominante actuelle : {radarData.sort((a, b) => b.score - a.score)[0]?.subject}
-                                        </span>
                                     )}
-                                </p>
-                            </div>
+                                    <Legend wrapperStyle={{fontSize: '8px', fontWeight: 900, color: '#fff'}} />
+                                </RadarChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
-                )}
+
+                    <div className="bg-white border-2 border-black p-6 rounded-[32px] flex flex-col">
+                        <h3 className="text-xs font-black uppercase tracking-widest mb-4">Impact des Pôles (Points)</h3>
+                        <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                            {barData.sort((a, b) => b.pointsEarned - a.pointsEarned).map((item, idx) => (
+                                <div key={idx} className="bg-gray-50 p-3 rounded-2xl border border-gray-100 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black" style={{ backgroundColor: `${item.color}20`, color: item.color }}>
+                                            #{idx+1}
+                                        </div>
+                                        <div>
+                                            <p className="text-[9px] font-black uppercase leading-tight">{item.name}</p>
+                                            <p className="text-[7px] font-bold text-gray-400 uppercase">Poids: x{item.weight}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-black">+{item.pointsEarned.toFixed(1)} <span className="text-[7px] text-gray-400">pts</span></p>
+                                        <div className="w-16 h-1 bg-gray-200 rounded-full mt-1">
+                                            <div className="h-full rounded-full" style={{ width: `${(item.élève/20)*100}%`, backgroundColor: item.color }} />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="pt-4 border-t border-gray-100 mt-4">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-2 h-2 rounded-full bg-green-500" />
+                                <p className="text-[7px] font-black text-gray-500 uppercase tracking-widest">Points Totaux : {data.performance.totalPoints.toFixed(1)} / {data.performance.totalCoef * 20}</p>
+                            </div>
+                            <p className="text-[8px] font-bold text-black uppercase leading-relaxed">
+                                Dominante Stratégique : <span className="text-accent">{barData.sort((a, b) => b.pointsEarned - a.pointsEarned)[0]?.name}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            {/* Footer Page 2 */}
-            <div className="mt-auto pt-8 border-t border-gray-100 flex justify-between items-center">
-                <p className="text-[7px] font-black text-gray-300 uppercase tracking-[0.3em]">Scholar Analyse System v3.0</p>
-                <p className="text-[7px] font-black text-gray-300 uppercase tracking-[0.3em]">Page 2 / 2</p>
+            {/* Footer Diagnostic */}
+            <div className="mt-8 pt-4 border-t border-gray-100 flex justify-between items-center opacity-40">
+                <p className="text-[6px] font-black uppercase tracking-[0.3em]">Scholar Analyse System pondéré v3.1</p>
+                <div className="flex gap-4">
+                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-[#EF4444]"/> <span className="text-[6px] font-bold">Alerte</span></div>
+                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]"/> <span className="text-[6px] font-bold">Passable</span></div>
+                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-[#10B981]"/> <span className="text-[6px] font-bold">Acquis</span></div>
+                </div>
+                <p className="text-[6px] font-black uppercase tracking-[0.3em]">Page 2 / 2</p>
             </div>
         </div>
     );
