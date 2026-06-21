@@ -44,6 +44,8 @@ const PaiementFraisExigible = require("./paiementFraisExigible");
 const PaiementFraisPeriscolaire = require("./paiementFraisPeriscolaire");
 const Quartier = require("./quartier");
 const TarifTransport = require("./tarifTransport");
+const EleveTransport = require("./eleveTransport");
+const EcheancierTransport = require("./echeancierTransport");
 const PaiementTransport = require("./paiementTransport");
 
 // ✅ Associations fondamentales
@@ -205,13 +207,26 @@ PaiementFraisPeriscolaire.belongsTo(PaiementFraisGlobal, { foreignKey: "idPaieme
 
 PaiementFraisPeriscolaire.belongsTo(TarifFraisPeriscolaire, { foreignKey: "idTarifFraisActivitePeriscolaire", as: "Tarif" });
 
-PaiementFraisGlobal.hasMany(PaiementTransport, { foreignKey: "idPaiementFraisGlobal", as: "detailsTransport" });
-PaiementTransport.belongsTo(PaiementFraisGlobal, { foreignKey: "idPaiementFraisGlobal" });
-
 TarifTransport.belongsTo(Quartier, { foreignKey: "idQuartier" });
 Quartier.hasMany(TarifTransport, { foreignKey: "idQuartier" });
 
-PaiementTransport.belongsTo(TarifTransport, { foreignKey: "idTarifTransport" });
+Eleve.hasMany(EleveTransport, { foreignKey: "idEleve" });
+EleveTransport.belongsTo(Eleve, { foreignKey: "idEleve" });
+
+TarifTransport.hasMany(EleveTransport, { foreignKey: "idTarifTransport" });
+EleveTransport.belongsTo(TarifTransport, { foreignKey: "idTarifTransport" });
+
+EleveTransport.hasMany(EcheancierTransport, { foreignKey: "idEleveTransport", as: "echeances" });
+EcheancierTransport.belongsTo(EleveTransport, { foreignKey: "idEleveTransport" });
+
+PaiementFraisGlobal.hasMany(PaiementTransport, { foreignKey: "idPaiementFraisGlobal", as: "detailsTransport" });
+PaiementTransport.belongsTo(PaiementFraisGlobal, { foreignKey: "idPaiementFraisGlobal" });
+
+PaiementTransport.belongsTo(EcheancierTransport, { foreignKey: "idEcheancier" });
+EcheancierTransport.hasMany(PaiementTransport, { foreignKey: "idEcheancier" });
+
+PaiementTransport.belongsTo(EleveTransport, { foreignKey: "idEleveTransport" });
+EleveTransport.hasMany(PaiementTransport, { foreignKey: "idEleveTransport" });
 
 // ✅ Pedagogical (Grades) Associations
 Note.belongsTo(AnneeScolaire, { foreignKey: "idAnneeScolaire" });
@@ -220,14 +235,11 @@ AnneeScolaire.hasMany(Note, { foreignKey: "idAnneeScolaire" });
 Note.belongsTo(Inscription, { foreignKey: "idInscription" });
 Inscription.hasMany(Note, { foreignKey: "idInscription" });
 
-Note.belongsTo(RepartitionMatiere, { foreignKey: "idRepartitionMatiere" });
-RepartitionMatiere.hasMany(Note, { foreignKey: "idRepartitionMatiere" });
+Note.belongsTo(RepartitionCompetence, { foreignKey: "idRepartitionCompetence" });
+RepartitionCompetence.hasMany(Note, { foreignKey: "idRepartitionCompetence" });
 
 Note.belongsTo(SousPeriode, { foreignKey: "idSequence" });
 SousPeriode.hasMany(Note, { foreignKey: "idSequence" });
-
-Note.belongsTo(Competence, { foreignKey: "idCompetence" });
-Competence.hasMany(Note, { foreignKey: "idCompetence" });
 
 Note.belongsTo(Justification, { foreignKey: "idJustification" });
 Justification.hasMany(Note, { foreignKey: "idJustification" });
@@ -303,5 +315,7 @@ module.exports = {
   PaiementFraisPeriscolaire,
   Quartier,
   TarifTransport,
+  EleveTransport,
+  EcheancierTransport,
   PaiementTransport
 };

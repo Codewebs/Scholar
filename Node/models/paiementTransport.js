@@ -3,11 +3,10 @@ const sequelize = require("../db");
 
 const PaiementTransport = sequelize.define("PaiementTransport", {
   idPaiementTransport: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-  dateDebut: { type: DataTypes.DATEONLY, allowNull: false },
-  dateFin: { type: DataTypes.DATEONLY, allowNull: false },
-  idMois: { type: DataTypes.INTEGER, allowNull: true }, // 1-12
+  montantVerse: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   idPaiementFraisGlobal: { type: DataTypes.BIGINT, allowNull: false },
-  idTarifTransport: { type: DataTypes.BIGINT, allowNull: false },
+  idEcheancier: { type: DataTypes.BIGINT, allowNull: true },
+  idEleveTransport: { type: DataTypes.BIGINT, allowNull: true },
   annule: { type: DataTypes.BOOLEAN, defaultValue: false }
 }, {
   tableName: "paiement_transport",

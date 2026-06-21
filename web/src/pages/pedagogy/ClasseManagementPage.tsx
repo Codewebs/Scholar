@@ -15,11 +15,13 @@ import {
   Edit2,
   Trash2,
   X,
-  Save
+  Save,
+  Sparkles
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import AuthInput from '../../components/ui/AuthInput';
 import AuthButton from '../../components/ui/AuthButton';
+import { useNavigate } from 'react-router-dom';
 
 interface ClasseStat {
     idClasse: number;
@@ -43,6 +45,7 @@ interface Cycle {
 }
 
 const ClasseManagementPage: React.FC = () => {
+  const navigate = useNavigate();
   const { selectedYear } = useSchoolYear();
   const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
@@ -226,8 +229,9 @@ const ClasseManagementPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.35fr_0.85fr] gap-3">
-        <div className="grid grid-cols-1 gap-2">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-8 items-start relative">
+        {/* Left Column: Square Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
           {stats.map((item, idx) => {
             const isActive = selectedClassId === item.idClasse;
             return (
@@ -235,48 +239,51 @@ const ClasseManagementPage: React.FC = () => {
                 key={item.idClasse}
                 onClick={() => handleSelectClass(item.idClasse)}
                 className={clsx(
-                  "bg-white border rounded-[20px] p-2 transition-all shadow-sm overflow-hidden relative cursor-pointer",
-                  isActive ? "border-black shadow-md" : "border-gray-100 hover:border-black hover:shadow-sm"
+                  "bg-white border rounded-[32px] p-6 transition-all shadow-sm overflow-hidden relative cursor-pointer aspect-square flex flex-col justify-between group",
+                  isActive ? "border-black shadow-xl scale-[1.02] z-10" : "border-gray-100 hover:border-gray-300 hover:shadow-md"
                 )}
               >
                  <div className={clsx(
-                     "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full transition-all",
+                     "absolute left-0 top-0 w-full h-1.5 transition-all",
                      idx % 3 === 0 ? "bg-accent" : idx % 3 === 1 ? "bg-red-500" : "bg-green-600"
                  )}></div>
 
-                 <div className="flex justify-between items-start mb-2">
+                 <div className="flex justify-between items-start">
                     <div className={clsx(
-                        "w-8 h-8 rounded-[12px] flex items-center justify-center text-white transition-all shadow-sm",
+                        "w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all shadow-lg group-hover:rotate-12",
                         idx % 3 === 0 ? "bg-accent shadow-violet-100" : idx % 3 === 1 ? "bg-red-500 shadow-red-100" : "bg-green-600 shadow-green-100"
                     )}>
-                       <DoorOpen size={16} />
+                       <DoorOpen size={24} />
                     </div>
-                    <div className="flex items-center space-x-1">
+                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                        <button
                         onClick={(e) => { e.stopPropagation(); handleOpenEdit(item); }}
-                        className="p-1 hover:bg-gray-50 rounded-lg text-gray-400 hover:text-black transition-all"
+                        className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-black transition-all"
                        >
-                         <Edit2 size={12} />
+                         <Edit2 size={16} />
                        </button>
                        <button
                         onClick={(e) => { e.stopPropagation(); handleDelete(item.idClasse); }}
-                        className="p-1 hover:bg-red-50 rounded-lg text-red-300 hover:text-red-600 transition-all"
+                        className="p-2 hover:bg-red-50 rounded-xl text-red-300 hover:text-red-600 transition-all"
                        >
-                         <Trash2 size={12} />
+                         <Trash2 size={16} />
                        </button>
                     </div>
                  </div>
 
-                 <h3 className="text-sm font-black uppercase tracking-tight text-black mb-2">{item.nomClasse}</h3>
+                 <div>
+                    <h3 className="text-xl font-black uppercase tracking-tight text-black mb-1 line-clamp-2 leading-tight">{item.nomClasse}</h3>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{item.cycleLabel}</p>
+                 </div>
 
-                 <div className="space-y-1 mb-2">
-                    <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-[0.12em]">
-                       <span className="text-black flex items-center">
-                          <Users size={10} className="mr-1 text-gray-400" /> Élèves
+                 <div className="space-y-3">
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                       <span className="text-gray-400 flex items-center">
+                          <Users size={12} className="mr-2" /> Élèves
                        </span>
-                       <span className="text-black">{item.effectif}</span>
+                       <span className="text-black">{item.effectif} / {item.capacite || '∞'}</span>
                     </div>
-                    <div className="h-1.5 w-full bg-gray-50 rounded-full overflow-hidden p-0.5 border border-gray-100">
+                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden p-0.5">
                        <div
                          className={clsx(
                              "h-full rounded-full transition-all duration-1000",
@@ -287,81 +294,83 @@ const ClasseManagementPage: React.FC = () => {
                     </div>
                  </div>
 
-                 <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-50">
-                    <div className="flex items-center space-x-1">
-                       <div className="w-6 h-6 rounded-sharp bg-gray-50 flex items-center justify-center text-black font-black text-[9px]">
+                 <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                    <div className="flex items-center space-x-2">
+                       <div className="w-8 h-8 rounded-xl bg-gray-50 flex items-center justify-center text-black font-black text-xs">
                           {item.nbSalles}
                        </div>
-                       <span className="text-[8px] font-black text-black uppercase tracking-[0.2em]">Salles</span>
+                       <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Salles</span>
                     </div>
-                    <div className="flex items-center space-x-1">
-                       <div className="w-6 h-6 rounded-sharp bg-gray-50 flex items-center justify-center text-black font-black text-[9px]">
-                          {item.capacite || '--'}
-                       </div>
-                       <span className="text-[8px] font-black text-black uppercase tracking-[0.2em]">Capacité</span>
-                    </div>
+                    <ChevronRight size={16} className={clsx("transition-transform", isActive ? "text-black translate-x-1" : "text-gray-300")} />
                  </div>
               </div>
             );
           })}
         </div>
 
-        <div className="space-y-2">
-          <div className="bg-white border border-gray-100 rounded-[20px] p-2 shadow-sm">
-            <div className="flex flex-col gap-2 mb-2">
+        {/* Right Column: Floating/Sticky Detail Panel */}
+        <div className="xl:sticky xl:top-8 space-y-6 self-start">
+          <div className="bg-white border border-gray-100 rounded-[40px] p-8 shadow-2xl shadow-gray-200/50 animate-in slide-in-from-right-8 duration-500">
+            <div className="flex flex-col gap-4 mb-6">
               <div>
-                <p className="text-[7px] font-black uppercase tracking-[0.35em] text-[#9E9E9E]">Classe sélectionnée</p>
-                <h2 className="text-lg font-black uppercase tracking-tight text-black mt-1">{selectedClass ? selectedClass.nomClasse : 'Aucune classe'}</h2>
+                <p className="text-[9px] font-black uppercase tracking-[0.35em] text-[#9E9E9E]">Classe sélectionnée</p>
+                <h2 className="text-3xl font-black uppercase tracking-tight text-black mt-2">{selectedClass ? selectedClass.nomClasse : 'Aucune classe'}</h2>
                 {selectedClass && (
-                  <p className="text-[10px] text-gray-600 mt-1">
-                    Enseignement : <span className="font-black text-black text-[10px]">{selectedClass.enseignementLabel || 'N/A'}</span> · Cycle : <span className="font-black text-black text-[10px]">{selectedClass.cycleLabel || 'N/A'}</span>
-                  </p>
+                  <div className="flex flex-col gap-1 mt-4">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+                        Enseignement : <span className="text-black">{selectedClass.enseignementLabel || 'N/A'}</span>
+                    </p>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+                        Cycle : <span className="text-black">{selectedClass.cycleLabel || 'N/A'}</span>
+                    </p>
+                  </div>
                 )}
               </div>
-              <div className="text-right">
-                <span className="text-[7px] font-black uppercase tracking-[0.35em] text-[#9E9E9E]">Sous-périodes</span>
-                <p className="text-xl font-black text-black mt-0.5">{sequenceCount}</p>
+              <div className="bg-accent/5 p-4 rounded-3xl border border-accent/10 flex justify-between items-center mt-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-accent">Évaluations actives</span>
+                <p className="text-2xl font-black text-accent">{sequenceCount}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-1.5 text-[8px] uppercase tracking-[0.2em] font-black text-[#9E9E9E]">
-              <div className="bg-gray-50 rounded-[18px] p-2">
-                <p className="text-black text-base font-black">{selectedClass?.nbSalles ?? 0}</p>
+            <div className="grid grid-cols-2 gap-3 text-[10px] uppercase tracking-[0.2em] font-black text-[#9E9E9E]">
+              <div className="bg-gray-50 rounded-[32px] p-6 border border-gray-100">
+                <p className="text-black text-3xl font-black mb-1">{selectedClass?.nbSalles ?? 0}</p>
                 <p>Salles</p>
               </div>
-              <div className="bg-gray-50 rounded-[18px] p-2">
-                <p className="text-black text-base font-black">{selectedClass?.effectif ?? 0}</p>
-                <p>Élèves totaux</p>
+              <div className="bg-gray-50 rounded-[32px] p-6 border border-gray-100">
+                <p className="text-black text-3xl font-black mb-1">{selectedClass?.effectif ?? 0}</p>
+                <p>Élèves</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-[20px] p-2 shadow-sm">
-            <h3 className="text-[9px] font-black uppercase tracking-[0.35em] mb-2 text-[#9E9E9E]">Salles de la classe</h3>
-            <div className="space-y-1.5">
+          <div className="bg-white border border-gray-100 rounded-[40px] p-8 shadow-sm">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.35em] mb-6 text-[#9E9E9E] flex items-center gap-2">
+                <LayoutGrid size={14} /> Liste des Salles
+            </h3>
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
               {rooms.length > 0 ? rooms.map(room => (
-                <div key={room.idSalle} className="border border-gray-100 rounded-[18px] p-2 flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between gap-1.5">
+                <div key={room.idSalle} className="bg-gray-50/50 border border-gray-100 rounded-[28px] p-5 flex flex-col gap-4 hover:border-black transition-all group">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-black uppercase text-black">{room.classeLabel} {room.nomSalle}</p>
-                      <p className="text-[8px] uppercase tracking-[0.3em] text-[#9E9E9E]">{room.classeLabel} • {room.nomSalle}</p>
+                      <p className="text-sm font-black uppercase text-black group-hover:text-accent transition-colors">{room.nomSalle}</p>
+                      <p className="text-[9px] uppercase tracking-[0.2em] text-[#9E9E9E] mt-1">Capacité : {room.capacite || '–'} places</p>
                     </div>
-                    <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-500">{room.capacite || '–'} p</span>
+                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-gray-400 group-hover:text-black">
+                        <Users size={18} />
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5 text-[8px] uppercase tracking-[0.2em] font-black text-[#9E9E9E]">
-                    <div className="bg-gray-50 rounded-[16px] p-1.5">
-                      <p className="text-black text-sm font-black">{room.elevesInscrits || 0}</p>
-                      <p>Élèves</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-[16px] p-1.5">
-                      <p className="text-black text-sm font-black">{room.capacite || 0}</p>
-                      <p>Capacité</p>
-                    </div>
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                     <div className="flex items-center gap-2">
+                         <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                         <span className="text-[10px] font-black text-black uppercase tracking-widest">{room.elevesInscrits || 0} Inscrits</span>
+                     </div>
+                     <span className="text-[9px] font-bold text-gray-400 uppercase">{Math.round(((room.elevesInscrits || 0) / (room.capacite || 1)) * 100)}%</span>
                   </div>
                 </div>
               )) : (
-                <div className="border border-dashed border-gray-200 rounded-[18px] p-3 text-center text-[#9E9E9E]">
-                  <p className="font-black uppercase tracking-[0.3em] text-[8px]">Sélectionnez une classe</p>
+                <div className="border-2 border-dashed border-gray-100 rounded-[32px] p-12 text-center text-[#9E9E9E]">
+                  <p className="font-black uppercase tracking-[0.3em] text-[10px]">Sélectionnez une classe</p>
                 </div>
               )}
             </div>
@@ -443,13 +452,21 @@ const ClasseManagementPage: React.FC = () => {
                     />
                 </div>
 
-                <div className="pt-8">
+                <div className="pt-8 grid grid-cols-2 gap-4">
                   <AuthButton type="submit" disabled={loading}>
                     <div className="flex items-center justify-center space-x-3">
                         <Save size={20} />
-                        <span>{isEditing ? "Enregistrer les modifications" : "Créer la classe"}</span>
+                        <span>{isEditing ? "Enregistrer" : "Créer"}</span>
                     </div>
                   </AuthButton>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/app/finance/periscolaire/distribution`)}
+                    className="flex-1 py-4 bg-accent text-white rounded-sharp font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-violet-100 hover:scale-[1.02] transition-all"
+                  >
+                    <Sparkles size={16} />
+                    <span>Frais Périscolaires</span>
+                  </button>
                 </div>
               </form>
            </div>

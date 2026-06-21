@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { financeService, FraisExigible, FraisActivitePeriscolaire } from '../../api/financeService';
-import { Plus, Trash2, ArrowLeft, Save, X, Wallet, Sparkles, AlertCircle, Pencil } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, Save, X, Wallet, Sparkles, AlertCircle, Pencil, LayoutGrid } from 'lucide-react';
 import AuthInput from '../../components/ui/AuthInput';
 import AuthButton from '../../components/ui/AuthButton';
 import { clsx } from 'clsx';
 
+import { useNavigate } from 'react-router-dom';
+
 const FinanceLibraryPage: React.FC = () => {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<'EXIGIBLE' | 'PERISCOLAIRE'>('EXIGIBLE');
   const [exigibles, setExigibles] = useState<FraisExigible[]>([]);
   const [periscolaires, setPeriscolaires] = useState<FraisActivitePeriscolaire[]>([]);
@@ -97,18 +100,30 @@ const FinanceLibraryPage: React.FC = () => {
             </div>
           </div>
         </div>
-        <button
-          onClick={() => { setEditingId(null); setFormData({ fr: '', en: '', desc: '' }); setIsModalOpen(true); }}
-          className={clsx(
-            "group py-4 px-8 rounded-sharp flex items-center space-x-3 shadow-xl transition-all hover:scale-105 active:scale-95 text-white font-black uppercase text-xs tracking-widest",
-            tab === 'EXIGIBLE' ? "bg-accent shadow-violet-200" : "bg-green-600 shadow-green-100"
-          )}
-        >
-          <div className="bg-white/20 p-1 rounded-sm">
-            <Plus size={18} />
-          </div>
-          <span>Nouveau {tab === 'EXIGIBLE' ? 'Frais' : 'Activité'}</span>
-        </button>
+        <div className="flex items-center space-x-3">
+            <button
+              onClick={() => navigate(tab === 'EXIGIBLE' ? '/app/finance/exigible/distribution' : '/app/finance/periscolaire/distribution')}
+              className={clsx(
+                "py-4 px-6 rounded-sharp flex items-center space-x-3 border-2 transition-all hover:scale-105 active:scale-95 font-black uppercase text-[10px] tracking-widest",
+                tab === 'EXIGIBLE' ? "border-accent text-accent hover:bg-accent hover:text-white" : "border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+              )}
+            >
+              <LayoutGrid size={18} />
+              <span>Répartition par Classe</span>
+            </button>
+            <button
+              onClick={() => { setEditingId(null); setFormData({ fr: '', en: '', desc: '' }); setIsModalOpen(true); }}
+              className={clsx(
+                "group py-4 px-8 rounded-sharp flex items-center space-x-3 shadow-xl transition-all hover:scale-105 active:scale-95 text-white font-black uppercase text-xs tracking-widest",
+                tab === 'EXIGIBLE' ? "bg-accent shadow-violet-200" : "bg-green-600 shadow-green-100"
+              )}
+            >
+              <div className="bg-white/20 p-1 rounded-sm">
+                <Plus size={18} />
+              </div>
+              <span>Nouveau {tab === 'EXIGIBLE' ? 'Frais' : 'Activité'}</span>
+            </button>
+        </div>
       </div>
 
       {/* Modern Tabs with Colors */}

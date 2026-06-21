@@ -31,13 +31,16 @@ exports.getPeriodesByAnnee = async (req, res) => {
 
 exports.createPeriode = async (req, res) => {
     try {
-        const { libellePeriodeFr, dateDebut, dateFin, idAnneeScolaire, ordrePeriode } = req.body;
+        const { libellePeriodeFr, abrevLibelleFr, abrevLibelleEn, abrevLibelleEs, dateDebut, dateFin, idAnneeScolaire, ordrePeriode } = req.body;
 
         // 1. Check if within year
         const annee = await AnneeScolaire.findByPk(idAnneeScolaire);
         if (!annee) return res.status(404).json({ error: "Année scolaire introuvable" });
+
+        console.log(`[CheckDates] Period: ${dateDebut} to ${dateFin} | Year: ${annee.dateDebut} to ${annee.dateFin}`);
+
         if (!isWithin(dateDebut, dateFin, annee.dateDebut, annee.dateFin)) {
-            return res.status(400).json({ error: "Les dates doivent être comprises dans l'intervalle de l'année scolaire." });
+            return res.status(400).json({ error: `Dates hors limites. L'année scolaire va du ${annee.dateDebut} au ${annee.dateFin}` });
         }
 
         // 2. Check overlap
@@ -46,9 +49,19 @@ exports.createPeriode = async (req, res) => {
             return res.status(400).json({ error: "Cette période chevauche une période existante." });
         }
 
-        const periode = await Periode.create({ libellePeriodeFr, dateDebut, dateFin, idAnneeScolaire, ordrePeriode });
+        const periode = await Periode.create({
+            libellePeriodeFr,
+            abrevLibelleFr: abrevLibelleFr || libellePeriodeFr.substring(0, 10),
+            abrevLibelleEn,
+            abrevLibelleEs,
+            dateDebut,
+            dateFin,
+            idAnneeScolaire,
+            ordrePeriode
+        });
         res.status(201).json(periode);
     } catch (error) {
+        console.error("Error creating period:", error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -56,7 +69,7 @@ exports.createPeriode = async (req, res) => {
 exports.updatePeriode = async (req, res) => {
     try {
         const { id } = req.params;
-        const { libellePeriodeFr, dateDebut, dateFin, ordrePeriode } = req.body;
+        const { libellePeriodeFr, abrevLibelleFr, abrevLibelleEn, abrevLibelleEs, dateDebut, dateFin, ordrePeriode } = req.body;
         const periode = await Periode.findByPk(id);
         if (!periode) return res.status(404).json({ error: "Période introuvable" });
 
@@ -70,7 +83,7 @@ exports.updatePeriode = async (req, res) => {
             return res.status(400).json({ error: "Cette période chevauche une période existante." });
         }
 
-        await periode.update({ libellePeriodeFr, dateDebut, dateFin, ordrePeriode });
+        await periode.update({ libellePeriodeFr, abrevLibelleFr, abrevLibelleEn, abrevLibelleEs, dateDebut, dateFin, ordrePeriode });
         res.json(periode);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -92,12 +105,14 @@ exports.deletePeriode = async (req, res) => {
 
 exports.createSousPeriode = async (req, res) => {
     try {
-        const { libelleSousPeriodeFr, dateDebut, dateFin, idPeriode, ordreSousPeriode } = req.body;
+        const { libelleSousPeriodeFr, abrevLibelleFr, abrevLibelleEn, abrevLibelleEs, dateDebut, dateFin, idPeriode, ordreSousPeriode } = req.body;
         const parent = await Periode.findByPk(idPeriode);
         if (!parent) return res.status(404).json({ error: "Période parente introuvable" });
 
+        console.log(`[CheckDates] SubPeriod: ${dateDebut} to ${dateFin} | Parent: ${parent.dateDebut} to ${parent.dateFin}`);
+
         if (!isWithin(dateDebut, dateFin, parent.dateDebut, parent.dateFin)) {
-            return res.status(400).json({ error: "Les dates doivent être comprises dans l'intervalle de la période parente." });
+            return res.status(400).json({ error: `Dates hors limites. La période parente va du ${parent.dateDebut} au ${parent.dateFin}` });
         }
 
         const existing = await SousPeriode.findAll({ where: { idPeriode, supprimer: false } });
@@ -105,9 +120,19 @@ exports.createSousPeriode = async (req, res) => {
             return res.status(400).json({ error: "Cette sous-période chevauche une sous-période existante." });
         }
 
-        const sp = await SousPeriode.create({ libelleSousPeriodeFr, dateDebut, dateFin, idPeriode, ordreSousPeriode });
+        const sp = await SousPeriode.create({
+            libelleSousPeriodeFr,
+            abrevLibelleFr: abrevLibelleFr || libelleSousPeriodeFr.substring(0, 10),
+            abrevLibelleEn,
+            abrevLibelleEs,
+            dateDebut,
+            dateFin,
+            idPeriode,
+            ordreSousPeriode
+        });
         res.status(201).json(sp);
     } catch (error) {
+        console.error("Error creating sub-period:", error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -115,7 +140,7 @@ exports.createSousPeriode = async (req, res) => {
 exports.updateSousPeriode = async (req, res) => {
     try {
         const { id } = req.params;
-        const { libelleSousPeriodeFr, dateDebut, dateFin, ordreSousPeriode } = req.body;
+        const { libelleSousPeriodeFr, abrevLibelleFr, abrevLibelleEn, abrevLibelleEs, dateDebut, dateFin, ordreSousPeriode } = req.body;
         const sp = await SousPeriode.findByPk(id);
         if (!sp) return res.status(404).json({ error: "Sous-période introuvable" });
 
@@ -129,7 +154,7 @@ exports.updateSousPeriode = async (req, res) => {
             return res.status(400).json({ error: "Cette sous-période chevauche une sous-période existante." });
         }
 
-        await sp.update({ libelleSousPeriodeFr, dateDebut, dateFin, ordreSousPeriode });
+        await sp.update({ libelleSousPeriodeFr, abrevLibelleFr, abrevLibelleEn, abrevLibelleEs, dateDebut, dateFin, ordreSousPeriode });
         res.json(sp);
     } catch (error) {
         res.status(500).json({ error: error.message });

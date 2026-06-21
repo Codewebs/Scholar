@@ -1,4 +1,4 @@
-const { Note, Eleve, Inscription, RepartitionMatiere, SousPeriode, Justification, SuiviAbsence, AnneeScolaire, Etablissement, Salle, Classe, Matiere, GroupeMatiere, RepartitionCompetence, Competence, sequelize } = require("../models");
+const { Note, Eleve, Inscription, RepartitionMatiere, Periode, SousPeriode, Justification, SuiviAbsence, AnneeScolaire, Etablissement, Salle, Classe, Matiere, GroupeMatiere, RepartitionCompetence, Competence, sequelize } = require("../models");
 const { Op } = require("sequelize");
 
 const getGradingInfo = (m) => {
@@ -25,12 +25,36 @@ const coteToNote = { 'A+': 19, 'A': 17.5, 'A-': 16.5, 'B+': 15.5, 'B': 14.8, 'B-
 // 1. SAISIE PAR MATIÈRE
 exports.getNotesByMatiere = async (req, res) => {
     try {
-        const { idSalle, idRepartitionMatiere, idSequence, idAnneeScolaire } = req.query;
-        const notes = await Note.findAll({
-            where: { idSequence, idAnneeScolaire, idRepartitionMatiere, supprimer: false }
+        const { idRepartitionMatiere, idSequence, idAnneeScolaire } = req.query;
+
+        console.log(`🔍 [NotesByMatiere] Filter criteria:`, {
+            idRepartitionMatiere,
+            idSequence,
+            idAnneeScolaire
         });
+
+        const notes = await Note.findAll({
+            where: {
+                idSequence,
+                idAnneeScolaire,
+                //supprimer: false
+            },
+            include: [{
+                model: RepartitionCompetence,
+                // Pas besoin de spécifier "as" si la relation par défaut est propre
+                where: {
+                    idRepartitionMatiere,
+                    idSousPeriode: idSequence, // Optionnel si déjà filtré sur la Note, mais sécurise la cohérence
+                    supprimer: false
+                },
+                required: true // Force un INNER JOIN pour ne prendre que les notes qui ont cette correspondance
+            }]
+        });
+
+        console.log(`✅ [NotesByMatiere] Found ${notes.length} notes`);
         res.json(notes);
     } catch (error) {
+        console.error("❌ [NotesByMatiere] Error:", error.message);
         res.status(500).json({ error: error.message });
     }
 };
@@ -38,7 +62,7 @@ exports.getNotesByMatiere = async (req, res) => {
 exports.saveNotes = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        const { notes, idSequence, idAnneeScolaire, modeSaisie, idRepartitionMatiere } = req.body;
+        const { notes, idSequence, idAnneeScolaire, modeSaisie } = req.body;
         if (!notes || notes.length === 0) return res.json({ message: "Aucune note à enregistrer" });
 
         for (const item of notes) {
@@ -53,12 +77,10 @@ exports.saveNotes = async (req, res) => {
                 appreciation: item.nonClasse ? 'Non Classé' : grading.appreciation,
                 nonClasse: item.nonClasse || false,
                 idJustification: item.idJustification,
-                idCompetence: item.idCompetence,
                 idRepartitionCompetence: item.idRepartitionCompetence,
                 idSequence,
                 idAnneeScolaire,
                 idInscription: item.idInscription,
-                idRepartitionMatiere,
                 supprimer: false
             };
             await Note.upsert(data, { transaction: t });
@@ -75,11 +97,14 @@ exports.saveNotes = async (req, res) => {
 exports.getNotesByStudent = async (req, res) => {
     try {
         const { idInscription, idSequence, idAnneeScolaire } = req.query;
+        console.log(`🔍 [NotesByStudent] Filter:`, { idInscription, idSequence, idAnneeScolaire });
         const notes = await Note.findAll({
             where: { idInscription, idSequence, idAnneeScolaire, supprimer: false }
         });
+        console.log(`✅ [NotesByStudent] Found ${notes.length} notes`);
         res.json(notes);
     } catch (error) {
+        console.error("❌ [NotesByStudent] Error:", error.message);
         res.status(500).json({ error: error.message });
     }
 };
@@ -93,14 +118,17 @@ exports.saveNotesByStudent = async (req, res) => {
             let coteVal = item.cote;
             if (modeSaisie === 'ALPHABETIC' && coteVal) noteVal = coteToNote[coteVal] || null;
             const grading = getGradingInfo(noteVal);
+
             await Note.upsert({
-                ...item,
+                idInscription,
+                idSequence,
+                idAnneeScolaire,
+                idRepartitionCompetence: item.idRepartitionCompetence,
                 note: noteVal,
                 cote: item.nonClasse ? 'N.C' : (coteVal || grading.cote),
                 appreciation: item.nonClasse ? 'Non Classé' : grading.appreciation,
-                idSequence,
-                idAnneeScolaire,
-                idInscription,
+                nonClasse: item.nonClasse || false,
+                idJustification: item.idJustification,
                 supprimer: false
             }, { transaction: t });
         }
@@ -116,20 +144,20 @@ exports.saveNotesByStudent = async (req, res) => {
 exports.bulkActionNotes = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        const { action, idsInscription, idRepartitionMatiere, idRepartitionCompetence, idSequence, idAnneeScolaire, value, idJustification } = req.body;
+        const { action, idsInscription, idRepartitionCompetence, idSequence, idAnneeScolaire, value, idJustification } = req.body;
         if (action === 'SET_GLOBAL_NOTE') {
             const noteVal = parseFloat(value);
             const grading = getGradingInfo(noteVal);
             for (const idIns of idsInscription) {
-                await Note.upsert({ idInscription: idIns, idRepartitionMatiere, idRepartitionCompetence, idSequence, idAnneeScolaire, note: noteVal, cote: grading.cote, appreciation: grading.appreciation, nonClasse: false, supprimer: false }, { transaction: t });
+                await Note.upsert({ idInscription: idIns, idRepartitionCompetence, idSequence, idAnneeScolaire, note: noteVal, cote: grading.cote, appreciation: grading.appreciation, nonClasse: false, supprimer: false }, { transaction: t });
             }
         } else if (action === 'NON_COMPOSE_GLOBAL') {
             const justif = await Justification.findByPk(idJustification);
             for (const idIns of idsInscription) {
-                await Note.upsert({ idInscription: idIns, idRepartitionMatiere, idRepartitionCompetence, idSequence, idAnneeScolaire, note: 0, cote: 'N.C', appreciation: justif?.libelleJustificationFr || 'Non Classé', nonClasse: true, idJustification, supprimer: false }, { transaction: t });
+                await Note.upsert({ idInscription: idIns, idRepartitionCompetence, idSequence, idAnneeScolaire, note: 0, cote: 'N.C', appreciation: justif?.libelleJustificationFr || 'Non Classé', nonClasse: true, idJustification, supprimer: false }, { transaction: t });
             }
         } else if (action === 'RESET_MATIERE') {
-            await Note.update({ supprimer: true }, { where: { idRepartitionMatiere, idSequence, idAnneeScolaire, idInscription: { [Op.in]: idsInscription } }, transaction: t });
+            await Note.update({ supprimer: true }, { where: { idRepartitionCompetence, idSequence, idAnneeScolaire, idInscription: { [Op.in]: idsInscription } }, transaction: t });
         }
         await t.commit();
         res.json({ message: "Action effectuée" });
@@ -259,25 +287,52 @@ exports.exportBulletins = async (req, res) => {
 
         // 1. Determine Periode/Sequence Scope
         let targetSequenceIds = [];
+        let expandedSequenceIds = [];
         let periodLabel = "Bilan";
+        let subPeriodInfo = [];
 
         if (periodType === 'SEQUENCE') {
-            targetSequenceIds = [parseInt(selectedPeriodId)];
-            const sp = await SousPeriode.findByPk(selectedPeriodId);
+            const spId = parseInt(selectedPeriodId);
+            targetSequenceIds = [spId];
+            const sp = await SousPeriode.findByPk(spId);
             periodLabel = sp ? sp.libelleSousPeriodeFr : "Séquence";
+            if (sp) {
+                subPeriodInfo.push({ id: sp.idSousPeriode, label: sp.libelleSousPeriodeFr, abrev: sp.abrevLibelleFr });
+                const related = await SousPeriode.findAll({
+                    where: { libelleSousPeriodeFr: sp.libelleSousPeriodeFr, supprimer: false },
+                    include: [{ model: Periode, where: { idAnneeScolaire } }]
+                });
+                expandedSequenceIds = related.map(r => r.idSousPeriode);
+            }
         } else if (periodType === 'TRIMESTER') {
-            const sequences = await SousPeriode.findAll({ where: { idPeriode: selectedPeriodId, supprimer: false } });
+            const sequences = await SousPeriode.findAll({
+                where: { idPeriode: selectedPeriodId, supprimer: false },
+                order: [['idSousPeriode', 'ASC']]
+            });
             targetSequenceIds = sequences.map(s => s.idSousPeriode);
             const p = await Periode.findByPk(selectedPeriodId);
             periodLabel = p ? p.libellePeriodeFr : "Trimestre";
+            subPeriodInfo = sequences.map(s => ({ id: s.idSousPeriode, label: s.libelleSousPeriodeFr, abrev: s.abrevLibelleFr }));
+
+            const labels = sequences.map(s => s.libelleSousPeriodeFr);
+            const related = await SousPeriode.findAll({
+                where: { libelleSousPeriodeFr: { [Op.in]: labels }, supprimer: false },
+                include: [{ model: Periode, where: { idAnneeScolaire } }]
+            });
+            expandedSequenceIds = related.map(r => r.idSousPeriode);
         } else {
             const allSp = await SousPeriode.findAll({
                 include: [{ model: Periode, where: { idAnneeScolaire, supprimer: false } }],
-                where: { supprimer: false }
+                where: { supprimer: false },
+                order: [['idSousPeriode', 'ASC']]
             });
             targetSequenceIds = allSp.map(s => s.idSousPeriode);
+            expandedSequenceIds = [...targetSequenceIds];
             periodLabel = "Bilan Annuel";
+            subPeriodInfo = allSp.map(s => ({ id: s.idSousPeriode, label: s.libelleSousPeriodeFr, abrev: s.abrevLibelleFr }));
         }
+
+        if (expandedSequenceIds.length === 0) expandedSequenceIds = targetSequenceIds;
 
         // 2. Determine Perimeter and Get Inscriptions
         let whereInscriptions = { idAnneeScolaire, supprimer: false };
@@ -307,23 +362,28 @@ exports.exportBulletins = async (req, res) => {
                 { model: GroupeMatiere },
                 {
                     model: RepartitionCompetence,
-                    where: { idSousPeriode: { [Op.in]: targetSequenceIds }, supprimer: false },
+                    where: { idSousPeriode: { [Op.in]: expandedSequenceIds }, supprimer: false },
                     required: false,
                     include: [{ model: Competence }]
                 }
             ]
         });
 
-        const allNotes = await Note.findAll({
-            where: { idAnneeScolaire, idSequence: { [Op.in]: targetSequenceIds }, supprimer: false }
-        });
+        const allNotesCriteria = {
+            idAnneeScolaire,
+            idSequence: { [Op.in]: expandedSequenceIds },
+            supprimer: false
+        };
+        console.log(`🔍 [Bulletins] Global notes fetch criteria:`, allNotesCriteria);
+
+        const allNotes = await Note.findAll({ where: allNotesCriteria });
+        console.log(`✅ [Bulletins] Found ${allNotes.length} total notes for the period scope.`);
 
         const allAbsences = await SuiviAbsence.findAll({
             where: { idAnneeScolaire, idSequence: { [Op.in]: targetSequenceIds }, supprimer: false }
         });
 
         // --- RANKING LOGIC ---
-        // Scores structure: subjectScores[idSalle][idRepartitionMatiere] = [{ idInscription, avg }]
         const subjectScores = {};
         const generalScores = {};
 
@@ -335,13 +395,30 @@ exports.exportBulletins = async (req, res) => {
             let totalPoints = 0, totalCoef = 0;
 
             repartitions.filter(rep => rep.idClasse === ins.Salle.idClasse).forEach(rep => {
-                const notesForRep = studentNotes.filter(n => n.idRepartitionMatiere === rep.idRepartitionMatiere);
+                const repCompIds = (rep.RepartitionCompetences || []).map(rc => rc.id);
+                const notesForSubject = studentNotes.filter(n => repCompIds.includes(n.idRepartitionCompetence));
 
-                // Average of unique competencies for this subject in this period
-                const competencyIds = [...new Set((rep.RepartitionCompetences || []).map(rc => rc.idCompetence))];
-                const validNotes = competencyIds.map(cid => notesForRep.find(n => n.idCompetence === cid)?.note).filter(v => v !== null && v !== undefined);
-
-                const avgNote = validNotes.length > 0 ? (validNotes.reduce((s, v) => s + v, 0) / validNotes.length) : null;
+                let avgNote = null;
+                if (periodType === 'TRIMESTER' && targetSequenceIds.length >= 1) {
+                    const getSeqAvg = (seqId) => {
+                        const relatedSeqIds = expandedSequenceIds.filter(id => {
+                            // En pratique on utilise expandedSequenceIds car le filtre se fait déjà sur idRepartitionCompetence
+                            return true;
+                        });
+                        // Trouver les IDs de répartition pour CETTE séquence spécifique du trimestre
+                        const comps = (rep.RepartitionCompetences || []).filter(rc => rc.idSousPeriode === seqId);
+                        const compIds = comps.map(rc => rc.id);
+                        const v = notesForSubject.filter(n => compIds.includes(n.idRepartitionCompetence)).map(n => n.note).filter(v => v !== null && v !== undefined);
+                        return v.length > 0 ? (v.reduce((s, val) => s + val, 0) / v.length) : null;
+                    };
+                    const n1 = getSeqAvg(targetSequenceIds[0]);
+                    const n2 = targetSequenceIds.length >= 2 ? getSeqAvg(targetSequenceIds[1]) : null;
+                    const validSeqAvgs = [n1, n2].filter(v => v !== null);
+                    avgNote = validSeqAvgs.length > 0 ? (validSeqAvgs.reduce((s, v) => s + v, 0) / validSeqAvgs.length) : null;
+                } else {
+                    const v = notesForSubject.map(n => n.note).filter(v => v !== null && v !== undefined);
+                    avgNote = v.length > 0 ? (v.reduce((sum, v) => sum + v, 0) / v.length) : null;
+                }
 
                 if (!subjectScores[ins.idSalle][rep.idRepartitionMatiere]) {
                     subjectScores[ins.idSalle][rep.idRepartitionMatiere] = [];
@@ -358,24 +435,19 @@ exports.exportBulletins = async (req, res) => {
             generalScores[ins.idSalle].push({ idInscription: ins.idInscription, avg: studentAverage });
         });
 
-        // Function to compute ranks from score array [{idInscription, avg}]
         const computeRanks = (scores) => {
             const sorted = [...scores].sort((a, b) => (b.avg || 0) - (a.avg || 0));
             const ranks = {};
             let currentRank = 1;
             for (let i = 0; i < sorted.length; i++) {
-                if (i > 0 && (sorted[i].avg || 0) < (sorted[i-1].avg || 0)) {
-                    currentRank = i + 1;
-                }
+                if (i > 0 && (sorted[i].avg || 0) < (sorted[i-1].avg || 0)) currentRank = i + 1;
                 ranks[sorted[i].idInscription] = currentRank;
             }
             return ranks;
         };
 
-        // Compute Ranks maps
-        const subjectRanks = {}; // subjectRanks[idSalle][idRepartitionMatiere][idInscription] = rank
-        const generalRanks = {}; // generalRanks[idSalle][idInscription] = rank
-
+        const subjectRanks = {};
+        const generalRanks = {};
         Object.keys(subjectScores).forEach(sId => {
             subjectRanks[sId] = {};
             Object.keys(subjectScores[sId]).forEach(repId => {
@@ -399,18 +471,46 @@ exports.exportBulletins = async (req, res) => {
                 continue;
             }
 
-            const subjectGroups = {};
+            const subjectGroupsArr = {};
             let totalPoints = 0, totalCoef = 0;
 
             repartitions.filter(rep => rep.idClasse === ins.Salle.idClasse).forEach(rep => {
-                const groupName = rep.GroupeMatiere?.libelleGroupeFr || "Matières Générales";
-                if (!subjectGroups[groupName]) subjectGroups[groupName] = [];
+                const groupName = rep.GroupeMatiere?.libelleFr || "Matières Générales";
+                if (!subjectGroupsArr[groupName]) {
+                    subjectGroupsArr[groupName] = {
+                        name: groupName,
+                        subjects: [],
+                        groupTotalPoints: 0,
+                        groupTotalCoef: 0,
+                        groupAverage: 0,
+                        ordre: rep.GroupeMatiere?.ordre || 99
+                    };
+                }
 
-                const notesForRep = studentNotes.filter(n => n.idRepartitionMatiere === rep.idRepartitionMatiere);
+                const repCompIds = (rep.RepartitionCompetences || []).map(rc => rc.id);
+                const notesForSubject = studentNotes.filter(n => repCompIds.includes(n.idRepartitionCompetence));
+
+                let n1 = null, n2 = null, avgNote = null;
+                if (periodType === 'TRIMESTER' && targetSequenceIds.length >= 1) {
+                    const getSeqAvg = (seqId) => {
+                        const comps = (rep.RepartitionCompetences || []).filter(rc => rc.idSousPeriode === seqId);
+                        const compIds = comps.map(rc => rc.id);
+                        const v = notesForSubject.filter(n => compIds.includes(n.idRepartitionCompetence)).map(n => n.note).filter(v => v !== null && v !== undefined);
+                        return v.length > 0 ? (v.reduce((s, val) => s + val, 0) / v.length) : null;
+                    };
+                    n1 = getSeqAvg(targetSequenceIds[0]);
+                    n2 = targetSequenceIds.length >= 2 ? getSeqAvg(targetSequenceIds[1]) : null;
+                    const validSeqAvgs = [n1, n2].filter(v => v !== null);
+                    avgNote = validSeqAvgs.length > 0 ? (validSeqAvgs.reduce((s, v) => s + v, 0) / validSeqAvgs.length) : null;
+                } else {
+                    const v = notesForSubject.map(n => n.note).filter(v => v !== null && v !== undefined);
+                    avgNote = v.length > 0 ? (v.reduce((sum, v) => sum + v, 0) / v.length) : null;
+                }
+
                 const competencyMap = new Map();
                 (rep.RepartitionCompetences || []).forEach(rc => {
                     if (!competencyMap.has(rc.idCompetence)) {
-                        const noteComp = notesForRep.find(n => n.idCompetence === rc.idCompetence);
+                        const noteComp = notesForSubject.find(n => n.idRepartitionCompetence === rc.id);
                         competencyMap.set(rc.idCompetence, {
                             libelle: rc.Competence?.libelle || "Compétence",
                             note: noteComp ? noteComp.note : null,
@@ -421,16 +521,13 @@ exports.exportBulletins = async (req, res) => {
                 });
 
                 const competencies = Array.from(competencyMap.values());
-                const validCompNotes = competencies.filter(c => c.note !== null);
-                const avgNote = validCompNotes.length > 0 ? (validCompNotes.reduce((sum, c) => sum + c.note, 0) / validCompNotes.length) : null;
-
                 const rank = subjectRanks[ins.idSalle]?.[rep.idRepartitionMatiere]?.[ins.idInscription] || 1;
 
-                subjectGroups[groupName].push({
+                subjectGroupsArr[groupName].subjects.push({
                     name: rep.Matiere.libelleFr,
                     teacher: "Enseignant",
-                    note1: null,
-                    note2: null,
+                    note1: n1,
+                    note2: n2,
                     coef: rep.coef,
                     total: avgNote,
                     rank: rank,
@@ -439,12 +536,20 @@ exports.exportBulletins = async (req, res) => {
                 });
 
                 if (avgNote !== null) {
+                    subjectGroupsArr[groupName].groupTotalPoints += (avgNote * rep.coef);
+                    subjectGroupsArr[groupName].groupTotalCoef += rep.coef;
                     totalPoints += (avgNote * rep.coef);
                     totalCoef += rep.coef;
                 }
             });
 
-            // Calculate class stats (simple version for now, could be improved by using pre-computed generalScores)
+            const finalGroups = Object.values(subjectGroupsArr)
+                .sort((a, b) => a.ordre - b.ordre)
+                .map(group => ({
+                    ...group,
+                    groupAverage: group.groupTotalCoef > 0 ? (group.groupTotalPoints / group.groupTotalCoef) : 0
+                }));
+
             const classAverages = generalScores[ins.idSalle].map(s => s.avg);
             const stats = {
                 maxMoy: Math.max(...classAverages),
@@ -465,11 +570,11 @@ exports.exportBulletins = async (req, res) => {
                     devise: year.Etablissement.devise
                 },
                 student: { nomComplet: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(), matricule: ins.Eleve.matricule, sexe: ins.Eleve.sexe, dateNaissance: ins.Eleve.dateNaissance, lieuNaissance: ins.Eleve.lieuNaissance, photo: ins.Eleve.photo },
-                salle: { nomSalle: ins.Salle.nomSalle, effectif: classAverages.length },
+                salle: { nomSalle: `${ins.Salle.Classe?.libelleClasseFr} ${ins.Salle.nomSalle}`, effectif: classAverages.length },
                 year: { libelle: year.libelleAnneeScolaire },
-                period: { label: periodLabel },
+                period: { label: periodLabel, subPeriods: subPeriodInfo },
                 performance: {
-                    groups: Object.keys(subjectGroups).map(name => ({ name, subjects: subjectGroups[name] })),
+                    groups: finalGroups,
                     totalPoints,
                     totalCoef,
                     average: totalCoef > 0 ? (totalPoints / totalCoef) : 0,

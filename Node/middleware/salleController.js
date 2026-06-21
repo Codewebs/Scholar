@@ -248,7 +248,8 @@ exports.getClassesWithRoomStats = async (req, res) => {
                 totalEnrolled,
                 totalCapacity,
                 boys,
-                girls
+                girls,
+                salles: c.salles || []
             };
         }));
 

@@ -10,6 +10,10 @@ export interface PeriodeEntity {
     idPeriode?: number;
     libellePeriodeFr: string;
     libellePeriodeEn?: string;
+    libellePeriodeEs?: string;
+    abrevLibelleFr: string;
+    abrevLibelleEn?: string;
+    abrevLibelleEs?: string;
     dateDebut: string;
     dateFin: string;
     idAnneeScolaire: number;
@@ -21,6 +25,10 @@ export interface SousPeriodeEntity {
     idSousPeriode?: number;
     libelleSousPeriodeFr: string;
     libelleSousPeriodeEn?: string;
+    libelleSousPeriodeEs?: string;
+    abrevLibelleFr: string;
+    abrevLibelleEn?: string;
+    abrevLibelleEs?: string;
     dateDebut: string;
     dateFin: string;
     idPeriode: number;

@@ -135,7 +135,6 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
   const handleLoadNotes = async () => {
     setLoading(true);
     setError(null);
-    console.log(`🔍 [SaisieMatiere] Loading data for Salle: ${selectedSalleId}, Repartition: ${selectedRepartitionId}, Sequence: ${selectedSequenceId}`);
     try {
       // 1. Get room students and data in parallel
       const [studentsRes, notesRes, compsRes] = await Promise.all([
@@ -156,7 +155,6 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
       const existingNotes = notesRes.data;
       const comps = compsRes.data;
 
-      console.log(`👥 [SaisieMatiere] ${roomStudents.length} students found. ${existingNotes.length} notes found. ${comps.length} competencies.`);
       setCompetences(comps);
 
       // 2. Flatten: Iterate over students, then subject competencies
@@ -176,7 +174,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
 
           if (comps.length === 0) {
               // Standard mode
-              const note = studentNotes.find((n: any) => !n.idCompetence);
+              const note = studentNotes.find((n: any) => !n.idRepartitionCompetence);
               gridNotes.push({
                   ...s,
                   idInscription: idInscription,
@@ -190,10 +188,10 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
                   missingCompetencies: missing
               });
           } else {
-              // APC mode
+              // APC mode: Match by idRepartitionCompetence
               comps.forEach(c => {
                   const note = studentNotes.find((n: any) =>
-                      Number(n.idCompetence) === Number(c.idCompetence)
+                      Number(n.idRepartitionCompetence) === Number(c.id)
                   );
                   gridNotes.push({
                       ...s,
@@ -204,7 +202,6 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
                       note: note?.note ?? null,
                       cote: note?.cote,
                       nonClasse: note?.nonClasse || false,
-                      idJustification: note?.idJustification,
                       idCompetence: c.idCompetence,
                       idRepartitionCompetence: c.id,
                       competenceLabel: c.Competence?.libelle,
@@ -214,10 +211,8 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
           }
       });
 
-      console.log(`✅ [SaisieMatiere] Grid prepared with ${gridNotes.length} rows`);
       setNotes(gridNotes);
     } catch (err) {
-      console.error("❌ [SaisieMatiere Error] handleLoadNotes:", err);
       setError("Erreur lors du chargement des notes");
     } finally {
       setLoading(false);
@@ -251,12 +246,10 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
     setSaving(true);
     setError(null);
     setSuccess(null);
-    console.log("💾 [SaisieMatiere] Initiating Bulk Save...");
     try {
         // Validation: idRepartitionCompetence is mandatory
         const invalidNotes = notes.filter(n => n.idCompetence && !n.idRepartitionCompetence);
         if (invalidNotes.length > 0) {
-            console.error("❌ [SaisieMatiere Validation] Some notes are missing idRepartitionCompetence", invalidNotes);
             throw new Error("Erreur de configuration: ID Répartition Compétence manquant.");
         }
 
@@ -277,15 +270,11 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
         modeSaisie: 'NUMERIC'
       };
 
-      console.log(`📤 [SaisieMatiere] Sending ${payload.notes.length} notes to server. Sample item:`, payload.notes[0]);
-
       const response = await gradeService.saveNotes(payload as any);
-      console.log("✅ [SaisieMatiere] Save successful:", response.data);
       setSuccess("Notes enregistrées !");
       setTimeout(() => setSuccess(null), 3000);
       handleLoadNotes();
     } catch (err: any) {
-      console.error("❌ [SaisieMatiere Save Error]:", err);
       setError(err.message || "Erreur lors de l'enregistrement");
     } finally {
       setSaving(false);
@@ -317,14 +306,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
         modeSaisie: mode === 'DECIMAL' ? 'NUMERIC' : 'ALPHABETIC'
     };
 
-    console.log("🔥 [FULL PAYLOAD] Saving Single Grade (Sequential):", JSON.stringify(payload, null, 2));
-
-    if (competenceId === undefined) {
-        console.warn("⚠️ [WARNING] Saving note without competenceId!");
-    }
-
     const res = await gradeService.saveNotes(payload as any);
-    console.log("✅ [SERVER RESPONSE] Sequential Save Response:", res.data);
   };
 
   const filteredSequences = React.useMemo(() => {

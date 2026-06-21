@@ -30,6 +30,14 @@ import FinanceLibraryPage from './pages/finance/FinanceLibraryPage';
 import AcademicStructurePage from './pages/pedagogy/AcademicStructurePage';
 import PeriodeManagementPage from './pages/pedagogy/PeriodeManagementPage';
 import SequenceRepartitionPage from './pages/pedagogy/SequenceRepartitionPage';
+import PeriscolaireDistributionPage from './pages/finance/PeriscolaireDistributionPage';
+import ExigibleDistributionPage from './pages/finance/ExigibleDistributionPage';
+import TransportSettingsPage from './pages/finance/TransportSettingsPage';
+
+// Cockpit & Reports
+import ReportingCockpitPage from './pages/reports/ReportingCockpitPage';
+import FinancialReportsPage from './pages/finance/FinancialReportsPage';
+import StudentDocumentsPage from './pages/students/StudentDocumentsPage';
 
 function App() {
   return (
@@ -74,6 +82,16 @@ function App() {
                 }
               />
 
+              {/* Reports & Cockpit */}
+              <Route
+                path="reports/cockpit"
+                element={
+                  <ProtectedRoute permission={AcademicPermission.VIEW_FINANCIAL_REPORTS}>
+                    <ReportingCockpitPage />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* Academic & Students Routes */}
               <Route
                 path="academic/structure"
@@ -108,6 +126,14 @@ function App() {
                 }
               />
               <Route
+                path="students/documents"
+                element={
+                  <ProtectedRoute permission={AcademicPermission.VIEW_STUDENT_LIST}>
+                    <StudentDocumentsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="pedagogy/matieres"
                 element={
                   <ProtectedRoute permission={AcademicPermission.MANAGE_ACADEMIC_CONFIG}>
@@ -137,7 +163,23 @@ function App() {
                 path="finance/reports"
                 element={
                   <ProtectedRoute permission={AcademicPermission.VIEW_FINANCIAL_REPORTS}>
-                    <div className="card p-8 m-4">Bilans Financiers</div>
+                    <FinancialReportsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="finance/periscolaire/distribution"
+                element={
+                  <ProtectedRoute permission={AcademicPermission.MANAGE_ACADEMIC_CONFIG}>
+                    <PeriscolaireDistributionPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="finance/exigible/distribution"
+                element={
+                  <ProtectedRoute permission={AcademicPermission.MANAGE_ACADEMIC_CONFIG}>
+                    <ExigibleDistributionPage />
                   </ProtectedRoute>
                 }
               />
@@ -153,7 +195,7 @@ function App() {
                 path="finance/transport"
                 element={
                   <ProtectedRoute permission={AcademicPermission.GENERAL_CONFIG}>
-                    <div className="card p-8 m-4">Tarifs Transport</div>
+                    <TransportSettingsPage />
                   </ProtectedRoute>
                 }
               />

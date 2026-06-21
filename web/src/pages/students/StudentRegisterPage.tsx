@@ -14,7 +14,10 @@ import {
   CheckCircle2,
   CalendarDays,
   Search,
-  History
+  History,
+  Info,
+  AlertCircle,
+  X
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -26,7 +29,9 @@ const StudentRegisterPage: React.FC = () => {
 
   const [rooms, setRooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+
+  // Toast state
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', studentId?: number } | null>(null);
 
   // Autocomplete state
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -46,8 +51,15 @@ const StudentRegisterPage: React.FC = () => {
     nomPere: '',
     telephonePere: undefined,
     nomMere: '',
-    telephoneMere: undefined
+    telephoneMere: undefined,
+    nomTuteur: '',
+    telephoneTuteur: undefined
   });
+
+  // Parent Direct logic (Mandatory section)
+  const [parentType, setParentType] = useState<'Père' | 'Mère' | 'Tuteur'>('Père');
+  const [parentDirectNom, setParentDirectNom] = useState('');
+  const [parentDirectTel, setParentDirectTel] = useState('');
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -62,19 +74,27 @@ const StudentRegisterPage: React.FC = () => {
   useEffect(() => {
     const yId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
     if (yId) {
-      console.log("[StudentRegister] Loading rooms for YearID:", yId);
       loadRooms(yId);
       if (editId) {
-        console.log("[StudentRegister] Loading student data for EditID:", editId);
         loadStudentData(Number(editId));
       }
     }
   }, [selectedYear, editId]);
 
+  // Sync parentDirect to formData
+  useEffect(() => {
+      if (parentType === 'Père') {
+          setFormData(prev => ({ ...prev, nomPere: parentDirectNom, telephonePere: parentDirectTel ? Number(parentDirectTel) : undefined }));
+      } else if (parentType === 'Mère') {
+          setFormData(prev => ({ ...prev, nomMere: parentDirectNom, telephoneMere: parentDirectTel ? Number(parentDirectTel) : undefined }));
+      } else {
+          setFormData(prev => ({ ...prev, nomTuteur: parentDirectNom, telephoneTuteur: parentDirectTel ? Number(parentDirectTel) : undefined }));
+      }
+  }, [parentDirectNom, parentDirectTel, parentType]);
+
   const loadRooms = async (yId: number) => {
     try {
       const res = await studentService.getRooms(yId);
-      console.log("[StudentRegister] Rooms loaded:", res.data.length);
       setRooms(res.data);
     } catch (error) {
       console.error("[StudentRegister] Error loading rooms:", error);
@@ -85,7 +105,15 @@ const StudentRegisterPage: React.FC = () => {
     try {
       const res = await studentService.getStudent(id);
       const student = res.data;
-      console.log("[StudentRegister] Student data loaded:", student.nomComplet);
+
+      if (student.nomPere) {
+          setParentType('Père'); setParentDirectNom(student.nomPere); setParentDirectTel(student.telephonePere?.toString() || '');
+      } else if (student.nomMere) {
+          setParentType('Mère'); setParentDirectNom(student.nomMere); setParentDirectTel(student.telephoneMere?.toString() || '');
+      } else if (student.nomTuteur) {
+          setParentType('Tuteur'); setParentDirectNom(student.nomTuteur); setParentDirectTel(student.telephoneTuteur?.toString() || '');
+      }
+
       setFormData({
         nom: student.nom || '',
         prenom: student.prenom || '',
@@ -98,11 +126,17 @@ const StudentRegisterPage: React.FC = () => {
         nomPere: student.nomPere || '',
         telephonePere: student.telephonePere || undefined,
         nomMere: student.nomMere || '',
-        telephoneMere: student.telephoneMere || undefined
+        telephoneMere: student.telephoneMere || undefined,
+        nomTuteur: student.nomTuteur || '',
+        telephoneTuteur: student.telephoneTuteur || undefined
       });
     } catch (error) {
       console.error("[StudentRegister] Error loading student data:", error);
     }
+  };
+
+  const handleInputChange = (field: keyof StudentRegistrationPayload, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleNomChange = async (val: string) => {
@@ -124,11 +158,20 @@ const StudentRegisterPage: React.FC = () => {
 
   const selectStudent = (student: any) => {
       if (student.isInscribed) {
+          showToast(`${student.nomComplet} est déjà inscrit cette année.`, 'error');
           if (window.confirm(`${student.nomComplet} est déjà inscrit cette année en ${student.classeLabel}. Voulez-vous aller sur sa fiche ?`)) {
               navigate(`/app/students/register?edit=${student.idEleve}`);
           }
           setShowSuggestions(false);
           return;
+      }
+
+      if (student.nomPere) {
+          setParentType('Père'); setParentDirectNom(student.nomPere); setParentDirectTel(student.telephonePere?.toString() || '');
+      } else if (student.nomMere) {
+          setParentType('Mère'); setParentDirectNom(student.nomMere); setParentDirectTel(student.telephoneMere?.toString() || '');
+      } else {
+          setParentType('Tuteur'); setParentDirectNom(student.nomTuteur || ''); setParentDirectTel(student.telephoneTuteur?.toString() || '');
       }
 
       setFormData({
@@ -143,59 +186,100 @@ const StudentRegisterPage: React.FC = () => {
           telephonePere: student.telephonePere || undefined,
           nomMere: student.nomMere || '',
           telephoneMere: student.telephoneMere || undefined,
+          nomTuteur: student.nomTuteur || '',
+          telephoneTuteur: student.telephoneTuteur || undefined,
           nouveau: false
       });
       setShowSuggestions(false);
+      showToast("Données de l'ancien élève chargées", 'success');
+  };
+
+  const showToast = (message: string, type: 'success' | 'error', studentId?: number) => {
+      setToast({ message, type, studentId });
+      setTimeout(() => setToast(null), 8000);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const yId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
+
     if (!yId || !formData.idSalle) {
-        console.warn("[StudentRegister] Submit aborted: Missing YearID or RoomID");
-        alert("Veuillez sélectionner une salle d'affectation.");
+        showToast("Veuillez sélectionner une salle d'affectation.", 'error');
+        return;
+    }
+
+    if (!parentDirectNom || !parentDirectTel) {
+        showToast("Les informations du responsable principal (Nom et Téléphone) sont obligatoires.", 'error');
         return;
     }
 
     setLoading(true);
-    console.log("[StudentRegister] Submitting form. Mode:", editId ? "Edit" : "Create");
     try {
+      let finalStudentId = Number(editId);
+
       if (editId) {
-        await studentService.updateStudent(Number(editId), {
+        await studentService.updateStudent(finalStudentId, {
             ...formData,
             idAnneeScolaire: yId,
           } as StudentRegistrationPayload);
-        console.log("[StudentRegister] Update success");
+        showToast("Élève mis à jour avec succès", 'success', finalStudentId);
       } else {
-        await studentService.registerAndEnroll({
+        const res = await studentService.registerAndEnroll({
             ...formData,
             idAnneeScolaire: yId,
           } as StudentRegistrationPayload);
-        console.log("[StudentRegister] Registration success");
+        finalStudentId = res.data.idEleve;
+        showToast("Inscription validée avec succès", 'success', finalStudentId);
       }
-      setSuccess(true);
+
       if (!editId) {
         setFormData({
             nom: '', prenom: '', dateNaissance: '', lieuNaissance: '', sexe: 'M', idSalle: 0, nouveau: true,
-            ancienEtablissement: '', quartier: '', nomPere: '', telephonePere: undefined, nomMere: '', telephoneMere: undefined
+            ancienEtablissement: '', quartier: '', nomPere: '', telephonePere: undefined, nomMere: '', telephoneMere: undefined,
+            nomTuteur: '', telephoneTuteur: undefined
         });
+        setParentDirectNom('');
+        setParentDirectTel('');
       }
-      setTimeout(() => setSuccess(false), 3000);
     } catch (error: any) {
-      console.error("[StudentRegister] Operation failed:", error);
       const apiError = error.response?.data?.error || error.message || "Une erreur inconnue est survenue";
-      alert(`Erreur lors de l'opération : ${apiError}`);
+      showToast(apiError, 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInputChange = (field: keyof StudentRegistrationPayload, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 relative">
+
+      {/* Snackbar / Toast Notifications */}
+      {toast && (
+          <div className={clsx(
+              "fixed top-10 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-top-10 duration-500 min-w-[320px]",
+              toast.type === 'success' ? "bg-black text-white" : "bg-red-600 text-white"
+          )}>
+              {toast.type === 'success' ? <CheckCircle2 className="text-green-400" /> : <AlertCircle />}
+              <div className="flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest opacity-60">
+                      {toast.type === 'success' ? 'Succès' : 'Erreur'}
+                  </p>
+                  <p className="font-bold text-xs uppercase">{toast.message}</p>
+              </div>
+              {toast.type === 'success' && toast.studentId && (
+                  <button
+                    onClick={() => navigate(`/app/finance/payments?idEleve=${toast.studentId}`)}
+                    className="px-4 py-2 bg-accent text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all flex items-center gap-2"
+                  >
+                      <CreditCard size={14} />
+                      Payer Frais
+                  </button>
+              )}
+              <button onClick={() => setToast(null)} className="p-1 hover:bg-white/10 rounded-full ml-2">
+                  <X size={18} />
+              </button>
+          </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <button onClick={() => window.history.back()} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -205,14 +289,6 @@ const StudentRegisterPage: React.FC = () => {
             {editId ? "Modification d'Élève" : "Inscription d'Élève"}
           </h1>
         </div>
-        {success && (
-          <div className="flex items-center text-green-600 bg-green-50 px-4 py-2 rounded-sharp animate-in zoom-in-95">
-            <CheckCircle2 size={18} className="mr-2" />
-            <span className="text-[10px] font-black uppercase tracking-widest">
-                {editId ? "Modifié avec succès" : "Inscrit avec succès"}
-            </span>
-          </div>
-        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
@@ -314,7 +390,54 @@ const StudentRegisterPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Section 2: Schooling Info */}
+        {/* Section 2: Parent/Tutor (Mandatory Section) */}
+        <div className="card p-8 space-y-8 border-2 border-accent/20">
+          <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3 text-black">
+                <Users size={20} className="text-accent" />
+                <h3 className="text-sm font-black uppercase tracking-widest">Responsable Principal <span className="text-red-500 font-black">*</span></h3>
+              </div>
+              <div className="flex bg-gray-100 p-1 rounded-xl">
+                  {['Père', 'Mère', 'Tuteur'].map(type => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setParentType(type as any)}
+                        className={clsx(
+                            "px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all",
+                            parentType === type ? "bg-white text-black shadow-sm" : "text-gray-400 hover:text-gray-600"
+                        )}
+                      >{type}</button>
+                  ))}
+              </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <AuthInput
+                label={`Nom du ${parentType} *`}
+                value={parentDirectNom}
+                onChange={(e) => setParentDirectNom(e.target.value)}
+                required
+            />
+            <AuthInput
+                label={`Téléphone ${parentType} *`}
+                type="tel"
+                value={parentDirectTel}
+                onChange={(e) => setParentDirectTel(e.target.value)}
+                required
+            />
+          </div>
+
+          <div className="flex items-start space-x-3 p-4 bg-accent/5 rounded-2xl">
+              <Info className="text-accent shrink-0" size={18} />
+              <p className="text-[10px] font-bold text-gray-500 leading-relaxed uppercase tracking-tight">
+                  Veuillez renseigner les coordonnées d'au moins un parent ou tuteur légal.
+                  Ces informations sont critiques pour le suivi de l'élève et les urgences.
+              </p>
+          </div>
+        </div>
+
+        {/* Section 3: Schooling Info */}
         <div className="card p-8 space-y-8">
           <div className="flex items-center space-x-3 text-black">
              <GraduationCap size={20} className="text-accent" />
@@ -350,18 +473,32 @@ const StudentRegisterPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Section 3: Family/Tutor (Optional but mapped) */}
-        <div className="card p-8 space-y-8">
+        {/* Section 4: Other Parents (Optional) */}
+        <div className="card p-8 space-y-8 opacity-60 hover:opacity-100 transition-opacity">
           <div className="flex items-center space-x-3 text-black">
-             <Users size={20} className="text-accent" />
-             <h3 className="text-sm font-black uppercase tracking-widest">Parents / Tuteurs</h3>
+             <Users size={20} className="text-gray-400" />
+             <h3 className="text-sm font-black uppercase tracking-widest text-gray-400">Autres Responsables (Facultatif)</h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <AuthInput label="Nom du Père" value={formData.nomPere} onChange={(e) => handleInputChange('nomPere', e.target.value)} />
-            <AuthInput label="Téléphone Père" type="tel" value={formData.telephonePere} onChange={(e) => handleInputChange('telephonePere', e.target.value)} />
-            <AuthInput label="Nom de la Mère" value={formData.nomMere} onChange={(e) => handleInputChange('nomMere', e.target.value)} />
-            <AuthInput label="Téléphone Mère" type="tel" value={formData.telephoneMere} onChange={(e) => handleInputChange('telephoneMere', e.target.value)} />
+            {parentType !== 'Père' && (
+                <>
+                    <AuthInput label="Nom du Père" value={formData.nomPere} onChange={(e) => handleInputChange('nomPere', e.target.value)} />
+                    <AuthInput label="Téléphone Père" type="tel" value={formData.telephonePere} onChange={(e) => handleInputChange('telephonePere', e.target.value)} />
+                </>
+            )}
+            {parentType !== 'Mère' && (
+                <>
+                    <AuthInput label="Nom de la Mère" value={formData.nomMere} onChange={(e) => handleInputChange('nomMere', e.target.value)} />
+                    <AuthInput label="Téléphone Mère" type="tel" value={formData.telephoneMere} onChange={(e) => handleInputChange('telephoneMere', e.target.value)} />
+                </>
+            )}
+            {parentType !== 'Tuteur' && (
+                <>
+                    <AuthInput label="Nom du Tuteur" value={formData.nomTuteur} onChange={(e) => handleInputChange('nomTuteur', e.target.value)} />
+                    <AuthInput label="Téléphone Tuteur" type="tel" value={formData.telephoneTuteur} onChange={(e) => handleInputChange('telephoneTuteur', e.target.value)} />
+                </>
+            )}
           </div>
         </div>
 

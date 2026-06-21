@@ -107,6 +107,7 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var isLoggingIn by remember { mutableStateOf(false) }
     var showServerConfig by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -181,6 +182,16 @@ fun LoginScreen(
                 onPasswordToggle = { passwordVisible = !passwordVisible }
             )
 
+            if (errorMessage != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = errorMessage!!,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            }
+
             Spacer(modifier = Modifier.height(48.dp))
 
             SocialLoginRow()
@@ -211,8 +222,13 @@ fun LoginScreen(
             ModernButton(
                 text = "Login",
                 onClick = { 
-                    isLoggingIn = true
-                    onLogin(identifiant, mdp) 
+                    if (identifiant.isEmpty() || mdp.isEmpty()) {
+                        errorMessage = "Veuillez remplir tous les champs"
+                    } else {
+                        errorMessage = null
+                        isLoggingIn = true
+                        onLogin(identifiant, mdp) 
+                    }
                 },
                 isLoading = isLoggingIn
             )

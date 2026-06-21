@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSchoolYear } from '../../context/SchoolYearContext';
 import { studentService } from '../../api/studentService';
 import { financeService } from '../../api/financeService';

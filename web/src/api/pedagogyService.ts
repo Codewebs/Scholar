@@ -42,17 +42,21 @@ export const pedagogyService = {
   getPeriodes: (yearId: number) =>
     api.get<PeriodeEntity[]>(`/pedagogy/periodes/annee/${yearId}`),
 
-  savePeriode: (data: Partial<PeriodeEntity>) =>
-    api.post('/pedagogy/periodes', data),
+  savePeriode: (data: Partial<PeriodeEntity>) => {
+    if (data.idPeriode) return api.put(`/pedagogy/periodes/${data.idPeriode}`, data);
+    return api.post('/pedagogy/periodes', data);
+  },
 
   deletePeriode: (id: number) =>
     api.delete(`/pedagogy/periodes/${id}`),
 
-  saveSousPeriode: (data: Partial<SousPeriodeEntity>) =>
-    api.post('/pedagogy/sous-periodes', data),
+  saveSousPeriode: (data: Partial<SousPeriodeEntity>) => {
+    if (data.idSousPeriode) return api.put(`/pedagogy/periodes/sous-periodes/${data.idSousPeriode}`, data);
+    return api.post('/pedagogy/periodes/sous-periodes', data);
+  },
 
   deleteSousPeriode: (id: number) =>
-    api.delete(`/pedagogy/sous-periodes/${id}`),
+    api.delete(`/pedagogy/periodes/sous-periodes/${id}`),
 
   // Sequence Distribution (Repartition)
   getSequenceRepartition: (yearId: number, classId?: number) =>

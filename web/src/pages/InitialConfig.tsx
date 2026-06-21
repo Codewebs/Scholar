@@ -238,9 +238,11 @@ const InitialConfig: React.FC = () => {
       );
 
       if (assoc && updateUser) {
+          const finalRole = selectedProfile || assoc.roles[0];
+          console.log(`[InitialConfig] 🎯 Finishing setup: Role=${finalRole}, PermsCount=${assoc.permissionsAjoutees?.length || 0}`);
           updateUser({
-              role: selectedProfile || assoc.roles[0],
-              permissions: assoc.permissionsAjoutees || []
+              role: finalRole,
+              permissions: (assoc.permissionsAjoutees || []) as any[]
           });
       }
 

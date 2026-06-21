@@ -145,6 +145,7 @@ router.post("/login-user", async (req, res) => {
   }
 
   try {
+    const { InscriptionPersonnel } = require('../models');
     const user = await Utilisateur.findOne({
       where: { [Op.or]: [{ identifiant }, { email: identifiant }] },
       include: [{ model: Qualite, as: 'qualite' }]
@@ -159,7 +160,22 @@ router.post("/login-user", async (req, res) => {
       return res.status(401).json({ success: false, message: "Mot de passe incorrect" });
     }
 
-    const role = user.qualite ? user.qualite.libelleQualite : "DEMANDEUR";
+    // Chercher si l'utilisateur a une inscription valide pour lui donner son vrai rôle immédiatement
+    let role = user.qualite ? user.qualite.libelleQualite : "DEMANDEUR";
+    let permissions = [];
+
+    const activeIns = await InscriptionPersonnel.findOne({
+        where: { idUtilisateur: user.idUtilisateur, supprimer: false, bloque: false },
+        order: [['createdAt', 'DESC']]
+    });
+
+    if (activeIns) {
+        role = activeIns.role;
+        try {
+            permissions = activeIns.permissionsAjoutees ? JSON.parse(activeIns.permissionsAjoutees) : [];
+        } catch (e) { permissions = []; }
+    }
+
     const token = jwt.sign({ userId: user.idUtilisateur, role: role }, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN || "7d"
     });
@@ -171,7 +187,8 @@ router.post("/login-user", async (req, res) => {
       name: user.nom,
       email: user.email,
       telephone: user.telephone,
-      role: role
+      role: role,
+      permissions: permissions
     });
   } catch (err) {
     console.error("🔥 Erreur /login :", err);

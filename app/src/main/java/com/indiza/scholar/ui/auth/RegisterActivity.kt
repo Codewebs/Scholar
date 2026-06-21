@@ -109,6 +109,25 @@ fun RegisterScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var isRegistering by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val emailRegex = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$".toRegex()
+
+    val emailError = if (email.isNotEmpty() && !emailRegex.matches(email)) {
+        "Format d'email invalide"
+    } else null
+
+    val passwordError = if (password.isNotEmpty() && password.length < 4) {
+        "Le mot de passe doit contenir au moins 4 caractères"
+    } else null
+
+    val confirmPasswordError = if (confirmPassword.isNotEmpty() && confirmPassword != password) {
+        "Les mots de passe ne correspondent pas"
+    } else null
+
+    val isFormValid = fname.isNotBlank() && lname.isNotBlank() && email.isNotBlank() && telephone.isNotBlank() &&
+            password.isNotBlank() && confirmPassword.isNotBlank() &&
+            emailError == null && passwordError == null && confirmPasswordError == null
 
     Scaffold(
         topBar = {
@@ -162,7 +181,7 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(20.dp))
             ModernTextField(value = lname, onValueChange = { lname = it }, label = "Last Name", placeholder = "Enter your last name")
             Spacer(modifier = Modifier.height(20.dp))
-            ModernTextField(value = email, onValueChange = { email = it }, label = "Email", placeholder = "Enter your email")
+            ModernTextField(value = email, onValueChange = { email = it }, label = "Email", placeholder = "Enter your email", error = emailError)
             Spacer(modifier = Modifier.height(20.dp))
             ModernTextField(value = telephone, onValueChange = { telephone = it }, label = "Phone", placeholder = "Enter your phone number")
             Spacer(modifier = Modifier.height(20.dp))
@@ -174,7 +193,8 @@ fun RegisterScreen(
                 placeholder = "Create a password",
                 isPassword = true,
                 passwordVisible = passwordVisible,
-                onPasswordToggle = { passwordVisible = !passwordVisible }
+                onPasswordToggle = { passwordVisible = !passwordVisible },
+                error = passwordError
             )
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -185,18 +205,37 @@ fun RegisterScreen(
                 placeholder = "Confirm your password",
                 isPassword = true,
                 passwordVisible = confirmPasswordVisible,
-                onPasswordToggle = { confirmPasswordVisible = !confirmPasswordVisible }
+                onPasswordToggle = { confirmPasswordVisible = !confirmPasswordVisible },
+                error = confirmPasswordError
             )
+
+            if (errorMessage != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = errorMessage!!,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            }
 
             Spacer(modifier = Modifier.height(48.dp))
 
             ModernButton(
                 text = "Register",
                 onClick = {
-                    isRegistering = true
-                    onRegister(fname, lname, email, telephone, password, confirmPassword)
+                    if (fname.isBlank() || lname.isBlank() || email.isBlank() || telephone.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
+                        errorMessage = "Tous les champs sont obligatoires"
+                    } else if (password != confirmPassword) {
+                        errorMessage = "Les mots de passe ne correspondent pas"
+                    } else {
+                        errorMessage = null
+                        isRegistering = true
+                        onRegister(fname, lname, email, telephone, password, confirmPassword)
+                    }
                 },
-                isLoading = isRegistering
+                isLoading = isRegistering,
+                enabled = isFormValid
             )
 
             Spacer(modifier = Modifier.height(24.dp))

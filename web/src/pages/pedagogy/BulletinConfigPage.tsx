@@ -70,6 +70,7 @@ const BulletinConfigPage: React.FC = () => {
         showStudentPhoto: true,
         showMainTeacher: true,
         showSubjectTeachers: true,
+        showPeriodAbreviations: false, // New option
         passingGrade: 10.0,
         successColor: '#10B981',
         failColor: '#EF4444',
@@ -446,6 +447,7 @@ const BulletinConfigPage: React.FC = () => {
                         <ConfigSwitch label="Photo Élève" checked={config.body.showStudentPhoto} onChange={(v) => setConfig({...config, body: {...config.body, showStudentPhoto: v}})} />
                         <ConfigSwitch label="Prof Principal" checked={config.body.showMainTeacher} onChange={(v) => setConfig({...config, body: {...config.body, showMainTeacher: v}})} />
                         <ConfigSwitch label="Noms Enseignants" checked={config.body.showSubjectTeachers} onChange={(v) => setConfig({...config, body: {...config.body, showSubjectTeachers: v}})} />
+                        <ConfigSwitch label="Abrév. Périodes" checked={config.body.showPeriodAbreviations} onChange={(v) => setConfig({...config, body: {...config.body, showPeriodAbreviations: v}})} />
                    </div>
 
                    <div className="bg-white p-6 rounded-[24px] border border-gray-100 shadow-sm space-y-6">
@@ -597,7 +599,7 @@ const BulletinConfigPage: React.FC = () => {
                                         config.selectedId === s.idSalle ? "border-black bg-black text-white" : "border-gray-100 bg-white hover:border-gray-300"
                                     )}
                                 >
-                                    <p className="text-[10px] font-black uppercase tracking-tight">{s.nomSalle}</p>
+                                    <p className="text-[10px] font-black uppercase tracking-tight">{c.libelleClasseFr} {s.nomSalle}</p>
                                     <p className={clsx("text-[8px] mt-1 uppercase font-bold tracking-widest", config.selectedId === s.idSalle ? "text-white/50" : "text-gray-400")}>
                                         Effectif: {s.effectif || 0} Élèves
                                     </p>

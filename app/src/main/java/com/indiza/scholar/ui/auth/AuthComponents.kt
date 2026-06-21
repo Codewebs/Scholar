@@ -34,14 +34,15 @@ fun ModernTextField(
     placeholder: String = "",
     isPassword: Boolean = false,
     passwordVisible: Boolean = false,
-    onPasswordToggle: () -> Unit = {}
+    onPasswordToggle: () -> Unit = {},
+    error: String? = null
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (error != null) Color.Red else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(bottom = 4.dp)
         )
         OutlinedTextField(
@@ -52,6 +53,7 @@ fun ModernTextField(
             textStyle = TextStyle(fontSize = 16.sp),
             visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
             keyboardOptions = if (isPassword) KeyboardOptions(keyboardType = KeyboardType.Password) else KeyboardOptions.Default,
+            isError = error != null,
             trailingIcon = {
                 if (isPassword) {
                     IconButton(onClick = onPasswordToggle) {
@@ -65,13 +67,21 @@ fun ModernTextField(
             },
             shape = RoundedCornerShape(8.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                focusedBorderColor = if (error != null) Color.Red else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                unfocusedBorderColor = if (error != null) Color.Red else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
                 cursorColor = MaterialTheme.colorScheme.onSurface,
                 focusedContainerColor = MaterialTheme.colorScheme.surface,
                 unfocusedContainerColor = MaterialTheme.colorScheme.surface
             )
         )
+        if (error != null) {
+            Text(
+                text = error,
+                color = Color.Red,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+            )
+        }
     }
 }
 

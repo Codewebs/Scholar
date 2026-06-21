@@ -47,12 +47,63 @@ const PaymentPage: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<EleveUiModel | null>(null);
   const [details, setDetails] = useState<StudentPaymentDetails | null>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [selectedFraisId, setSelectedFraisId] = useState<number | null>(null);
 
   // States
   const [loading, setLoading] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
   const [isPeriscolaire, setIsPeriscolaire] = useState(false);
+  const [isTransport, setIsTransport] = useState(false);
+  const [transportSub, setTransportSub] = useState<any | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [txToCancel, setTxToCancel] = useState<number | null>(null);
+  const [cancelMotif, setCancelMotif] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+  const [availableTarifs, setAvailableTarifs] = useState<any[]>([]);
+  const [subscribing, setSubscribing] = useState(false);
+
+  useEffect(() => {
+    if (showSubscriptionModal && yearId) {
+        financeService.getTarifsTransport(yearId).then(res => setAvailableTarifs(res.data));
+    }
+  }, [showSubscriptionModal, yearId]);
+
+  const handleSubscription = async (tarifId: number) => {
+      if (!selectedStudent || !yearId) return;
+      setSubscribing(true);
+      try {
+          // Generate default monthly echeances (Oct to June)
+          const tarif = availableTarifs.find(t => t.idTarifTransport === tarifId);
+          const monthlyAmount = Math.ceil(tarif.montantTransport / 9);
+          const echeances = [
+              { libelle: 'Octobre', montantDu: monthlyAmount, dateLimite: '2025-10-31' },
+              { libelle: 'Novembre', montantDu: monthlyAmount, dateLimite: '2025-11-30' },
+              { libelle: 'Décembre', montantDu: monthlyAmount, dateLimite: '2025-12-31' },
+              { libelle: 'Janvier', montantDu: monthlyAmount, dateLimite: '2026-01-31' },
+              { libelle: 'Février', montantDu: monthlyAmount, dateLimite: '2026-02-28' },
+              { libelle: 'Mars', montantDu: monthlyAmount, dateLimite: '2026-03-31' },
+              { libelle: 'Avril', montantDu: monthlyAmount, dateLimite: '2026-04-30' },
+              { libelle: 'Mai', montantDu: monthlyAmount, dateLimite: '2026-05-31' },
+              { libelle: 'Juin', montantDu: tarif.montantTransport - (monthlyAmount * 8), dateLimite: '2026-06-30' },
+          ];
+
+          await financeService.subscribeStudentToTransport({
+              idEleve: selectedStudent.idEleve,
+              idTarifTransport: tarifId,
+              reduction: 0,
+              echeances
+          });
+          setShowSubscriptionModal(false);
+          loadDetails();
+      } catch (err) {
+          console.error(err);
+          alert("Erreur lors de l'abonnement");
+      } finally {
+          setSubscribing(false);
+      }
+  };
   const [amount, setAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState('CASH');
   const [success, setSuccess] = useState(false);
@@ -76,7 +127,10 @@ const PaymentPage: React.FC = () => {
             setSelectedStudent(student);
             if (highlight === 'true') {
                 setHighlightActive(true);
-                setTimeout(() => setHighlightActive(false), 2000);
+                setTimeout(() => {
+                    setHighlightActive(false);
+                    transactionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 1000);
             }
         }
     }
@@ -118,16 +172,21 @@ const PaymentPage: React.FC = () => {
       loadDetails();
       loadTransactions();
     }
-  }, [selectedStudent, isPeriscolaire, yearId]);
+  }, [selectedStudent, isPeriscolaire, isTransport, yearId]);
 
   const loadDetails = async () => {
     if (!selectedStudent) return;
     setLoading(true);
     try {
-      const res = isPeriscolaire
-        ? await financeService.getStudentPeriscolaireDetails(selectedStudent.idEleve, yearId)
-        : await financeService.getStudentPaymentDetails(selectedStudent.idEleve, yearId);
-      setDetails(res.data);
+      if (isTransport) {
+        const res = await financeService.getStudentTransportSubscription(selectedStudent.idEleve, yearId);
+        setTransportSub(res.data);
+      } else {
+        const res = isPeriscolaire
+          ? await financeService.getStudentPeriscolaireDetails(selectedStudent.idEleve, yearId)
+          : await financeService.getStudentPaymentDetails(selectedStudent.idEleve, yearId);
+        setDetails(res.data);
+      }
     } catch (error) {
       console.error("[PaymentPage] ❌ Erreur chargement détails:", error);
     } finally {
@@ -150,6 +209,19 @@ const PaymentPage: React.FC = () => {
     if (!selectedStudent || !amount || Number(amount) <= 0) return;
 
     setLoading(true);
+    const amountVal = Number(amount);
+    if (isNaN(amountVal) || amountVal <= 0) {
+        alert("Veuillez entrer un montant valide.");
+        setLoading(false);
+        return;
+    }
+
+    if (amountVal > (details?.resteGlobal || 0)) {
+        alert(`Montant trop élevé. Le reste à payer est de ${(details?.resteGlobal || 0).toLocaleString()} FCFA.`);
+        setLoading(false);
+        return;
+    }
+
     const payload: PaiementPayload = {
       idEleve: selectedStudent.idEleve,
       idAnneeScolaire: yearId,
@@ -159,9 +231,21 @@ const PaymentPage: React.FC = () => {
     };
 
     try {
-      await (isPeriscolaire
-        ? financeService.payerFraisPeriscolaires(payload)
-        : financeService.payerFraisExigibles(payload));
+      if (isTransport) {
+        await financeService.payerTransport(payload);
+      } else if (isPeriscolaire) {
+          if (!selectedFraisId) {
+              alert("Veuillez sélectionner l'activité à payer.");
+              setLoading(false);
+              return;
+          }
+          await financeService.payerFraisPeriscolaires({
+              ...payload,
+              idTarifFraisActivitePeriscolaire: selectedFraisId
+          });
+      } else {
+          await financeService.payerFraisExigibles(payload);
+      }
 
       setSuccess(true);
       setAmount('');
@@ -192,16 +276,31 @@ const PaymentPage: React.FC = () => {
   };
 
   const handleCancelPayment = async (id: number) => {
-      if (!window.confirm("Voulez-vous vraiment annuler ce paiement ?")) return;
+      setTxToCancel(id);
+      setCancelMotif('');
+      setShowCancelModal(true);
+  };
+
+  const confirmCancellation = async () => {
+      if (!txToCancel || !cancelMotif.trim()) return;
+      if (cancelMotif.length < 5) {
+          alert("Le motif doit contenir au moins 5 caractères.");
+          return;
+      }
+
+      setCancelling(true);
       try {
-          await financeService.annulerPaiement(id);
-          alert("Paiement annulé");
+          await financeService.annulerPaiement(txToCancel, cancelMotif);
+          setShowCancelModal(false);
+          setTxToCancel(null);
           loadDetails();
           loadTransactions();
           loadStudents();
       } catch (error: any) {
           console.error("[PaymentPage] ❌ Erreur annulation:", error);
           alert(error.response?.data?.error || "Erreur lors de l'annulation");
+      } finally {
+          setCancelling(false);
       }
   };
 
@@ -237,8 +336,8 @@ const PaymentPage: React.FC = () => {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8 flex-1 pb-10">
-        {/* Left Column: Student List */}
-        <div className="w-full lg:w-96 bg-white rounded-[32px] border border-gray-100 flex flex-col shadow-sm overflow-hidden lg:h-[calc(100vh-280px)]">
+        {/* Left Column: Student List (Increased by 20% width) */}
+        <div className="w-full lg:w-[calc(24rem*1.2)] bg-white rounded-[32px] border border-gray-100 flex flex-col shadow-sm overflow-hidden lg:h-[calc(100vh-280px)]">
             <div className="p-6 border-b border-gray-50 flex flex-col space-y-4 bg-gray-50/30">
                 <div className="flex overflow-x-auto gap-2 pb-2 custom-scrollbar">
                     {['Tout afficher', 'Soldé', 'Incomplet', 'Aucun versement'].map(status => (
@@ -341,39 +440,50 @@ const PaymentPage: React.FC = () => {
 
                         <div className="flex gap-2 bg-white p-1 rounded-2xl border border-gray-100">
                             <button
-                                onClick={() => setIsPeriscolaire(false)}
+                                onClick={() => { setIsPeriscolaire(false); setIsTransport(false); setSelectedFraisId(null); }}
                                 className={clsx(
                                     "px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
-                                    !isPeriscolaire ? "bg-black text-white shadow-lg" : "text-secondary hover:bg-gray-50"
+                                    (!isPeriscolaire && !isTransport) ? "bg-black text-white shadow-lg" : "text-secondary hover:bg-gray-50"
                                 )}
                             >Exigibles</button>
                             <button
-                                onClick={() => setIsPeriscolaire(true)}
+                                onClick={() => { setIsPeriscolaire(true); setIsTransport(false); setSelectedFraisId(null); }}
                                 className={clsx(
                                     "px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
-                                    isPeriscolaire ? "bg-black text-white shadow-lg" : "text-secondary hover:bg-gray-50"
+                                    (isPeriscolaire && !isTransport) ? "bg-black text-white shadow-lg" : "text-secondary hover:bg-gray-50"
                                 )}
                             >Périscolaires</button>
+                            <button
+                                onClick={() => { setIsTransport(true); setIsPeriscolaire(false); setSelectedFraisId(null); }}
+                                className={clsx(
+                                    "px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
+                                    isTransport ? "bg-black text-white shadow-lg" : "text-secondary hover:bg-gray-50"
+                                )}
+                            >Transport</button>
                         </div>
                     </div>
 
-                    <div className="p-8 space-y-8">
+                    <div className="p-8 space-y-4">
                         {/* Highlights */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div className="p-8 bg-black rounded-[32px] text-white shadow-2xl relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-accent/20 rounded-full -mr-16 -mt-16 blur-2xl transition-all group-hover:scale-150"></div>
                                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Total Déjà Versé</p>
                                 <p className="text-4xl font-black tracking-tighter">
-                                    {details?.totalDejaVerse.toLocaleString()} <span className="text-xs text-accent">FCFA</span>
+                                    {isTransport
+                                        ? transportSub?.echeances?.reduce((sum: number, e: any) => sum + e.montantPaye, 0).toLocaleString()
+                                        : details?.totalDejaVerse.toLocaleString()} <span className="text-xs text-accent">FCFA</span>
                                 </p>
                             </div>
                             <div className="p-8 bg-gray-50 border border-gray-100 rounded-[32px] relative overflow-hidden group">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-secondary mb-2">Reste Global</p>
                                 <p className={clsx(
                                     "text-4xl font-black tracking-tighter",
-                                    details?.resteGlobal === 0 ? "text-green-500" : "text-black"
+                                    (isTransport ? (transportSub?.echeances?.reduce((sum: number, e: any) => sum + (e.montantDu - e.montantPaye), 0) === 0) : (details?.resteGlobal === 0)) ? "text-green-500" : "text-black"
                                 )}>
-                                    {details?.resteGlobal.toLocaleString()} <span className="text-xs">FCFA</span>
+                                    {isTransport
+                                        ? transportSub?.echeances?.reduce((sum: number, e: any) => sum + (e.montantDu - e.montantPaye), 0).toLocaleString()
+                                        : details?.resteGlobal.toLocaleString()} <span className="text-xs">FCFA</span>
                                 </p>
                             </div>
                         </div>
@@ -387,8 +497,61 @@ const PaymentPage: React.FC = () => {
                                         Array.from({length: 4}).map((_, i) => (
                                             <div key={i} className="h-20 bg-gray-50 rounded-[24px] animate-pulse"></div>
                                         ))
-                                    ) : details?.frais.map((frais) => (
-                                        <div key={frais.idTarif} className="p-6 bg-white border border-gray-100 rounded-[28px] flex items-center justify-between group hover:border-black transition-all">
+                                    ) : isTransport ? (
+                                        !transportSub ? (
+                                            <div className="p-10 border-2 border-dashed border-gray-100 rounded-[32px] flex flex-col items-center justify-center text-center space-y-4">
+                                                <div className="p-4 bg-gray-50 rounded-full text-secondary">
+                                                    <Settings size={32} />
+                                                </div>
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-secondary">Non abonné au transport</p>
+                                                <button
+                                                    onClick={() => setShowSubscriptionModal(true)}
+                                                    className="px-6 py-3 bg-black text-white rounded-full text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
+                                                >
+                                                    S'abonner maintenant
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            transportSub.echeances?.map((ech: any) => (
+                                                <div
+                                                    key={ech.idEcheancier}
+                                                    className={clsx(
+                                                        "p-6 border rounded-[28px] flex items-center justify-between bg-white border-gray-100"
+                                                    )}
+                                                >
+                                                    <div className="flex items-center space-x-5">
+                                                        <div className={clsx(
+                                                            "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                                                            ech.montantPaye >= ech.montantDu ? "bg-green-50 text-green-500" : "bg-orange-50 text-orange-500"
+                                                        )}>
+                                                            {ech.montantPaye >= ech.montantDu ? <CheckCircle2 size={20} /> : <CircleDollarSign size={20} />}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-black text-xs uppercase tracking-tight">{ech.libelle}</p>
+                                                            <p className="text-[8px] font-bold text-secondary uppercase tracking-widest">
+                                                                Dû: {ech.montantDu.toLocaleString()} FCFA
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="font-black text-xs">{ech.montantPaye.toLocaleString()} FCFA</p>
+                                                        <p className="text-[8px] font-black uppercase tracking-widest text-green-500">Payé</p>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )
+                                    ) : details?.frais.map((frais) => {
+                                        const isSelected = selectedFraisId === frais.idTarif;
+                                        return (
+                                        <div
+                                            key={frais.idTarif}
+                                            onClick={() => isPeriscolaire && setSelectedFraisId(frais.idTarif)}
+                                            className={clsx(
+                                                "p-6 border rounded-[28px] flex items-center justify-between group transition-all",
+                                                isPeriscolaire && "cursor-pointer hover:border-black",
+                                                isSelected ? "bg-accent/5 border-accent" : "bg-white border-gray-100 hover:border-gray-200"
+                                            )}
+                                        >
                                             <div className="flex items-center space-x-5">
                                                 <div className={clsx(
                                                     "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
@@ -403,12 +566,19 @@ const PaymentPage: React.FC = () => {
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="font-black text-xs">{frais.montantPaye.toLocaleString()} FCFA</p>
-                                                <p className="text-[8px] font-black uppercase tracking-widest text-green-500">Payé</p>
+                                            <div className="text-right flex items-center gap-3">
+                                                <div>
+                                                    <p className="font-black text-xs">{frais.montantPaye.toLocaleString()} FCFA</p>
+                                                    <p className="text-[8px] font-black uppercase tracking-widest text-green-500">Payé</p>
+                                                </div>
+                                                {isPeriscolaire && isSelected && (
+                                                    <div className="w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center shadow-lg animate-in zoom-in">
+                                                        <Check size={14} />
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
-                                    ))}
+                                    )})}
                                 </div>
                             </div>
 
@@ -473,14 +643,20 @@ const PaymentPage: React.FC = () => {
                     <div className="absolute bottom-8 right-8 flex flex-col gap-4">
                         <button
                             onClick={() => { setSuccess(false); setShowPaymentModal(true); }}
-                            disabled={details?.resteGlobal === 0}
+                            disabled={
+                                isTransport
+                                ? (!transportSub || transportSub.echeances?.every((e:any) => e.montantPaye >= e.montantDu))
+                                : (isPeriscolaire ? !selectedFraisId || details?.frais.find(f => f.idTarif === selectedFraisId)?.isComplet : details?.resteGlobal === 0)
+                            }
                             className={clsx(
                                 "w-16 h-16 rounded-[24px] shadow-2xl transition-all flex items-center justify-center group",
-                                details?.resteGlobal === 0 ? "bg-gray-100 text-gray-300 cursor-not-allowed" : "bg-accent text-white shadow-accent/30 hover:scale-110 active:scale-95"
+                                (isTransport ? (!transportSub || transportSub.echeances?.every((e:any) => e.montantPaye >= e.montantDu)) : (isPeriscolaire ? !selectedFraisId || details?.frais.find(f => f.idTarif === selectedFraisId)?.isComplet : details?.resteGlobal === 0))
+                                ? "bg-gray-100 text-gray-300 cursor-not-allowed"
+                                : "bg-accent text-white shadow-accent/30 hover:scale-110 active:scale-95"
                             )}
-                            title={details?.resteGlobal === 0 ? "Déjà soldé" : "Encaisser"}
+                            title={isTransport ? (transportSub ? "Encaisser transport" : "S'abonner d'abord") : (isPeriscolaire ? (selectedFraisId ? "Payer l'activité" : "Sélectionnez une activité") : (details?.resteGlobal === 0 ? "Déjà soldé" : "Encaisser"))}
                         >
-                            <Plus size={28} className={clsx(!details?.resteGlobal === 0 && "group-hover:rotate-90 transition-transform duration-500")} />
+                            <Plus size={28} className={clsx(!(isTransport ? (!transportSub || transportSub.echeances?.every((e:any) => e.montantPaye >= e.montantDu)) : (isPeriscolaire ? !selectedFraisId || details?.frais.find(f => f.idTarif === selectedFraisId)?.isComplet : details?.resteGlobal === 0)) && "group-hover:rotate-90 transition-transform duration-500")} />
                         </button>
                         <button
                             onClick={handleReprint}
@@ -510,7 +686,7 @@ const PaymentPage: React.FC = () => {
                           <span className="text-[10px] font-black uppercase tracking-[0.4em]">Nouveau Versement</span>
                       </div>
                       <h3 className="text-3xl font-black uppercase tracking-tighter text-black">
-                        {isPeriscolaire ? 'Périscolaire' : 'Scolarité'}
+                        {isTransport ? 'Transport' : (isPeriscolaire ? 'Périscolaire' : 'Scolarité')}
                       </h3>
                       <p className="text-[10px] font-black uppercase tracking-widest text-secondary mt-1">
                           {selectedStudent.nomComplet}
@@ -541,10 +717,16 @@ const PaymentPage: React.FC = () => {
                           <div className="space-y-6">
                               <AuthInput
                                   label="Montant du versement (FCFA)"
-                                  type="number"
+                                  type="text"
+                                  inputMode="numeric"
                                   placeholder="Entrez le montant"
                                   value={amount}
-                                  onChange={(e) => setAmount(e.target.value)}
+                                  onChange={(e) => {
+                                      const val = e.target.value;
+                                      if (val === '' || /^[0-9]+$/.test(val)) {
+                                          setAmount(val);
+                                      }
+                                  }}
                                   required
                                   autoFocus
                               />
@@ -592,6 +774,87 @@ const PaymentPage: React.FC = () => {
             onClose={() => setShowReceipt(false)}
           />
       )}
+
+      {showSubscriptionModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[60] p-6 animate-in fade-in duration-300">
+              <div className="bg-white rounded-[56px] p-12 max-w-2xl w-full shadow-2xl relative">
+                  <button onClick={() => setShowSubscriptionModal(false)} className="absolute top-8 right-8 p-3 hover:bg-gray-100 rounded-full transition-all"><X size={24}/></button>
+                  <div className="mb-10">
+                      <h3 className="text-3xl font-black uppercase tracking-tighter text-black">Abonnement Transport</h3>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-secondary mt-1">Choisissez le quartier pour {selectedStudent?.nomComplet}</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                      {availableTarifs.map(t => (
+                          <div
+                            key={t.idTarifTransport}
+                            onClick={() => !subscribing && handleSubscription(t.idTarifTransport)}
+                            className="p-6 border-2 border-gray-50 rounded-[32px] hover:border-black cursor-pointer transition-all group bg-gray-50/30"
+                          >
+                              <p className="font-black text-xs uppercase tracking-tight">{t.Quartier?.libelle}</p>
+                              <p className="text-xl font-black mt-2">{t.montantTransport.toLocaleString()} <span className="text-[10px] text-secondary">FCFA / AN</span></p>
+                              <div className="mt-4 flex items-center text-[8px] font-black uppercase tracking-widest text-accent opacity-0 group-hover:opacity-100 transition-all">
+                                  Choisir ce tarif <ChevronRight size={10} className="ml-1" />
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+
+                  {availableTarifs.length === 0 && (
+                      <div className="text-center py-10">
+                          <AlertCircle size={40} className="mx-auto text-gray-200 mb-4" />
+                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">Aucun tarif transport configuré</p>
+                      </div>
+                  )}
+              </div>
+          </div>
+      )}
+
+      {showCancelModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[70] p-6 animate-in fade-in duration-300">
+              <div className="bg-white rounded-[40px] p-10 max-w-md w-full shadow-2xl relative">
+                  <div className="mb-8">
+                      <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-6">
+                          <AlertCircle size={32} />
+                      </div>
+                      <h3 className="text-2xl font-black uppercase tracking-tight text-black">Annuler la Transaction</h3>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-secondary mt-2">
+                          Cette action est irréversible. Elle restaurera la dette de l'élève.
+                      </p>
+                  </div>
+
+                  <div className="space-y-6">
+                      <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-secondary ml-2">Motif d'annulation</label>
+                          <textarea
+                              className="w-full p-6 bg-gray-50 border-none rounded-[24px] focus:ring-2 focus:ring-red-500 outline-none transition-all font-bold text-xs min-h-[120px]"
+                              placeholder="Ex: Erreur de saisie, Paiement rejeté par la banque..."
+                              value={cancelMotif}
+                              onChange={(e) => setCancelMotif(e.target.value)}
+                          />
+                      </div>
+
+                      <div className="flex gap-3">
+                          <button
+                              onClick={() => setShowCancelModal(false)}
+                              className="flex-1 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest text-secondary hover:bg-gray-100 transition-all"
+                          >Abandonner</button>
+                          <button
+                              onClick={confirmCancellation}
+                              disabled={cancelling || cancelMotif.trim().length < 5}
+                              className={clsx(
+                                  "flex-1 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest text-white transition-all shadow-xl",
+                                  (cancelling || cancelMotif.trim().length < 5) ? "bg-gray-300" : "bg-red-600 shadow-red-200 hover:scale-105 active:scale-95"
+                              )}
+                          >
+                              {cancelling ? <RefreshCw className="animate-spin mx-auto" size={18} /> : "Confirmer"}
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
     </div>
   );
 };

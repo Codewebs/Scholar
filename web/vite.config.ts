@@ -5,7 +5,8 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: '192.168.0.50', // 👈 On force Vite à utiliser ton IP Ethernet
+    //host: '192.168.0.50', // 👈 On force Vite à utiliser ton IP Ethernet
+    host: '192.168.0.50', // 👈 en local
     port: 5173,
     strictPort: true,
     proxy: {

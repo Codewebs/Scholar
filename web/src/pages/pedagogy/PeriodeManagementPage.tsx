@@ -40,7 +40,8 @@ const PeriodeManagementPage: React.FC = () => {
     e.preventDefault();
     if (!yearId || !editingPeriode) return;
     try {
-      await pedagogyService.savePeriode({ ...editingPeriode, idAnneeScolaire: yearId });
+      const nextOrder = editingPeriode.idPeriode ? editingPeriode.ordrePeriode : (periodes.length + 1);
+      await pedagogyService.savePeriode({ ...editingPeriode, idAnneeScolaire: yearId, ordrePeriode: nextOrder });
       setIsPeriodeModalOpen(false);
       loadPeriodes();
     } catch (err) { alert("Erreur"); }
@@ -50,9 +51,11 @@ const PeriodeManagementPage: React.FC = () => {
     e.preventDefault();
     if (!editingSub) return;
     try {
-      await pedagogyService.saveSousPeriode(editingSub);
-      setIsSubModalOpen(false);
-      loadPeriodes();
+        const parent = periodes.find(p => p.idPeriode === editingSub.idPeriode);
+        const nextOrder = editingSub.idSousPeriode ? editingSub.ordreSousPeriode : ((parent?.sousPeriodes?.length || 0) + 1);
+        await pedagogyService.saveSousPeriode({ ...editingSub, ordreSousPeriode: nextOrder });
+        setIsSubModalOpen(false);
+        loadPeriodes();
     } catch (err) { alert("Erreur"); }
   };
 
@@ -73,7 +76,7 @@ const PeriodeManagementPage: React.FC = () => {
           <h1 className="text-3xl font-black uppercase tracking-tighter">Calendrier Scolaire</h1>
         </div>
         <button
-          onClick={() => { setEditingPeriode({ libellePeriodeFr: '', dateDebut: '', dateFin: '' }); setIsPeriodeModalOpen(true); }}
+          onClick={() => { setEditingPeriode({ libellePeriodeFr: '', abrevLibelleFr: '', dateDebut: '', dateFin: '' }); setIsPeriodeModalOpen(true); }}
           className="btn-primary flex items-center space-x-2"
         >
           <Plus size={18} />
@@ -92,8 +95,14 @@ const PeriodeManagementPage: React.FC = () => {
                             <Calendar size={20} />
                         </div>
                         <div>
-                            <h3 className="font-black text-sm uppercase tracking-tight">{periode.libellePeriodeFr}</h3>
-                            <p className="text-[10px] font-bold text-accent uppercase tracking-widest">{periode.dateDebut} — {periode.dateFin}</p>
+                            <h3 className="font-black text-sm uppercase tracking-tight">
+                                {periode.libellePeriodeFr}
+                                {periode.abrevLibelleFr && <span className="ml-2 text-[10px] text-accent opacity-50">[{periode.abrevLibelleFr}]</span>}
+                            </h3>
+                            <div className="flex items-center space-x-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                <Calendar size={12} />
+                                <span>{periode.dateDebut} — {periode.dateFin}</span>
+                            </div>
                         </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -108,7 +117,10 @@ const PeriodeManagementPage: React.FC = () => {
                             <div className="flex items-center space-x-3">
                                 <CornerDownRight size={14} className="text-gray-300" />
                                 <div>
-                                    <p className="font-black text-[11px] uppercase tracking-tight">{sub.libelleSousPeriodeFr}</p>
+                                    <p className="font-black text-[11px] uppercase tracking-tight">
+                                        {sub.libelleSousPeriodeFr}
+                                        {sub.abrevLibelleFr && <span className="ml-2 text-[9px] text-gray-400">({sub.abrevLibelleFr})</span>}
+                                    </p>
                                     <p className="text-[9px] font-bold text-[#9E9E9E] uppercase tracking-widest">{sub.dateDebut} — {sub.dateFin}</p>
                                 </div>
                             </div>
@@ -119,7 +131,7 @@ const PeriodeManagementPage: React.FC = () => {
                         </div>
                     ))}
                     <button
-                        onClick={() => { setEditingSub({ idPeriode: periode.idPeriode, libelleSousPeriodeFr: '', dateDebut: periode.dateDebut, dateFin: periode.dateFin }); setIsSubModalOpen(true); }}
+                        onClick={() => { setEditingSub({ idPeriode: periode.idPeriode, libelleSousPeriodeFr: '', abrevLibelleFr: '', dateDebut: periode.dateDebut, dateFin: periode.dateFin }); setIsSubModalOpen(true); }}
                         className="w-full mt-4 py-3 border border-dashed border-gray-200 rounded-sharp text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] hover:border-black hover:text-black transition-all"
                     >
                         + Ajouter une séquence
@@ -132,13 +144,20 @@ const PeriodeManagementPage: React.FC = () => {
       {/* Modal Periode */}
       {isPeriodeModalOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <form onSubmit={handleSavePeriode} className="bg-white rounded-[32px] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95">
+              <form onSubmit={handleSavePeriode} className="bg-white rounded-[32px] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 overflow-y-auto max-h-[90vh]">
                   <div className="flex justify-between items-center mb-8">
                       <h2 className="text-2xl font-black uppercase tracking-tighter">Période</h2>
                       <button type="button" onClick={() => setIsPeriodeModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full"><X size={20}/></button>
                   </div>
                   <div className="space-y-6">
                       <AuthInput label="Libellé (ex: Trimestre 1)" value={editingPeriode?.libellePeriodeFr || ''} onChange={e => setEditingPeriode({...editingPeriode!, libellePeriodeFr: e.target.value})} required />
+
+                      <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-4">
+                          <p className="text-[10px] font-black uppercase text-gray-400">Identifiants Courts (Bulletins)</p>
+                          <AuthInput label="Abréviation FR" placeholder="ex: TRIM 1" value={editingPeriode?.abrevLibelleFr || ''} onChange={e => setEditingPeriode({...editingPeriode!, abrevLibelleFr: e.target.value})} required />
+                          <AuthInput label="Abréviation EN" placeholder="ex: TERM 1" value={editingPeriode?.abrevLibelleEn || ''} onChange={e => setEditingPeriode({...editingPeriode!, abrevLibelleEn: e.target.value})} />
+                      </div>
+
                       <div className="grid grid-cols-2 gap-4">
                           <AuthInput label="Début" type="date" value={editingPeriode?.dateDebut || ''} onChange={e => setEditingPeriode({...editingPeriode!, dateDebut: e.target.value})} required />
                           <AuthInput label="Fin" type="date" value={editingPeriode?.dateFin || ''} onChange={e => setEditingPeriode({...editingPeriode!, dateFin: e.target.value})} required />
@@ -152,13 +171,20 @@ const PeriodeManagementPage: React.FC = () => {
       {/* Modal Séquence */}
       {isSubModalOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <form onSubmit={handleSaveSub} className="bg-white rounded-[32px] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95">
+              <form onSubmit={handleSaveSub} className="bg-white rounded-[32px] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 overflow-y-auto max-h-[90vh]">
                   <div className="flex justify-between items-center mb-8">
                       <h2 className="text-2xl font-black uppercase tracking-tighter">Séquence</h2>
                       <button type="button" onClick={() => setIsSubModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full"><X size={20}/></button>
                   </div>
                   <div className="space-y-6">
                       <AuthInput label="Libellé (ex: Séquence 1)" value={editingSub?.libelleSousPeriodeFr || ''} onChange={e => setEditingSub({...editingSub!, libelleSousPeriodeFr: e.target.value})} required />
+
+                      <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-4">
+                          <p className="text-[10px] font-black uppercase text-gray-400">Identifiants Courts (Bulletins)</p>
+                          <AuthInput label="Abréviation FR" placeholder="ex: SEQ 1" value={editingSub?.abrevLibelleFr || ''} onChange={e => setEditingSub({...editingSub!, abrevLibelleFr: e.target.value})} required />
+                          <AuthInput label="Abréviation EN" placeholder="ex: SEQ 1" value={editingSub?.abrevLibelleEn || ''} onChange={e => setEditingSub({...editingSub!, abrevLibelleEn: e.target.value})} />
+                      </div>
+
                       <div className="grid grid-cols-2 gap-4">
                           <AuthInput label="Début" type="date" value={editingSub?.dateDebut || ''} onChange={e => setEditingSub({...editingSub!, dateDebut: e.target.value})} required />
                           <AuthInput label="Fin" type="date" value={editingSub?.dateFin || ''} onChange={e => setEditingSub({...editingSub!, dateFin: e.target.value})} required />

@@ -128,25 +128,12 @@ const SequenceRepartitionPage: React.FC = () => {
                 classIds: selectedClasses,
                 sequenceIds: selectedSequences
             };
-            
-            console.log("🚀 Sending bulkAssignSequences payload:");
-            console.log("   idAnneeScolaire:", payload.idAnneeScolaire);
-            console.log("   classIds:", payload.classIds, "(should match classes.idClasse)");
-            console.log("   sequenceIds:", payload.sequenceIds, "(should match sequences.idSousPeriode)");
-            
-            // Verify classIds exist in classes
-            const validClassIds = classes.map(c => c.idClasse);
-            const invalidClassIds = payload.classIds.filter(id => !validClassIds.includes(id));
-            if (invalidClassIds.length > 0) {
-                console.warn("⚠️ WARNING: Invalid classIds:", invalidClassIds, "Valid are:", validClassIds);
-            }
-            
+
             await pedagogyService.bulkAssignSequences(payload);
-            setSuccess("Répartition mise à jour !");
-            await loadData(); // Reload repartition
+            setSuccess("Répartition des séquences mise à jour !");
+            await loadData();
             setTimeout(() => setSuccess(null), 3000);
         } catch (err: any) {
-            console.error("❌ bulkAssignSequences error:", err.response?.data || err.message);
             setError(err.response?.data?.error || "Erreur lors de l'enregistrement.");
         } finally {
             setSaving(false);

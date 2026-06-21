@@ -62,9 +62,33 @@ export const financeService = {
   getRegistrationReceiptSimple: (idEleve: number, idAnneeScolaire: number) =>
     api.get(`/finance/receipt/registration-simple/${idEleve}/${idAnneeScolaire}`),
 
-  annulerPaiement: (idPaiementFraisGlobal: number) =>
-    api.post(`/finance/paiements/annuler/${idPaiementFraisGlobal}`),
+  annulerPaiement: (idPaiementFraisGlobal: number, motif: string) =>
+    api.post(`/finance/paiements/annuler/${idPaiementFraisGlobal}`, { motif }),
 
   getBilanJournalier: (idAnneeScolaire: number, date?: string) =>
     api.get(`/finance/reports/bilan/journalier/${idAnneeScolaire}`, { params: { date } }),
+
+  getBilanMensuel: (idAnneeScolaire: number) =>
+    api.get(`/finance/reports/bilan/mensuel/${idAnneeScolaire}`),
+
+  getBilanAnnuel: (idAnneeScolaire: number) =>
+    api.get(`/finance/reports/bilan/annuel/${idAnneeScolaire}`),
+
+  getPerformanceComparison: (idAnneeScolaire: number, filters?: { idCycle?: number; idEnseignement?: number }) =>
+    api.get(`/finance/reports/comparaison/performance/${idAnneeScolaire}`, { params: filters }),
+
+  getInsolvablesList: (idAnneeScolaire: number, idTranche: number) =>
+    api.get(`/finance/reports/listes/insolvables/${idAnneeScolaire}/${idTranche}`),
+
+  getCockpitAggregates: (idAnneeScolaire: number, filters?: any) =>
+    api.get(`/finance/reports/cockpit/aggregates/${idAnneeScolaire}`, { params: filters }),
+
+  // Transport
+  getQuartiers: () => api.get('/finance/transport/quartiers'),
+  createQuartier: (data: any) => api.post('/finance/transport/quartiers', data),
+  getTarifsTransport: (idAnneeScolaire: number) => api.get(`/finance/transport/tarifs/${idAnneeScolaire}`),
+  saveTarifTransport: (data: any) => api.post('/finance/transport/tarifs', data),
+  subscribeStudentToTransport: (data: any) => api.post('/finance/transport/subscribe', data),
+  getStudentTransportSubscription: (idEleve: number, idAnneeScolaire: number) => api.get(`/finance/transport/subscription/${idEleve}/${idAnneeScolaire}`),
+  payerTransport: (payload: any) => api.post('/finance/paiements/transport', payload),
 };

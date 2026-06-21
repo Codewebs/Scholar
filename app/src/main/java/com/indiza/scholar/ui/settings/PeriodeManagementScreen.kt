@@ -69,9 +69,9 @@ fun PeriodeManagementScreen(
                     IconButton(onClick = { showCloneDialog = true }) {
                         Icon(Icons.Default.ContentCopy, "Cloner", tint = Color.White)
                     }
-                    IconButton(onClick = { showPeriodeDialog = PeriodeEntity(libellePeriodeFr = "", idAnneeScolaire = idAnneeScolaire, dateDebut = "", dateFin = "") }) {
-                        Icon(Icons.Default.Add, null, tint = Color.White)
-                    }
+                IconButton(onClick = { showPeriodeDialog = PeriodeEntity(libellePeriodeFr = "", abrevLibelleFr = "", idAnneeScolaire = idAnneeScolaire, dateDebut = "", dateFin = "") }) {
+                    Icon(Icons.Default.Add, null, tint = Color.White)
+                }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF1E2A3A))
             )
@@ -188,7 +188,12 @@ fun PeriodeItem(
         Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(periode.libellePeriodeFr, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(periode.libellePeriodeFr, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        if (periode.abrevLibelleFr.isNotBlank()) {
+                            Text(" (${periode.abrevLibelleFr})", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+                        }
+                    }
                     Text("${periode.dateDebut} au ${periode.dateFin}", color = Color(0xFF1ABC9C), fontSize = 12.sp)
                 }
                 IconButton(onClick = { onEdit(periode) }) { Icon(Icons.Default.Edit, null, tint = Color.Gray, modifier = Modifier.size(20.dp)) }
@@ -204,7 +209,12 @@ fun PeriodeItem(
                     Icon(Icons.Default.SubdirectoryArrowRight, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(sp.libelleSousPeriodeFr, color = Color.White, fontSize = 14.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(sp.libelleSousPeriodeFr, color = Color.White, fontSize = 14.sp)
+                            if (sp.abrevLibelleFr.isNotBlank()) {
+                                Text(" (${sp.abrevLibelleFr})", color = Color.Gray, fontSize = 10.sp)
+                            }
+                        }
                         Text("${sp.dateDebut} au ${sp.dateFin}", color = Color.Gray, fontSize = 10.sp)
                     }
                     IconButton(onClick = { onEditSub(sp) }) { Icon(Icons.Default.Edit, null, tint = Color.Gray, modifier = Modifier.size(16.dp)) }
@@ -229,6 +239,7 @@ fun PeriodeDialog(
     onSave: (PeriodeEntity) -> Unit
 ) {
     var libelle by remember { mutableStateOf(periode.libellePeriodeFr) }
+    var abrev by remember { mutableStateOf(periode.abrevLibelleFr) }
     var start by remember { mutableStateOf(periode.dateDebut) }
     var end by remember { mutableStateOf(periode.dateFin) }
 
@@ -241,14 +252,22 @@ fun PeriodeDialog(
         title = { Text(if (periode.idServeur != null && periode.idServeur > 0) "Modifier Période" else "Nouvelle Période") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = libelle, onValueChange = { libelle = it }, label = { Text("Libellé (ex: Trimestre 1)") })
+                OutlinedTextField(value = libelle, onValueChange = { libelle = it }, label = { Text("Libellé (ex: Trimestre 1)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = abrev, 
+                    onValueChange = { abrev = it }, 
+                    label = { Text("Abréviation (Obligatoire)") },
+                    placeholder = { Text("ex: TRIM 1") },
+                    supportingText = { Text("Sert de nom de colonne dans les bulletins", fontSize = 10.sp) },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 SelectableDateField(label = "Date début", value = start, onDateSelected = { start = it })
                 SelectableDateField(label = "Date fin", value = end, onDateSelected = { end = it })
                 if (saveState is SaveState.ERROR) Text(saveState.error, color = Color.Red, fontSize = 12.sp)
             }
         },
         confirmButton = {
-            Button(onClick = { onSave(periode.copy(libellePeriodeFr = libelle, dateDebut = start, dateFin = end)) }, enabled = libelle.isNotBlank() && start.isNotBlank() && end.isNotBlank() && saveState !is SaveState.SAVING_REMOTE) {
+            Button(onClick = { onSave(periode.copy(libellePeriodeFr = libelle, abrevLibelleFr = abrev, dateDebut = start, dateFin = end)) }, enabled = libelle.isNotBlank() && abrev.isNotBlank() && start.isNotBlank() && end.isNotBlank() && saveState !is SaveState.SAVING_REMOTE) {
                 if (saveState is SaveState.SAVING_REMOTE) CircularProgressIndicator(modifier = Modifier.size(20.dp))
                 else Text("Enregistrer")
             }
@@ -265,6 +284,7 @@ fun SousPeriodeDialog(
     onSave: (SousPeriodeEntity) -> Unit
 ) {
     var libelle by remember { mutableStateOf(sp.libelleSousPeriodeFr) }
+    var abrev by remember { mutableStateOf(sp.abrevLibelleFr) }
     var start by remember { mutableStateOf(sp.dateDebut) }
     var end by remember { mutableStateOf(sp.dateFin) }
 
@@ -277,14 +297,22 @@ fun SousPeriodeDialog(
         title = { Text(if (sp.idServeur != null && sp.idServeur > 0) "Modifier Séquence" else "Nouvelle Séquence") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = libelle, onValueChange = { libelle = it }, label = { Text("Libellé (ex: Séquence 1)") })
+                OutlinedTextField(value = libelle, onValueChange = { libelle = it }, label = { Text("Libellé (ex: Séquence 1)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = abrev, 
+                    onValueChange = { abrev = it }, 
+                    label = { Text("Abréviation (Obligatoire)") },
+                    placeholder = { Text("ex: SEQ 1") },
+                    supportingText = { Text("Sert de nom de colonne dans les bulletins", fontSize = 10.sp) },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 SelectableDateField(label = "Date début", value = start, onDateSelected = { start = it })
                 SelectableDateField(label = "Date fin", value = end, onDateSelected = { end = it })
                 if (saveState is SaveState.ERROR) Text(saveState.error, color = Color.Red, fontSize = 12.sp)
             }
         },
         confirmButton = {
-            Button(onClick = { onSave(sp.copy(libelleSousPeriodeFr = libelle, dateDebut = start, dateFin = end)) }, enabled = libelle.isNotBlank() && start.isNotBlank() && end.isNotBlank() && saveState !is SaveState.SAVING_REMOTE) {
+            Button(onClick = { onSave(sp.copy(libelleSousPeriodeFr = libelle, abrevLibelleFr = abrev, dateDebut = start, dateFin = end)) }, enabled = libelle.isNotBlank() && abrev.isNotBlank() && start.isNotBlank() && end.isNotBlank() && saveState !is SaveState.SAVING_REMOTE) {
                 if (saveState is SaveState.SAVING_REMOTE) CircularProgressIndicator(modifier = Modifier.size(20.dp))
                 else Text("Enregistrer")
             }

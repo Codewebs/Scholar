@@ -132,11 +132,9 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
   const handleLoadNotes = async () => {
     setLoading(true);
     setError(null);
-    console.log(`🔍 [SaisieEleve] Loading data for Student: ${selectedStudentId}, Sequence: ${selectedSequenceId}`);
     try {
       const salle = salles.find(s => s.idSalle === selectedSalleId);
       if (!salle) {
-          console.error("❌ [SaisieEleve] Salle not found for ID:", selectedSalleId);
           return;
       }
 
@@ -153,7 +151,6 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
 
       const repartitions = repartitionRes.data;
       const existingNotes = notesRes.data;
-      console.log(`📚 [SaisieEleve] ${repartitions.length} subjects found. ${existingNotes.length} notes found.`);
 
       // 2. Load competences for each subject in this sequence
       const compsMap: {[key: number]: any[]} = {};
@@ -174,7 +171,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
           if (comps.length === 0) {
               // Standard mode
               const note = existingNotes.find((n: any) =>
-                  Number(n.idRepartitionMatiere) === Number(r.idRepartitionMatiere) && !n.idCompetence
+                  Number(n.idRepartitionMatiere) === Number(r.idRepartitionMatiere) && !n.idRepartitionCompetence
               );
               gridNotes.push({
                   ...r,
@@ -186,11 +183,10 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
                   nonClasse: note?.nonClasse || false
               });
           } else {
-              // APC mode
+              // APC mode: Match by idRepartitionCompetence
               comps.forEach(c => {
                   const note = existingNotes.find((n: any) =>
-                      Number(n.idRepartitionMatiere) === Number(r.idRepartitionMatiere) &&
-                      Number(n.idCompetence) === Number(c.idCompetence)
+                      Number(n.idRepartitionCompetence) === Number(c.id)
                   );
                   gridNotes.push({
                       ...r,
@@ -208,11 +204,9 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
           }
       });
 
-      console.log(`✅ [SaisieEleve] Grid prepared with ${gridNotes.length} competency rows`);
       setNotes(gridNotes);
 
     } catch (err) {
-      console.error("❌ [SaisieEleve Error] handleLoadNotes:", err);
       setError("Erreur lors du chargement des notes");
     } finally {
       setLoading(false);
@@ -230,12 +224,10 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
     setSaving(true);
     setError(null);
     setSuccess(null);
-    console.log(`💾 [SaisieEleve] Saving ${notes.length} notes for student ${selectedStudentId}`);
     try {
       // Validation: idRepartitionCompetence is mandatory
       const invalidNotes = notes.filter(n => n.idCompetence && !n.idRepartitionCompetence);
       if (invalidNotes.length > 0) {
-          console.error("❌ [SaisieEleve Validation] Missing idRepartitionCompetence", invalidNotes);
           throw new Error("Erreur de configuration: ID Répartition Compétence manquant.");
       }
 
@@ -256,15 +248,11 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
         modeSaisie: 'NUMERIC'
       };
 
-      console.log("📤 [SaisieEleve] Sending payload to server:", payload);
-
       const response = await gradeService.saveStudentNotes(payload as any);
-      console.log("✅ [SaisieEleve] Save successful:", response.data);
       setSuccess("Notes enregistrées !");
       setTimeout(() => setSuccess(null), 3000);
       handleLoadNotes();
     } catch (err: any) {
-      console.error("❌ [SaisieEleve Save Error]:", err);
       setError(err.message || "Erreur lors de l'enregistrement");
     } finally {
       setSaving(false);

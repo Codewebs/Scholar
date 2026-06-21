@@ -109,7 +109,6 @@ const GradeManagementPage: React.FC = () => {
 
     useEffect(() => {
         if (yearId) {
-            console.log("🚀 [GradeManagementPage] Year changed, loading salles. YearID:", yearId);
             loadSalles();
         }
     }, [yearId]);
@@ -117,7 +116,6 @@ const GradeManagementPage: React.FC = () => {
     // When salle changes, load its sequences
     useEffect(() => {
         if (selectedSalle && yearId) {
-            console.log("📍 [GradeManagementPage] Salle selected, loading sequences for:", selectedSalle.nomSalle);
             loadSequencesForSalle(selectedSalle);
         }
     }, [selectedSalle, yearId]);
@@ -125,7 +123,6 @@ const GradeManagementPage: React.FC = () => {
     // When sequence changes, load its matieres
     useEffect(() => {
         if (selectedSalle && selectedSequence && yearId) {
-            console.log("📅 [GradeManagementPage] Sequence selected, loading matieres for:", selectedSequence.nomSequence);
             loadMatieresForSalle(selectedSalle, selectedSequence);
         }
     }, [selectedSequence, selectedSalle, yearId]);
@@ -133,7 +130,6 @@ const GradeManagementPage: React.FC = () => {
     // When salle changes, load eleves
     useEffect(() => {
         if (selectedSalle && yearId) {
-            console.log("👥 [GradeManagementPage] Salle selected, loading students for:", selectedSalle.nomSalle);
             loadElevesForSalle(selectedSalle);
         }
     }, [selectedSalle, yearId]);
@@ -142,7 +138,6 @@ const GradeManagementPage: React.FC = () => {
         setLoading(true);
         try {
             const res = await studentService.getRooms(yearId!);
-            console.log("🏢 [GradeManagementPage] Raw rooms from API:", res.data);
 
             // Filter: Only active rooms with at least 1 student enrolled this year
             const normalized = res.data
@@ -155,8 +150,6 @@ const GradeManagementPage: React.FC = () => {
                     studentCount: s.elevesInscrits || 0,
                     isComplete: false
                 }));
-            console.log("🏢 [GradeManagementPage] Normalized rooms:", normalized);
-            console.log("🏢 [GradeManagementPage] Normalized rooms:", normalized);
             setSalles(normalized);
             if (normalized.length > 0 && !selectedSalle) {
                 setSelectedSalle(normalized[0]);
@@ -172,9 +165,7 @@ const GradeManagementPage: React.FC = () => {
         setLoading(true);
         try {
             const res = await pedagogyService.getClassSequences(yearId!, salle.idClasse);
-            console.log("📅 Raw sequences response:", res.data);
-            console.log("   Sample sequence:", res.data[0]);
-            
+
             // Map RepartitionSousPeriode data to Sequence interface
             // Structure: { idRepartitionSousPeriode, SousPeriode: { idSousPeriode, libelleSousPeriodeFr, ... } }
             const normalizedSequences = res.data.map((rep: any) => ({
@@ -182,9 +173,7 @@ const GradeManagementPage: React.FC = () => {
                 nomSequence: rep.SousPeriode?.libelleSousPeriodeFr || 'N/A',
                 libelleSequence: rep.SousPeriode?.libelleSousPeriodeFr
             }));
-            
-            console.log("   Normalized sequences:", normalizedSequences);
-            
+
             setSequences(normalizedSequences);
             if (normalizedSequences.length > 0) {
                 setSelectedSequence(normalizedSequences[0]);
@@ -203,10 +192,7 @@ const GradeManagementPage: React.FC = () => {
             const res = await api.get(`/pedagogy/matieres/repartition/${yearId}`, {
                 params: { idClasse: salle.idClasse }
             });
-            
-            console.log("📚 Raw matieres response:", res.data);
-            console.log("   Sample matiere:", res.data[0]);
-            
+
             // Map RepartitionMatiere data to Matiere interface
             // Structure: { idRepartitionMatiere, coef, noteSur, Matiere: { libelleFr, ... } }
             const normalizedMatieres = res.data.map((rep: any) => ({
@@ -216,9 +202,7 @@ const GradeManagementPage: React.FC = () => {
                 coef: rep.coef,
                 noteSur: rep.noteSur || 20
             }));
-            
-            console.log("   Normalized matieres:", normalizedMatieres);
-            
+
             setMatieres(normalizedMatieres);
             if (normalizedMatieres.length > 0) {
                 setSelectedMatiere(normalizedMatieres[0]);
@@ -235,9 +219,7 @@ const GradeManagementPage: React.FC = () => {
         setLoading(true);
         try {
             const res = await studentService.getStudentsBySalle(yearId!, salle.idSalle);
-            console.log("👥 Raw eleves response:", res.data);
-            console.log("   Sample eleve:", res.data[0]);
-            
+
             // Map response to Eleve interface
             // API returns: { idEleve, idInscription, nomComplet, matricule, ... }
             const normalizedEleves = res.data.map((e: any) => ({
@@ -248,8 +230,6 @@ const GradeManagementPage: React.FC = () => {
                 note: null  // Will be fetched later
             }));
             
-            console.log("   Normalized eleves:", normalizedEleves);
-
             setEleves(normalizedEleves);
             if (normalizedEleves.length > 0) {
                 setSelectedEleve(normalizedEleves[0]);
@@ -265,19 +245,21 @@ const GradeManagementPage: React.FC = () => {
     // When selection is complete, load notes to show progress in the 4th block
     useEffect(() => {
         if (selectedSalle && selectedSequence && selectedMatiere && yearId) {
-            console.log("📝 [GradeManagementPage] Selection complete, loading notes for progress...");
             loadNotesForProgress();
 
             // Fetch competencies for the selected subject
             matiereService.getRepartitionCompetences({
                 repartitionMatiereId: selectedMatiere.idMatiere,
                 sequenceId: selectedSequence.idSousPeriode
-            }).then(res => setCompetences(res.data));
+            }).then(res => {
+                console.clear();
+                console.log(`🪜 [Escalier] 1. Compétences liées à la matière "${selectedMatiere.libelle}" dans la salle "${selectedSalle.nomSalle}":`, res.data);
+                setCompetences(res.data);
+            });
         }
     }, [selectedSalle, selectedSequence, selectedMatiere, yearId]);
 
     const loadNotesForProgress = async () => {
-        console.log("🔍 [Progress] Fetching data for progress calculation...");
         try {
             const [notesRes, compsRes] = await Promise.all([
                 gradeService.getNotesByMatiere(
@@ -295,8 +277,6 @@ const GradeManagementPage: React.FC = () => {
             const currentNotes = notesRes.data;
             const currentComps = compsRes.data;
             setCompetences(currentComps);
-
-            console.log(`📥 [Progress] ${currentNotes.length} notes and ${currentComps.length} competencies fetched.`);
 
             // Group notes by student to see which competencies are covered
             const studentNotesMap = new Map<number, any[]>();
@@ -318,9 +298,9 @@ const GradeManagementPage: React.FC = () => {
                         const hasNote = studentGrades.some(g => !g.idCompetence && (g.note !== null || g.nonClasse));
                         missing = hasNote ? [] : [{ idCompetence: null, label: 'Générale' }];
                     } else {
-                        // APC mode: check each competence
+                        // APC mode: check each competence using idRepartitionCompetence
                         missing = currentComps
-                            .filter(c => !studentGrades.some(g => g.idCompetence === c.idCompetence && (g.note !== null || g.nonClasse)))
+                            .filter(c => !studentGrades.some(g => Number(g.idRepartitionCompetence) === Number(c.id) && (g.note !== null || g.nonClasse)))
                             .map(c => ({ idCompetence: c.idCompetence, label: c.Competence?.abreviation || c.Competence?.libelle?.substring(0, 3) }));
                     }
 
@@ -334,7 +314,6 @@ const GradeManagementPage: React.FC = () => {
                     };
                 });
 
-                console.log("📊 [Progress] Updated student list with missing competencies");
                 setTimeout(() => calculateCompletionPercentage(updated), 0);
                 return updated;
             });
@@ -351,11 +330,9 @@ const GradeManagementPage: React.FC = () => {
         const withGrades = elevesData.filter(e => e.note !== null && e.note !== undefined).length;
         const percent = Math.round((withGrades / elevesData.length) * 100);
         setCompletionPercentage(percent);
-        console.log(`📊 [Progress] Room: ${selectedSalle?.nomSalle}, Subject: ${selectedMatiere?.libelle}, Progress: ${percent}%`);
 
         // Cascading Progress Update
         if (percent === 100 && selectedMatiere) {
-            console.log(`✅ [Progress] Subject ${selectedMatiere.libelle} is COMPLETE! Turning green.`);
             setMatieres(prev => prev.map(m =>
                 m.idMatiere === selectedMatiere.idMatiere ? { ...m, isComplete: true } : m
             ));
@@ -385,7 +362,6 @@ const GradeManagementPage: React.FC = () => {
 
     const handleOpenGradeModal = async (eleve: Eleve) => {
         setLoading(true);
-        console.log(`🚀 [Modal] Opening sequential entry starting with student: ${eleve.nomEleve}`);
         try {
             // Fetch all notes for this room/subject/sequence to populate the whole list
             const notesRes = await gradeService.getNotesByMatiere(
@@ -406,6 +382,7 @@ const GradeManagementPage: React.FC = () => {
 
                 if (student.idInscription === eleve.idInscription) {
                     startIndex = allItems.length;
+                    console.log(`🪜 [Escalier] 2. Tuples de notes pour l'élève "${student.nomEleve}" (Séquence: ${selectedSequence?.nomSequence}, Matière: ${selectedMatiere?.libelle}):`, studentNotes);
                 }
 
                 if (competences.length === 0) {
@@ -422,7 +399,7 @@ const GradeManagementPage: React.FC = () => {
                     });
                 } else {
                     competences.forEach(c => {
-                        const note = studentNotes.find((n: any) => n.idCompetence === c.idCompetence);
+                        const note = studentNotes.find((n: any) => Number(n.idRepartitionCompetence) === Number(c.id));
                         allItems.push({
                             idInscription: student.idInscription,
                             nomComplet: student.nomEleve,
@@ -677,7 +654,10 @@ const GradeManagementPage: React.FC = () => {
                             {selectedSalle && selectedSequence ? (sortedMatieres.length > 0 ? sortedMatieres.map(mat => (
                                 <button
                                     key={mat.idMatiere}
-                                    onClick={() => setSelectedMatiere(mat)}
+                                    onClick={() => {
+                                        console.clear();
+                                        setSelectedMatiere(mat);
+                                    }}
                                     className={clsx(
                                         "w-full text-left border rounded-[14px] p-2.5 transition-all text-[9px] relative",
                                         selectedMatiere?.idMatiere === mat.idMatiere
@@ -726,7 +706,10 @@ const GradeManagementPage: React.FC = () => {
                                     sortedEleves.filter(e => !e.isComplete).map(eleve => (
                                         <button
                                             key={eleve.idInscription}
-                                            onClick={() => handleOpenGradeModal(eleve)}
+                                            onClick={() => {
+                                                console.clear();
+                                                handleOpenGradeModal(eleve);
+                                            }}
                                             className={clsx(
                                                 "w-full text-left border rounded-[14px] p-2.5 transition-all text-[9px] relative overflow-hidden",
                                                 selectedEleve?.idInscription === eleve.idInscription

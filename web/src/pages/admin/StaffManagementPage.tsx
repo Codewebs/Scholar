@@ -23,46 +23,152 @@ import {
     BadgeCheck
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { PermissionGrouping } from '../../components/admin/PermissionGrouping';
 import AuthInput from '../../components/ui/AuthInput';
 import AuthButton from '../../components/ui/AuthButton';
 
-const permissionGroups = {
-    "Tableau de Bord": [
+export const permissionGroups = {
+    "Dashboard & Statistiques": [
         AcademicPermission.DASHBOARD_ETABLISSEMENT,
-        AcademicPermission.ACTIVITY_LOGS,
         AcademicPermission.ACADEMIC_STATS,
-        AcademicPermission.SUMMARY
+        AcademicPermission.SUMMARY,
+        AcademicPermission.NEW_OLD_EFFECTIVE,
+        AcademicPermission.CYCLE_EFFECTIVE_HISTOGRAM,
+        AcademicPermission.ROOM_EFFECTIVE,
+        AcademicPermission.GLOBAL_TUITION_STATUS
     ],
-    "Gestion Académique": [
+    "Gestion Académique - Structures": [
         AcademicPermission.MANAGE_CYCLES,
+        AcademicPermission.MANAGE_LEVELS,
+        AcademicPermission.MANAGE_STREAMS,
         AcademicPermission.MANAGE_CLASSES,
-        AcademicPermission.MANAGE_ACADEMIC_CONFIG,
-        AcademicPermission.MANAGE_PERIODS
+        AcademicPermission.MANAGE_ROOMS,
+        AcademicPermission.MANAGE_NEIGHBORHOODS,
+        AcademicPermission.MANAGE_ACADEMIC_CONFIG
     ],
-    "Élèves": [
+    "Gestion Académique - Calendrier": [
+        AcademicPermission.MANAGE_PERIODS,
+        AcademicPermission.MANAGE_SUB_PERIODS,
+        AcademicPermission.MANAGE_TERMS,
+        AcademicPermission.MANAGE_SEQUENCES,
+        AcademicPermission.MANAGE_MONTHS
+    ],
+    "Gestion Académique - Année": [
+        AcademicPermission.REGISTER_SCHOOL_YEAR,
+        AcademicPermission.ENROLL_SCHOOL_YEAR,
+        AcademicPermission.EDIT_SCHOOL_YEAR_INFO,
+        AcademicPermission.UNENROLL_SCHOOL_YEAR,
+        AcademicPermission.PRINT_SCHOOL_YEAR_INFO,
+        AcademicPermission.COLLECT_SCHOOL_YEAR_INFO,
+        AcademicPermission.COLLECT_ALL_SCHOOL_YEARS_INFO,
+        AcademicPermission.VIEW_SCHOOL_YEAR_INFO
+    ],
+    "Gestion des Élèves - Inscriptions": [
         AcademicPermission.REGISTER_STUDENT,
-        AcademicPermission.VIEW_STUDENT_LIST,
+        AcademicPermission.ENROLL_STUDENT,
         AcademicPermission.EDIT_STUDENT_INFO,
-        AcademicPermission.STUDENT_DOSSIER
+        AcademicPermission.UNENROLL_STUDENT,
+        AcademicPermission.IMPORT_STUDENTS
+    ],
+    "Gestion des Élèves - Suivi": [
+        AcademicPermission.STUDENT_DOSSIER,
+        AcademicPermission.VIEW_STUDENT_LIST,
+        AcademicPermission.PRINT_STUDENT_INFO,
+        AcademicPermission.PRINT_STUDENT_CARDS,
+        AcademicPermission.PRINT_STUDENT_CARD,
+        AcademicPermission.MANAGE_TUTORSHIP,
+        AcademicPermission.ATTENDANCE_CERTIFICATE,
+        AcademicPermission.EXPORT_PDF_CLASS
     ],
     "Notes & Évaluations": [
         AcademicPermission.MANAGE_GRADES,
+        AcademicPermission.HARMONIZE_GRADES,
         AcademicPermission.VALIDATE_GRADES,
-        AcademicPermission.GRADES_REPORT_SHEET
+        AcademicPermission.EDIT_STUDENT_NOTE,
+        AcademicPermission.GRADES_REPORT_SHEET,
+        AcademicPermission.GRADES_COMPLETION_RATE,
+        AcademicPermission.PRINT_ANNUAL_REPORT_CARDS
     ],
-    "Finance": [
+    "Discipline & Assiduité": [
+        AcademicPermission.GLOBAL_ATTENDANCE,
+        AcademicPermission.MANAGE_JUSTIFICATIONS,
+        AcademicPermission.MANAGE_SANCTIONS,
+        AcademicPermission.PERMISSION_REASONS,
+        AcademicPermission.EXIT_SLIP
+    ],
+    "Finances - Encaissements": [
+        AcademicPermission.COLLECT_REGISTRATION_FEE,
         AcademicPermission.COLLECT_TUITION_FEE,
         AcademicPermission.COLLECT_OTHER_FEES,
-        AcademicPermission.VIEW_FINANCIAL_REPORTS,
-        AcademicPermission.VIEW_PAYMENT_STATUS
+        AcademicPermission.PAY_OTHER_FEES,
+        AcademicPermission.PAY_TRANSPORT,
+        AcademicPermission.CANCEL_PAYMENT
     ],
-    "Administration": [
-        AcademicPermission.MANAGE_STAFF,
+    "Finances - Bilans": [
+        AcademicPermission.FINANCIAL_BALANCE_SHEET,
+        AcademicPermission.TUITION_BALANCE_SHEET,
+        AcademicPermission.OTHER_FEES_BALANCE_SHEET,
+        AcademicPermission.TRANSPORT_BALANCE_SHEET,
+        AcademicPermission.VIEW_FINANCIAL_REPORTS,
+        AcademicPermission.VIEW_PAYMENT_STATUS,
+        AcademicPermission.VIEW_MY_PAYMENT_STATUS
+    ],
+    "Finances - Paramètres": [
+        AcademicPermission.MANAGE_PAYMENT_MODES,
+        AcademicPermission.MANAGE_BANKS,
+        AcademicPermission.TRANSPORT_RATES
+    ],
+    "Administration - Ecole": [
+        AcademicPermission.REGISTER_SCHOOL,
+        AcademicPermission.ENROLL_SCHOOL,
+        AcademicPermission.EDIT_SCHOOL_INFO,
+        AcademicPermission.UNENROLL_SCHOOL,
+        AcademicPermission.PRINT_SCHOOL_INFO
+    ],
+    "Administration - Utilisateurs": [
         AcademicPermission.MANAGE_USERS,
+        AcademicPermission.REGISTER_USER,
+        AcademicPermission.ENROLL_USER,
+        AcademicPermission.EDIT_USER_INFO,
+        AcademicPermission.UNENROLL_USER,
+        AcademicPermission.PRINT_USER_INFO
+    ],
+    "Administration - Personnel": [
+        AcademicPermission.MANAGE_STAFF,
+        AcademicPermission.STAFF_PLACEMENT,
+        AcademicPermission.MANAGE_FUNCTIONS,
+        AcademicPermission.REGISTER_TEACHER,
+        AcademicPermission.ENROLL_TEACHER,
+        AcademicPermission.EDIT_TEACHER_INFO,
+        AcademicPermission.UNENROLL_TEACHER,
+        AcademicPermission.PRINT_TEACHER_INFO
+    ],
+    "Administration - Maintenance": [
+        AcademicPermission.BACKUP_DB,
+        AcademicPermission.RESTORE_DB,
+        AcademicPermission.LOAD_MENUS,
+        AcademicPermission.ACTIVITY_LOGS,
+        AcademicPermission.SESSIONS_CONNECTIONS,
         AcademicPermission.GENERAL_CONFIG,
-        AcademicPermission.EDIT_SCHOOL_INFO
+        AcademicPermission.REGISTER_CONFIG,
+        AcademicPermission.EDIT_CONFIG,
+        AcademicPermission.PRINT_CONFIG
+    ],
+    "Communication": [
+        AcademicPermission.SEND_MESSAGE,
+        AcademicPermission.VIEW_MESSAGES,
+        AcademicPermission.EDIT_MESSAGE,
+        AcademicPermission.DELETE_MESSAGE
+    ],
+    "Divers": [
+        AcademicPermission.EDIT_OWN_ACCOUNT,
+        AcademicPermission.CALCULATOR,
+        AcademicPermission.ABOUT,
+        AcademicPermission.WEB_VERSION,
+        AcademicPermission.CHOOSE_BUTTON
     ]
 };
+
 
 const roles = ["DIRECTEUR", "DIRECTEUR_DES_ETUDES", "SURVEILLANT_GENERAL", "ENSEIGNANT", "INTENDANT", "SECRETAIRE", "ADMINISTRATEUR"];
 
@@ -91,7 +197,9 @@ const StaffManagementPage: React.FC = () => {
       role: '',
       dateNaissance: '',
       lieuNaissance: '',
-      sexe: 'M'
+      sexe: 'M',
+      addedPerms: [] as string[],
+      removedPerms: [] as string[]
   });
 
   useEffect(() => {
@@ -126,9 +234,35 @@ const StaffManagementPage: React.FC = () => {
           role: req.profilDemande,
           dateNaissance: '',
           lieuNaissance: '',
-          sexe: 'M'
+          sexe: 'M',
+          addedPerms: [],
+          removedPerms: []
       });
       setShowValModal(true);
+  };
+
+  const handleConfirmValidation = async () => {
+      if (!selectedRequest || !valForm.matricule || !valForm.role) return;
+      setLoading(true);
+      try {
+          await staffService.validerDemande({
+              idDemande: selectedRequest.idDemande,
+              idAnneeScolaire: yearId!,
+              matricule: valForm.matricule,
+              role: valForm.role,
+              dateNaissance: valForm.dateNaissance,
+              lieuNaissance: valForm.lieuNaissance,
+              sexe: valForm.sexe,
+              permissionsAjoutees: valForm.addedPerms,
+              permissionsRetirees: valForm.removedPerms
+          });
+          setShowValModal(false);
+          loadData();
+      } catch (err) {
+          alert("Erreur lors de la validation");
+      } finally {
+          setLoading(false);
+      }
   };
 
   const handleRejectRequest = async (idDemande: number) => {
@@ -163,15 +297,20 @@ const StaffManagementPage: React.FC = () => {
     setShowPermModal(true);
   };
 
-  const togglePermission = (perm: string) => {
-    if (addedPerms.includes(perm)) {
-        setAddedPerms(prev => prev.filter(p => p !== perm));
-        setRemovedPerms(prev => [...prev, perm]);
-    } else if (removedPerms.includes(perm)) {
-        setRemovedPerms(prev => prev.filter(p => p !== perm));
-    } else {
-        setAddedPerms(prev => [...prev, perm]);
-    }
+  const togglePermission = (perm: string, isInherited: boolean) => {
+      if (isInherited) {
+          if (removedPerms.includes(perm)) {
+              setRemovedPerms(prev => prev.filter(p => p !== perm));
+          } else {
+              setRemovedPerms(prev => [...prev, perm]);
+          }
+      } else {
+          if (addedPerms.includes(perm)) {
+              setAddedPerms(prev => prev.filter(p => p !== perm));
+          } else {
+              setAddedPerms(prev => [...prev, perm]);
+          }
+      }
   };
 
   const savePermissions = async () => {
@@ -279,66 +418,68 @@ const StaffManagementPage: React.FC = () => {
         {activeTab === 'staff' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {displayStaff.map((member, idx) => (
-                    <div key={member.idInscriptionPersonnel} className="bg-white border border-gray-100 rounded-[40px] p-8 hover:border-black group transition-all shadow-sm hover:shadow-2xl relative overflow-hidden">
+                    <div key={member.idInscriptionPersonnel} className="bg-white border border-gray-100 rounded-[32px] p-6 hover:border-black group transition-all shadow-sm hover:shadow-xl relative overflow-hidden flex flex-col justify-between">
                         <div className={clsx(
-                            "absolute left-0 top-0 w-full h-1.5 transition-all group-hover:h-3",
+                            "absolute left-0 top-0 w-full h-1 transition-all group-hover:h-2",
                             member.bloque ? "bg-red-500" : "bg-yellow-500"
                         )}></div>
 
-                        <div className="flex justify-between items-start mb-8">
-                            <div className={clsx(
-                                "w-16 h-16 rounded-[22px] flex items-center justify-center text-white font-black text-xl shadow-lg transition-all group-hover:rotate-6",
-                                member.bloque ? "bg-red-500 shadow-red-100" : "bg-yellow-500 shadow-yellow-100"
-                            )}>
-                                {(member.utilisateur?.nom || member.nom || "?").charAt(0)}
-                            </div>
-                            <div className="flex flex-col items-end">
+                        <div>
+                            <div className="flex justify-between items-start mb-6">
                                 <div className={clsx(
-                                    "px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest",
-                                    member.bloque ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
+                                    "w-12 h-12 rounded-[18px] flex items-center justify-center text-white font-black text-lg shadow-md transition-all group-hover:rotate-6",
+                                    member.bloque ? "bg-red-500 shadow-red-100" : "bg-yellow-500 shadow-yellow-100"
                                 )}>
-                                    {member.bloque ? "Bloqué" : "Actif"}
+                                    {(member.utilisateur?.nom || member.nom || "?").charAt(0)}
                                 </div>
-                                <button className="mt-4 p-2 hover:bg-gray-100 rounded-full text-gray-300 hover:text-black transition-all">
-                                    <MoreVertical size={20} />
-                                </button>
+                                <div className="flex flex-col items-end">
+                                    <div className={clsx(
+                                        "px-2.5 py-1 rounded-full text-[7px] font-black uppercase tracking-widest",
+                                        member.bloque ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
+                                    )}>
+                                        {member.bloque ? "Bloqué" : "Actif"}
+                                    </div>
+                                    <button className="mt-2 p-1.5 hover:bg-gray-100 rounded-full text-gray-300 hover:text-black transition-all">
+                                        <MoreVertical size={16} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <h3 className="text-lg font-black uppercase tracking-tight text-black mb-1 truncate">{member.utilisateur?.nom || member.nom}</h3>
+                            <div className="flex items-center space-x-2 mb-6">
+                                <div className="w-1 h-1 rounded-full bg-yellow-500"></div>
+                                <p className="text-[8px] font-black text-yellow-600 uppercase tracking-[0.2em]">{member.role}</p>
+                            </div>
+
+                            <div className="space-y-3 mb-8">
+                                <div className="flex items-center space-x-3 text-gray-400">
+                                    <Mail size={14} />
+                                    <span className="text-[10px] font-bold truncate">{member.utilisateur?.email || member.email}</span>
+                                </div>
+                                <div className="flex items-center space-x-3 text-gray-400">
+                                    <Phone size={14} />
+                                    <span className="text-[10px] font-bold">{member.utilisateur?.telephone || member.utilisateur?.telephone1 || member.telephone1}</span>
+                                </div>
                             </div>
                         </div>
 
-                        <h3 className="text-xl font-black uppercase tracking-tight text-black mb-1 truncate">{member.utilisateur?.nom || member.nom}</h3>
-                        <div className="flex items-center space-x-2 mb-8">
-                            <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div>
-                            <p className="text-[10px] font-black text-yellow-600 uppercase tracking-[0.2em]">{member.role}</p>
-                        </div>
-
-                        <div className="space-y-4 mb-10">
-                            <div className="flex items-center space-x-3 text-gray-400">
-                                <Mail size={16} />
-                                <span className="text-xs font-bold truncate">{member.utilisateur?.email || member.email}</span>
-                            </div>
-                            <div className="flex items-center space-x-3 text-gray-400">
-                                <Phone size={16} />
-                                <span className="text-xs font-bold">{member.utilisateur?.telephone || member.utilisateur?.telephone1 || member.telephone1}</span>
-                            </div>
-                        </div>
-
-                        <div className="pt-8 border-t border-gray-50 flex items-center justify-between">
+                        <div className="pt-6 border-t border-gray-50 flex items-center justify-between">
                             <button
                                 onClick={() => openPermissionModal(member)}
                                 className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors"
                             >
-                                <ShieldCheck size={20} />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Droits d'accès</span>
+                                <ShieldCheck size={18} />
+                                <span className="text-[9px] font-black uppercase tracking-widest">Droits</span>
                             </button>
 
                             <button
                                 onClick={() => handleToggleBlock(member)}
                                 className={clsx(
-                                    "p-4 rounded-[18px] transition-all shadow-sm",
+                                    "p-3 rounded-[14px] transition-all shadow-sm",
                                     member.bloque ? "bg-green-50 text-green-600 hover:bg-green-600 hover:text-white" : "bg-red-50 text-red-600 hover:bg-red-600 hover:text-white"
                                 )}
                             >
-                                {member.bloque ? <Unlock size={20}/> : <Lock size={20}/>}
+                                {member.bloque ? <Unlock size={16}/> : <Lock size={16}/>}
                             </button>
                         </div>
                     </div>
@@ -414,46 +555,29 @@ const StaffManagementPage: React.FC = () => {
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-12 custom-scrollbar space-y-12">
-                        {Object.entries(permissionGroups).map(([groupName, perms]) => (
-                            <div key={groupName} className="space-y-6">
-                                <div className="flex items-center space-x-4">
-                                    <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#9E9E9E] whitespace-nowrap">{groupName}</h3>
-                                    <div className="h-[1px] flex-1 bg-gray-100"></div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {perms.map(perm => {
-                                        const isAdded = addedPerms.includes(perm);
-                                        const isRemoved = removedPerms.includes(perm);
+                        <PermissionGrouping
+                            role={selectedStaff.role}
+                            addedPerms={addedPerms}
+                            removedPerms={removedPerms}
+                            onTogglePermission={(perm, isInherited) => togglePermission(perm, isInherited)}
+                            onToggleGroup={(perms, state, inheritedArray) => {
+                                let newAdded = [...addedPerms];
+                                let newRemoved = [...removedPerms];
 
-                                        return (
-                                            <div
-                                                key={perm}
-                                                onClick={() => togglePermission(perm)}
-                                                className={clsx(
-                                                    "p-6 border-2 rounded-[28px] cursor-pointer transition-all flex items-center justify-between group",
-                                                    isAdded ? "border-green-500 bg-green-50 shadow-lg translate-y-[-2px]" :
-                                                    isRemoved ? "border-red-500 bg-red-50" : "border-gray-100 hover:border-gray-300"
-                                                )}
-                                            >
-                                                <div className="flex items-center space-x-4">
-                                                    <div className={clsx(
-                                                        "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-                                                        isAdded ? "bg-green-500 text-white" :
-                                                        isRemoved ? "bg-red-500 text-white" : "bg-gray-50 text-gray-300 group-hover:bg-black group-hover:text-white"
-                                                    )}>
-                                                        {isAdded ? <Check size={18}/> : isRemoved ? <X size={18}/> : <Shield size={18}/>}
-                                                    </div>
-                                                    <span className={clsx(
-                                                        "text-[10px] font-black uppercase tracking-widest",
-                                                        isAdded ? "text-green-700" : isRemoved ? "text-red-700" : "text-black"
-                                                    )}>{perm.replace(/_/g, ' ')}</span>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        ))}
+                                perms.forEach((perm, idx) => {
+                                    const isInherited = inheritedArray[idx];
+                                    if (state) {
+                                        if (isInherited) newRemoved = newRemoved.filter(p => p !== perm);
+                                        else if (!newAdded.includes(perm)) newAdded.push(perm);
+                                    } else {
+                                        if (isInherited) { if (!newRemoved.includes(perm)) newRemoved.push(perm); }
+                                        else newAdded = newAdded.filter(p => p !== perm);
+                                    }
+                                });
+                                setAddedPerms(newAdded);
+                                setRemovedPerms(newRemoved);
+                            }}
+                        />
                   </div>
 
                   <div className="p-10 border-t border-gray-50 bg-gray-50/50 flex justify-end">
@@ -485,30 +609,82 @@ const StaffManagementPage: React.FC = () => {
                         <p className="text-xs font-bold text-gray-400 mt-2">{selectedRequest.nom} {selectedRequest.prenom}</p>
                   </div>
 
-                  <div className="p-12 space-y-8">
+                  <div className="p-12 space-y-8 max-h-[60vh] overflow-y-auto">
+                        <div className="grid grid-cols-2 gap-4">
+                            <AuthInput
+                                label="Matricule"
+                                placeholder="PERS-..."
+                                value={valForm.matricule}
+                                onChange={e => setValForm({...valForm, matricule: e.target.value.toUpperCase()})}
+                            />
+                            <AuthInput
+                                label="Date Naissance"
+                                type="date"
+                                value={valForm.dateNaissance}
+                                onChange={e => setValForm({...valForm, dateNaissance: e.target.value})}
+                            />
+                        </div>
+
                         <AuthInput
-                            label="Matricule Interne"
-                            placeholder="Ex: PERS-2024-001"
-                            value={valForm.matricule}
-                            onChange={e => setValForm({...valForm, matricule: e.target.value.toUpperCase()})}
+                            label="Lieu Naissance"
+                            value={valForm.lieuNaissance}
+                            onChange={e => setValForm({...valForm, lieuNaissance: e.target.value})}
                         />
 
                         <div className="space-y-3">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">Rôle & Affectation</label>
-                            <div className="grid grid-cols-2 gap-3">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">Rôle</label>
+                            <div className="grid grid-cols-2 gap-2">
                                 {roles.map(role => (
-                                    <div
+                                    <button
                                         key={role}
+                                        type="button"
                                         onClick={() => setValForm({...valForm, role})}
                                         className={clsx(
-                                            "p-4 border-2 rounded-[20px] cursor-pointer transition-all text-center",
-                                            valForm.role === role ? "border-black bg-gray-50 font-black text-[10px]" : "border-gray-100 text-gray-400 text-[9px] font-bold"
+                                            "p-3 rounded-[16px] text-[9px] font-black uppercase transition-all border",
+                                            valForm.role === role ? "border-black bg-gray-900 text-white" : "border-gray-200 text-gray-400"
                                         )}
                                     >
                                         {role.replace(/_/g, ' ')}
-                                    </div>
+                                    </button>
                                 ))}
                             </div>
+                        </div>
+
+                        <div className="space-y-3 border-t pt-6">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Ajustement Permissions</label>
+                            <PermissionGrouping
+                                role={valForm.role}
+                                addedPerms={valForm.addedPerms}
+                                removedPerms={valForm.removedPerms}
+                                onTogglePermission={(perm, isInherited) => {
+                                    const isAdded = valForm.addedPerms.includes(perm);
+                                    const isRemoved = valForm.removedPerms.includes(perm);
+
+                                    if (isInherited) {
+                                        const newRemoved = isRemoved ? valForm.removedPerms.filter(p => p !== perm) : [...valForm.removedPerms, perm];
+                                        setValForm({...valForm, removedPerms: newRemoved});
+                                    } else {
+                                        const newAdded = isAdded ? valForm.addedPerms.filter(p => p !== perm) : [...valForm.addedPerms, perm];
+                                        setValForm({...valForm, addedPerms: newAdded});
+                                    }
+                                }}
+                                onToggleGroup={(perms, state, inheritedArray) => {
+                                    let newAdded = [...valForm.addedPerms];
+                                    let newRemoved = [...valForm.removedPerms];
+
+                                    perms.forEach((perm, idx) => {
+                                        const isInherited = inheritedArray[idx];
+                                        if (state) {
+                                            if (isInherited) newRemoved = newRemoved.filter(p => p !== perm);
+                                            else if (!newAdded.includes(perm)) newAdded.push(perm);
+                                        } else {
+                                            if (isInherited) { if (!newRemoved.includes(perm)) newRemoved.push(perm); }
+                                            else newAdded = newAdded.filter(p => p !== perm);
+                                        }
+                                    });
+                                    setValForm({...valForm, addedPerms: newAdded, removedPerms: newRemoved});
+                                }}
+                            />
                         </div>
 
                         <div className="pt-8">

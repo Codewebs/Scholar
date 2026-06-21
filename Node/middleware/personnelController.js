@@ -306,6 +306,11 @@ exports.getUserAssociations = async (req, res) => {
       const key = `${schoolId}-${yearId}`;
 
       if (!associations[key]) {
+        let perms = [];
+        try {
+            perms = ins.permissionsAjoutees ? (typeof ins.permissionsAjoutees === 'string' ? JSON.parse(ins.permissionsAjoutees) : ins.permissionsAjoutees) : [];
+        } catch (e) { perms = []; }
+
         associations[key] = {
           school: {
             idEtablissement: ins.Etablissement.idEtablissement,
@@ -322,8 +327,8 @@ exports.getUserAssociations = async (req, res) => {
           },
           idAnneeScolaire: yearId,
           roles: [],
-          permissionsAjoutees: ins.permissionsAjoutees ? JSON.parse(ins.permissionsAjoutees) : [],
-          permissionsRetirees: ins.permissionsRetirees ? JSON.parse(ins.permissionsRetirees) : [],
+          permissionsAjoutees: perms,
+          permissionsRetirees: ins.permissionsRetirees ? (typeof ins.permissionsRetirees === 'string' ? JSON.parse(ins.permissionsRetirees) : ins.permissionsRetirees) : [],
           etat: 'VALIDE'
         };
       }

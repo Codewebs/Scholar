@@ -9,7 +9,9 @@ import {
   Building2,
   FileBarChart,
   Megaphone,
-  LayoutGrid
+  LayoutGrid,
+  TrendingUp,
+  FileText
 } from 'lucide-react';
 import { AcademicPermission } from '../types/permissions';
 
@@ -29,6 +31,12 @@ export const menuGroups: { group: string, items: MenuItem[] }[] = [
         icon: LayoutDashboard,
         path: "/app/dashboard",
         permission: AcademicPermission.DASHBOARD_ETABLISSEMENT
+      },
+      {
+        title: "Cockpit d'Analyse",
+        icon: TrendingUp,
+        path: "/app/reports/cockpit",
+        permission: AcademicPermission.VIEW_FINANCIAL_REPORTS
       },
       {
         title: "Actualités",
@@ -51,6 +59,12 @@ export const menuGroups: { group: string, items: MenuItem[] }[] = [
         title: "Élèves",
         icon: Users,
         path: "/app/students/list",
+        permission: AcademicPermission.VIEW_STUDENT_LIST
+      },
+      {
+        title: "Documents Officiels",
+        icon: FileText,
+        path: "/app/students/documents",
         permission: AcademicPermission.VIEW_STUDENT_LIST
       },
       {

@@ -13,4 +13,7 @@ interface LoginResponse {
 export const authService = {
   login: (identifiant: String, mdp: String) =>
     api.post<LoginResponse>('/login-user', { identifiant, mdp }),
+
+  register: (data: any) =>
+    api.post('/register', data),
 };

@@ -27,6 +27,7 @@ interface BulletinData {
     year: any;
     period: {
         label: string;
+        subPeriods?: { id: number, label: string, abrev: string }[];
     };
     performance: {
         groups: SubjectGroup[];
@@ -86,6 +87,15 @@ const getGradeInfo = (note: number | null, max: number = 20) => {
     return { cote: 'E', color: '#EF4444', appreciation: 'Médiocre' };
 };
 
+const getCoteColor = (cote: string | null | undefined) => {
+    if (!cote) return 'gray';
+    if (cote.startsWith('A')) return '#10B981'; // Green
+    if (cote.startsWith('B')) return '#3B82F6'; // Blue
+    if (cote.startsWith('C')) return '#F59E0B'; // Yellow/Orange
+    if (cote.startsWith('D') || cote.startsWith('E') || cote.startsWith('F')) return '#EF4444'; // Red
+    return 'gray';
+};
+
 const GradeDisplay: React.FC<{
     note: number | null,
     cote?: string | null,
@@ -93,8 +103,9 @@ const GradeDisplay: React.FC<{
     failColor?: string,
     showMax?: boolean,
     className?: string,
-    max?: number
-}> = ({ note, cote, mode, failColor, showMax = true, className, max = 20 }) => {
+    max?: number,
+    coteColor?: string
+}> = ({ note, cote, mode, failColor, showMax = true, className, max = 20, coteColor }) => {
     if (note === null && !cote) return <span className="text-gray-300">--</span>;
 
     const info = getGradeInfo(note, max);
@@ -109,13 +120,13 @@ const GradeDisplay: React.FC<{
                 </span>
             )}
             {(mode === 'LETTER' || mode === 'HYBRID') && finalCote && (
-                <span className="text-[9px] font-black text-accent">{finalCote}</span>
+                <span className="text-[9px] font-black" style={{ color: coteColor || '#3b82f6' }}>{finalCote}</span>
             )}
             {(mode === 'COLOR' || mode === 'HYBRID' || mode === 'HYBRID_NUM_COLOR') && (
                 <div className="flex gap-0.5 mt-0.5">
                     {['A', 'B', 'C', 'D'].map(grade => (
                         <div key={grade} className={clsx(
-                            "w-1.5 h-1.5 rounded-full",
+                            "w-3 h-3 rounded-full",
                             finalCote?.startsWith(grade) ? (grade === 'A' ? 'bg-green-500' : grade === 'B' ? 'bg-blue-500' : grade === 'C' ? 'bg-yellow-500' : 'bg-red-500') : 'bg-gray-100'
                         )} />
                     ))}
@@ -139,11 +150,13 @@ const BulletinPrintPage: React.FC = () => {
     // UI Overrides
     const [overrides, setOverrides] = useState({
         showGroups: true,
+        showGroupSummaries: true,
         formatResult: true,
         formatClassStats: true,
         formatPoints: false,
         showRank: true,
         showCompetencies: true,
+        showPeriodAbreviations: false,
         subjectFontSize: 8,
         globalScale: 100, // percentage
         compLayout: 'VERTICAL' as 'VERTICAL' | 'GRID' | 'HORIZONTAL',
@@ -158,6 +171,13 @@ const BulletinPrintPage: React.FC = () => {
                 const configStr = localStorage.getItem('bulletin_print_config');
                 const currentConfig = configStr ? JSON.parse(configStr) : null;
                 setConfig(currentConfig);
+
+                if (currentConfig?.body) {
+                    setOverrides(prev => ({
+                        ...prev,
+                        showPeriodAbreviations: !!currentConfig.body.showPeriodAbreviations
+                    }));
+                }
 
                 if (!currentConfig || !currentConfig.selectedId) {
                     setError({ message: "Configuration d'impression manquante ou périmètre non défini." });
@@ -340,6 +360,13 @@ const BulletinPrintPage: React.FC = () => {
                             checked={overrides.showGroups}
                             onChange={(v) => setOverrides({...overrides, showGroups: v})}
                         />
+                        {overrides.showGroups && (
+                            <WidgetSwitch
+                                label="Synthèse par Groupe"
+                                checked={overrides.showGroupSummaries}
+                                onChange={(v) => setOverrides({...overrides, showGroupSummaries: v})}
+                            />
+                        )}
                         <div className="h-px bg-gray-100 my-4" />
                         <p className="text-[8px] font-black uppercase tracking-widest text-gray-300 mb-2">Formatage des Stats</p>
                         <WidgetSwitch
@@ -366,6 +393,11 @@ const BulletinPrintPage: React.FC = () => {
                             label="Afficher les Compétences"
                             checked={overrides.showCompetencies}
                             onChange={(v) => setOverrides({...overrides, showCompetencies: v})}
+                        />
+                        <WidgetSwitch
+                            label="Abréviations Périodes"
+                            checked={overrides.showPeriodAbreviations}
+                            onChange={(v) => setOverrides({...overrides, showPeriodAbreviations: v})}
                         />
 
                         <div className="h-px bg-gray-100 my-4" />
@@ -631,28 +663,32 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                         <p className="text-xs font-black uppercase tracking-tight text-black truncate">{data.student.nomComplet}</p>
                     </div>
 
-                    {/* Colonne 2 : Classe / Effectif (Prend 2 colonnes sur 12) */}
-                    <div className="space-y-0.5 col-span-2">
-                        <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">Classe / Eff.</span>
-                        <p className="text-xs font-black uppercase tracking-tight text-black whitespace-nowrap">{data.salle.nomSalle} — {data.salle.effectif}</p>
+                    {/* Colonne 2 : Salle (Prend 3 colonnes sur 12) */}
+                    <div className="space-y-0.5 col-span-3">
+                        <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">Salle</span>
+                        <p className="text-xs font-black uppercase tracking-tight text-black whitespace-nowrap">{data.salle.nomSalle}</p>
                     </div>
 
-                    {/* Colonne 3 : Né(e) le (Prend 3 colonnes sur 12) */}
+                    {/* Colonne 3 : Effectif & Sexe (Prend 1 colonne sur 12) */}
+                    <div className="space-y-0.5 col-span-1">
+                        <div className="flex flex-col">
+                            <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">Eff.</span>
+                            <p className="text-xs font-black uppercase tracking-tight text-black whitespace-nowrap">{data.salle.effectif}</p>
+                            <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block mt-0.5">Sexe</span>
+                            <p className="text-xs font-black uppercase tracking-tight text-black">{data.student.sexe}</p>
+                        </div>
+                    </div>
+
+                    {/* Colonne 4 : Né(e) le (Prend 3 colonnes sur 12) */}
                     <div className="space-y-0.5 col-span-3">
                         <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">Né(e) le</span>
-                        <p className="text-[10px] font-bold uppercase text-black truncate">{data.student.dateNaissance} à {data.student.lieuNaissance}</p>
+                        <p className="text-[9px] font-bold uppercase text-black truncate">{data.student.dateNaissance} à {data.student.lieuNaissance}</p>
                     </div>
 
-                    {/* Colonne 4 : Matricule (Prend 2 colonnes sur 12) */}
-                    <div className="space-y-0.5 col-span-2">
+                    {/* Colonne 5 : Matricule (Prend 2 colonnes sur 12) */}
+                    <div className="space-y-0.5 col-span-3">
                         <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">Matricule</span>
                         <p className="text-[10px] font-bold uppercase text-black whitespace-nowrap">{data.student.matricule}</p>
-                    </div>
-
-                    {/* Colonne 5 : Sexe (Prend 1 colonne sur 12) */}
-                    <div className="space-y-0.5 col-span-1 text-center">
-                        <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">Sexe</span>
-                        <p className="text-[10px] font-bold uppercase text-black">{data.student.sexe}</p>
                     </div>
 
                 </div>
@@ -664,12 +700,18 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                         <tr className="bg-black text-white">
                             <th className="p-0.5 font-black uppercase tracking-widest text-left" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>Matières / Compétences</th>
                             {config?.periodType === 'ANNUAL' && config?.showSubPeriods && (
-                                <th className="p-0.5 font-black uppercase tracking-widest text-center text-[7px]" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>Détail Séquences</th>
+                                <th className="p-0.5 font-black uppercase tracking-widest text-center text-[7px]" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
+                                    {overrides.showPeriodAbreviations ? 'ABRÉV. SÉQ.' : 'Détail Séquences'}
+                                </th>
                             )}
                             {config?.periodType === 'TRIMESTER' && config?.showSubPeriods && (
                                 <>
-                                    <th className="p-0.5 font-black uppercase tracking-widest text-center w-10" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>EVAL 1</th>
-                                    <th className="p-0.5 font-black uppercase tracking-widest text-center w-10" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>EVAL 2</th>
+                                    <th className="p-0.5 font-black uppercase tracking-widest text-center w-10 text-[7px]" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
+                                        {overrides.showPeriodAbreviations ? (data.period.subPeriods?.[0]?.abrev || 'E1') : (data.period.subPeriods?.[0]?.label || 'EVAL 1')}
+                                    </th>
+                                    <th className="p-0.5 font-black uppercase tracking-widest text-center w-10 text-[7px]" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
+                                        {overrides.showPeriodAbreviations ? (data.period.subPeriods?.[1]?.abrev || 'E2') : (data.period.subPeriods?.[1]?.label || 'EVAL 2')}
+                                    </th>
                                 </>
                             )}
                             <th className="p-0.5 font-black uppercase tracking-widest text-center w-14" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>Moy /20</th>
@@ -682,12 +724,21 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                         </tr>
                     </thead>
                     <tbody>
-                        {data.performance.groups.map((group, gIdx) => (
+                        {data.performance.groups.map((group: any, gIdx) => (
                             <React.Fragment key={gIdx}>
                                 {overrides.showGroups && (
                                     <tr className="bg-gray-100">
-                                        <td colSpan={totalCols} className="p-0.5 font-black uppercase text-[7.5px] tracking-[0.1em] text-black" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
-                                            {group.name}
+                                        <td colSpan={totalCols} className="p-1 font-black uppercase text-[7.5px] tracking-[0.1em] text-black" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
+                                            <div className="flex justify-between items-center px-1">
+                                                <span>{group.name}</span>
+                                                {overrides.showGroupSummaries && (
+                                                    <div className="flex gap-4 text-[7px] text-accent">
+                                                        <span>Moy. Gr : <strong>{group.groupAverage?.toFixed(2)}</strong></span>
+                                                        <span>Total Pts Gr : <strong>{group.groupTotalPoints?.toFixed(2)}</strong></span>
+                                                        <span>Total Coef : <strong>{group.groupTotalCoef}</strong></span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 )}
@@ -715,7 +766,13 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                                                 </>
                                             )}
                                             <td className="p-0.5 text-center" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
-                                                <GradeDisplay note={sub.total} cote={sub.competencies[0]?.cote || null} mode={config?.calcMode} failColor={config?.body?.failColor} />
+                                                <GradeDisplay
+                                                    note={sub.total}
+                                                    cote={sub.competencies[0]?.cote || null}
+                                                    mode={config?.calcMode}
+                                                    failColor={config?.body?.failColor}
+                                                    coteColor={getCoteColor(sub.competencies[0]?.cote || null)}
+                                                />
                                             </td>
                                             <td className="p-0.5 text-center font-bold text-black" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>{sub.coef}</td>
                                             <td className="p-0.5 text-center" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
@@ -754,7 +811,12 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                                                                     "min-w-[22px] flex",
                                                                     overrides.compNotePos === 'SIDE' ? "justify-end ml-0.5" : "justify-start w-full"
                                                                 )}>
-                                                                    <GradeDisplay note={comp.note} cote={comp.cote} mode={config?.calcMode} showMax={false} />
+                                                                    <span
+                                                                        className="font-black text-[7px]"
+                                                                        style={{ color: getCoteColor(comp.cote) }}
+                                                                    >
+                                                                        {comp.cote}
+                                                                    </span>
                                                                 </div>
                                                             </div>
                                                         ))}
@@ -845,11 +907,11 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                             {/* Discipline - 3 Cols */}
                             <td className="p-0.5 border border-black text-center w-[10%]" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
                                 <span className="text-[8px] font-black block uppercase leading-none mb-0.5">Abs. Just.</span>
-                                <strong className="text-[10px]">{data.discipline.absencesJustified}h</strong>
+                                <strong className="text-[10px]">{data.discipline.absencesJustified} h</strong>
                             </td>
                             <td className="p-0.5 border border-black text-center w-[10%]" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
                                 <span className="text-[8px] font-black block uppercase leading-none mb-0.5 text-red-600">Abs. N.J.</span>
-                                <strong className="text-[10px] text-red-600">{data.discipline.absencesUnjustified}h</strong>
+                                <strong className="text-[10px] text-red-600">{data.discipline.absencesUnjustified} h</strong>
                             </td>
 
 

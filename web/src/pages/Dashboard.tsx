@@ -77,6 +77,12 @@ const Dashboard: React.FC = () => {
         title: 'text-emerald-900 group-hover:text-emerald-950',
         description: 'text-emerald-500'
       },
+      "Cockpit d'Analyse": {
+        badge: 'bg-amber-100 group-hover:bg-amber-200',
+        icon: 'text-amber-600 group-hover:text-amber-700',
+        title: 'text-amber-900 group-hover:text-amber-950',
+        description: 'text-amber-500'
+      },
       'Structure Scolaire': {
         badge: 'bg-violet-100 group-hover:bg-violet-200',
         icon: 'text-violet-600 group-hover:text-violet-700',

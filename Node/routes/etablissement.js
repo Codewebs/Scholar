@@ -73,18 +73,31 @@ router.get("/search", async (req, res) => {
   }
 });
 
-// Récupérer les établissements créés par un utilisateur spécifique
+// Récupérer les établissements d'un utilisateur (créés + recrutés)
 router.get("/user/:userId", async (req, res) => {
   try {
-    const schools = await Etablissement.findAll({
-      where: {
-        idCreateur: req.params.userId,
-        supprimer: false
-      },
-      order: [['createdAt', 'DESC']]
+    const { InscriptionPersonnel } = require('../models');
+
+    // Écoles créées
+    const createdSchools = await Etablissement.findAll({
+      where: { idCreateur: req.params.userId, supprimer: false }
     });
-    res.json(schools);
+
+    // Écoles où l'utilisateur est recruté
+    const recruited = await InscriptionPersonnel.findAll({
+      where: { idUtilisateur: req.params.userId, supprimer: false, bloque: false },
+      include: [{ model: Etablissement, where: { supprimer: false } }]
+    });
+
+    const recruitedSchools = recruited.map(r => r.Etablissement).filter(Boolean);
+
+    // Fusionner et supprimer les doublons
+    const allSchools = [...createdSchools, ...recruitedSchools];
+    const uniqueSchools = Array.from(new Map(allSchools.map(s => [s.idEtablissement, s])).values());
+
+    res.json(uniqueSchools);
   } catch (err) {
+    console.error("❌ [SchoolRoute] Erreur getUserSchools:", err.message);
     res.status(500).json({ error: err.message });
   }
 });

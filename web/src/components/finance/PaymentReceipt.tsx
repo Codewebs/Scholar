@@ -76,7 +76,7 @@ const PaymentReceipt: React.FC<Props> = ({ data, onClose }) => {
     };
 
     const ReceiptContent = ({ mention }: { mention: string }) => (
-        <div className="relative p-8 bg-white h-[148mm] border-b border-dashed border-gray-400 last:border-0 flex flex-col">
+        <div className="relative p-8 bg-white h-[140mm] border-b border-dashed border-gray-400 last:border-0 flex flex-col">
             {/* Mention verticale */}
             <div className="absolute right-2 top-1/2 -translate-y-1/2 rotate-90 origin-right text-[8px] font-black uppercase tracking-widest text-gray-400">
                 {mention}
@@ -291,7 +291,7 @@ const PaymentReceipt: React.FC<Props> = ({ data, onClose }) => {
                     </button>
                 </div>
 
-                <div className="flex-1 flex flex-col print:m-0">
+                <div className="flex-1 flex flex-col print:m-0 print:h-[297mm]">
                     <ReceiptContent mention="Reçu parent" />
                     <ReceiptContent mention="Reçu établissement" />
                 </div>

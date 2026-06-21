@@ -421,15 +421,76 @@ enum class AcademicRole(
     val color: Color
 ) {
     ADMINISTRATEUR(AcademicPermission.entries.toSet(), Icons.Default.AdminPanelSettings, Color(0xFFE74C3C)),
-    FONDATEUR(emptySet(), Icons.Default.Business, Color(0xFFF1C40F)),
-    DIRECTEUR(emptySet(), Icons.Default.ManageAccounts, Color(0xFF3498DB)),
+    FONDATEUR(setOf(
+        AcademicPermission.DASHBOARD_ETABLISSEMENT,
+        AcademicPermission.WEB_VERSION,
+        AcademicPermission.ACADEMIC_STATS,
+        AcademicPermission.FINANCIAL_BALANCE_SHEET,
+        AcademicPermission.PRINT_SCHOOL_INFO,
+        AcademicPermission.SUMMARY
+    ), Icons.Default.Business, Color(0xFFF1C40F)),
+    DIRECTEUR(setOf(
+        AcademicPermission.DASHBOARD_ETABLISSEMENT,
+        AcademicPermission.WEB_VERSION,
+        AcademicPermission.ACADEMIC_STATS,
+        AcademicPermission.VIEW_STUDENT_LIST,
+        AcademicPermission.STUDENT_DOSSIER,
+        AcademicPermission.MANAGE_ACADEMIC_CONFIG,
+        AcademicPermission.VALIDATE_GRADES,
+        AcademicPermission.GRADES_REPORT_SHEET,
+        AcademicPermission.GLOBAL_ATTENDANCE,
+        AcademicPermission.SUMMARY
+    ), Icons.Default.ManageAccounts, Color(0xFF3498DB)),
     VICE_PRINCIPAL(emptySet(), Icons.Default.SupervisorAccount, Color(0xFF2980B9)),
-    DIRECTEUR_DES_ETUDES(emptySet(), Icons.Default.MenuBook, Color(0xFF1ABC9C)),
-    INTENDANT(emptySet(), Icons.Default.Payments, Color(0xFF27AE60)),
-    SECRETAIRE(emptySet(), Icons.Default.AppRegistration, Color(0xFF95A5A6)),
-    SURVEILLANT_GENERAL(emptySet(), Icons.Default.Policy, Color(0xFFD35400)),
+    DIRECTEUR_DES_ETUDES(setOf(
+        AcademicPermission.DASHBOARD_ETABLISSEMENT,
+        AcademicPermission.WEB_VERSION,
+        AcademicPermission.MANAGE_ACADEMIC_CONFIG,
+        AcademicPermission.MANAGE_GRADES,
+        AcademicPermission.VALIDATE_GRADES,
+        AcademicPermission.GRADES_REPORT_SHEET,
+        AcademicPermission.VIEW_STUDENT_LIST,
+        AcademicPermission.ACADEMIC_STATS
+    ), Icons.Default.MenuBook, Color(0xFF1ABC9C)),
+    INTENDANT(setOf(
+        AcademicPermission.DASHBOARD_ETABLISSEMENT,
+        AcademicPermission.WEB_VERSION,
+        AcademicPermission.COLLECT_TUITION_FEE,
+        AcademicPermission.COLLECT_REGISTRATION_FEE,
+        AcademicPermission.COLLECT_OTHER_FEES,
+        AcademicPermission.VIEW_FINANCIAL_REPORTS,
+        AcademicPermission.FINANCIAL_BALANCE_SHEET,
+        AcademicPermission.VIEW_PAYMENT_STATUS
+    ), Icons.Default.Payments, Color(0xFF27AE60)),
+    SECRETAIRE(setOf(
+        AcademicPermission.DASHBOARD_ETABLISSEMENT,
+        AcademicPermission.WEB_VERSION,
+        AcademicPermission.REGISTER_STUDENT,
+        AcademicPermission.ENROLL_STUDENT,
+        AcademicPermission.VIEW_STUDENT_LIST,
+        AcademicPermission.STUDENT_DOSSIER,
+        AcademicPermission.PRINT_STUDENT_INFO,
+        AcademicPermission.ATTENDANCE_CERTIFICATE
+    ), Icons.Default.AppRegistration, Color(0xFF95A5A6)),
+    SURVEILLANT_GENERAL(setOf(
+        AcademicPermission.DASHBOARD_ETABLISSEMENT,
+        AcademicPermission.WEB_VERSION,
+        AcademicPermission.VIEW_STUDENT_LIST,
+        AcademicPermission.STUDENT_DOSSIER,
+        AcademicPermission.GLOBAL_ATTENDANCE,
+        AcademicPermission.MANAGE_JUSTIFICATIONS,
+        AcademicPermission.MANAGE_SANCTIONS,
+        AcademicPermission.EXIT_SLIP
+    ), Icons.Default.Policy, Color(0xFFD35400)),
     CHEF_DE_DEPARTEMENT(emptySet(), Icons.Default.Groups, Color(0xFF8E44AD)),
-    ENSEIGNANT(emptySet(), Icons.Default.School, Color(0xFF2980B9)),
+    ENSEIGNANT(setOf(
+        AcademicPermission.DASHBOARD_ETABLISSEMENT,
+        AcademicPermission.WEB_VERSION,
+        AcademicPermission.MANAGE_GRADES,
+        AcademicPermission.EDIT_STUDENT_NOTE,
+        AcademicPermission.GRADES_REPORT_SHEET,
+        AcademicPermission.SUMMARY
+    ), Icons.Default.School, Color(0xFF2980B9)),
     CONSEILLER_ORIENTATION(emptySet(), Icons.Default.Psychology, Color(0xFF16A085)),
     INFIRMIER(emptySet(), Icons.Default.LocalHospital, Color(0xFFC0392B)),
     PARENT(emptySet(), Icons.Default.FamilyRestroom, Color(0xFF34495E)),
@@ -439,6 +500,7 @@ enum class AcademicRole(
 
     DEMANDEUR(emptySet(), Icons.Default.Pending, Color.Gray),
     SANS_ROLE(emptySet(), Icons.Default.Person, Color.Gray);
+
 
     companion object {
         fun fromName(name: String?): AcademicRole {

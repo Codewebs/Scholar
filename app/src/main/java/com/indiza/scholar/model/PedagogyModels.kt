@@ -34,7 +34,9 @@ data class PeriodeEntity(
     val libellePeriodeFr: String,
     val libellePeriodeEn: String? = null,
     val libellePeriodeEs: String? = null,
-    val abreviation: String? = null,
+    val abrevLibelleFr: String,
+    val abrevLibelleEn: String? = null,
+    val abrevLibelleEs: String? = null,
     val dateDebut: String, // Format AAAA-MM-JJ
     val dateFin: String,
     val idAnneeScolaire: Long,
@@ -55,6 +57,9 @@ data class SousPeriodeEntity(
     val libelleSousPeriodeFr: String,
     val libelleSousPeriodeEn: String? = null,
     val libelleSousPeriodeEs: String? = null,
+    val abrevLibelleFr: String,
+    val abrevLibelleEn: String? = null,
+    val abrevLibelleEs: String? = null,
     val dateDebut: String,
     val dateFin: String,
     val ordreSousPeriode: Int = 1

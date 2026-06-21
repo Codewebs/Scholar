@@ -35,42 +35,70 @@ const SessionGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     }, [isInitialized, isAuthenticated, user, schoolId]);
 
     const checkSession = async () => {
-        if (!schoolId) {
+        if (!user) return;
+
+        const currentRole = (user.role || '').toUpperCase();
+        const isDefaultRole = currentRole === 'DEMANDEUR' || currentRole === 'SANS_ROLE' || currentRole === '';
+
+        // On ne rafraîchit que si on est encore en rôle par défaut
+        // ou si on a une école mais pas encore de permissions chargées en mémoire
+        const needsRefresh = isDefaultRole || (!!schoolId && user.permissions.length === 0);
+
+        if (needsRefresh) {
             setLoading(true);
             try {
-                const res = await setupService.getUserAssociations(user!.id);
+                console.log(`[SessionGuard] 🔄 Syncing profile for user ${user.nom}...`);
+                const res = await setupService.getUserAssociations(user.id);
                 const validAssocs = res.data.filter(a => a.etat === 'VALIDE');
 
-                if (validAssocs.length === 0) {
+                if (validAssocs.length === 0 && !schoolId) {
                     window.location.href = '/initial-config';
                     return;
                 }
 
-                if (validAssocs.length === 1) {
+                // Si on a déjà un schoolId, on rafraîchit les droits pour CETTE école
+                if (schoolId) {
+                    const currentAssoc = validAssocs.find(a =>
+                        (a.school.idServeur || a.school.idEtablissement) === schoolId
+                    );
+
+                    if (currentAssoc && updateUser) {
+                        const apiPerms = currentAssoc.permissionsAjoutees || [];
+                        console.log(`[SessionGuard] 🎯 Profile found: Role=${currentAssoc.roles[0]}, Perms=${apiPerms.length}`);
+
+                        updateUser({
+                            role: currentAssoc.roles[0],
+                            permissions: apiPerms as any[]
+                        });
+                    } else if (!currentAssoc && validAssocs.length > 0) {
+                        // L'école en cache n'est plus valide pour cet utilisateur
+                        setAssociations(validAssocs);
+                        setNeedsSchool(true);
+                    }
+                } else if (validAssocs.length === 1) {
+                    // ... (rest of the logic)
                     const assoc = validAssocs[0];
                     const sId = assoc.school.idServeur || assoc.school.idEtablissement;
-
-                    // Mise à jour des permissions et rôle
+                    localStorage.setItem('school_id', sId!.toString());
                     if (updateUser) {
                         updateUser({
                             role: assoc.roles[0],
-                            permissions: assoc.permissionsAjoutees || []
+                            permissions: (assoc.permissionsAjoutees || []) as any[]
                         });
                     }
-
-                    localStorage.setItem('school_id', sId!.toString());
-                    await fetchYears(sId!);
-                } else {
+                } else if (validAssocs.length > 1) {
                     setAssociations(validAssocs);
                     setNeedsSchool(true);
                 }
             } catch (err) {
-                console.error("SessionGuard Error:", err);
+                console.error("SessionGuard Refresh Error:", err);
             } finally {
                 setLoading(false);
             }
-        } else if (!selectedYear && !yearsLoading) {
-            // Optionnel : On peut aussi rafraîchir les permissions ici si besoin
+        }
+
+        // Vérification de l'année
+        if (schoolId && !selectedYear && !yearsLoading) {
             await fetchYears(schoolId);
             if (years.length === 0 && !yearsLoading) {
                 setNeedsYear(true);
@@ -91,9 +119,10 @@ const SessionGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         // Trouver l'association pour récupérer les rôles/permissions
         const assoc = associations.find(a => (a.school.idServeur || a.school.idEtablissement) === sId);
         if (assoc && updateUser) {
+            console.log(`[SessionGuard] 🎯 Manual school select: Updating role to ${assoc.roles[0]}`);
             updateUser({
                 role: assoc.roles[0],
-                permissions: assoc.permissionsAjoutees || []
+                permissions: (assoc.permissionsAjoutees || []) as any[]
             });
         }
 
