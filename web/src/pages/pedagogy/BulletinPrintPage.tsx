@@ -3,6 +3,21 @@ import { useSearchParams } from 'react-router-dom';
 import { useSchoolYear } from '../../context/SchoolYearContext';
 import api from '../../api/axios';
 import {
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    BarChart,
+    Bar,
+    Radar,
+    RadarChart,
+    PolarGrid,
+    PolarAngleAxis,
+    PolarRadiusAxis,
+    Legend
+} from 'recharts';
+import {
     Printer,
     ArrowLeft,
     Loader2,
@@ -53,6 +68,10 @@ interface BulletinData {
 interface SubjectGroup {
     name: string;
     subjects: SubjectPerformance[];
+    groupAverage?: number;
+    groupTotalPoints?: number;
+    groupTotalCoef?: number;
+    ordre?: number;
 }
 
 interface SubjectPerformance {
@@ -475,7 +494,12 @@ const BulletinPrintPage: React.FC = () => {
 
             <div className="flex flex-col items-center space-y-8 print:space-y-0">
                 {bulletins.map((data, index) => (
-                    <BulletinPage key={index} data={data} config={config} overrides={overrides} />
+                    <React.Fragment key={index}>
+                        <BulletinPage data={data} config={config} overrides={overrides} />
+                        {config?.stats?.showCharts && (
+                            <StatisticsPage data={data} config={config} />
+                        )}
+                    </React.Fragment>
                 ))}
             </div>
 
@@ -747,8 +771,12 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                                         <tr className="hover:bg-gray-50/50">
                                             <td className="p-0.5 font-bold uppercase text-black" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
                                                 {sub.name}
-                                                <br />
-                                                <span className="text-[6.5px] text-gray-400 normal-case font-medium">Enseignant: {sub.teacher}</span>
+                                                {config?.body?.showSubjectTeachers && (
+                                                    <>
+                                                        <br />
+                                                        <span className="text-[6.5px] text-gray-400 normal-case font-medium">Enseignant: {sub.teacher}</span>
+                                                    </>
+                                                )}
                                             </td>
                                             {config?.periodType === 'ANNUAL' && config?.showSubPeriods && (
                                                 <td className="p-0.5 text-center font-bold text-[7px] text-black" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
@@ -786,7 +814,9 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                                             {overrides.showRank && (
                                                 <td className="p-0.5 text-center font-bold text-black" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>{sub.rank}<sup>{sub.rank === 1 ? 'er' : 'ème'}</sup></td>
                                             )}
-                                            <td className="p-0.5 text-[7.5px] italic text-black" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>{sub.appreciation}</td>
+                                            {(config?.body?.showAppreciations ?? true) && (
+                                                <td className="p-0.5 text-[7.5px] italic text-black" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>{sub.appreciation}</td>
+                                            )}
                                         </tr>
                                         {overrides.showCompetencies && sub.competencies.length > 0 && (
                                             <tr>
@@ -948,6 +978,159 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    );
+};
+
+const StatisticsPage: React.FC<{ data: BulletinData, config: any }> = ({ data, config }) => {
+    // 1. Prepare Bar Chart Data
+    const barData = data.performance.groups.map(group => ({
+        name: group.name,
+        élève: group.groupAverage || 0,
+        classe: data.stats.avgMoy || 0,
+        max: data.stats.maxMoy || 20
+    }));
+
+    // Comparative Data for Specific Mode
+    const comparativeData = data.performance.groups.flatMap(group =>
+        group.subjects.map(sub => ({
+            name: sub.name,
+            seq1: sub.note1 || 0,
+            seq2: sub.note2 || 0,
+            avg: sub.total || 0
+        }))
+    );
+
+    // 2. Prepare Radar Chart Data (Profiling)
+    const radarData = data.performance.groups.map(group => ({
+        subject: group.name,
+        score: group.groupAverage || 0,
+        fullMark: 20
+    }));
+
+    return (
+        <div className="bulletin-page w-[210mm] min-h-[297mm] bg-white shadow-2xl flex flex-col p-[20mm] print:shadow-none print:w-[210mm] print:page-break-before-always relative overflow-hidden">
+            {/* Header Profil */}
+            <div className="flex justify-between items-center mb-10 border-b-2 border-black pb-4">
+                <div>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter">Profil de Performance</h2>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Analyse graphique individuelle — {data.student.nomComplet}</p>
+                </div>
+                <div className="text-right">
+                    <span className="px-4 py-2 bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest">
+                        {data.period.label}
+                    </span>
+                </div>
+            </div>
+
+            <div className="flex-1 space-y-12">
+                {/* 1. Bar Chart Section */}
+                <div className="bg-gray-50/50 p-8 rounded-[40px] border border-gray-100">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-black flex items-center gap-2">
+                                <LayoutGrid size={18} className="text-accent" />
+                                {config?.stats?.chartScope === 'SPECIFIC' ? 'Comparaison des Séquences' : 'Positionnement par rapport à la classe'}
+                            </h3>
+                            <p className="text-[8px] font-medium text-gray-400 uppercase tracking-widest mt-1">Visualisation des moyennes par {config?.stats?.chartScope === 'SPECIFIC' ? 'matière' : 'pôle d\'enseignement'}</p>
+                        </div>
+                    </div>
+
+                    <div className="h-[255px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            {config?.stats?.chartScope === 'SPECIFIC' ? (
+                                <BarChart data={comparativeData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                                    <XAxis dataKey="name" tick={{fontSize: 7, fontWeight: 800}} interval={0} angle={-45} textAnchor="end" height={60} />
+                                    <YAxis domain={[0, 20]} tick={{fontSize: 8, fontWeight: 800}} />
+                                    <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}} />
+                                    <Legend wrapperStyle={{fontSize: '9px', fontWeight: 900, paddingTop: '20px'}} />
+                                    <Bar dataKey="seq1" name="Séquence 1" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="seq2" name="Séquence 2" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            ) : (
+                                <BarChart data={barData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                                    <XAxis dataKey="name" tick={{fontSize: 8, fontWeight: 800}} />
+                                    <YAxis domain={[0, 20]} tick={{fontSize: 8, fontWeight: 800}} />
+                                    <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}} />
+                                    <Legend wrapperStyle={{fontSize: '9px', fontWeight: 900, paddingTop: '10px'}} />
+                                    <Bar dataKey="élève" name="Moyenne Élève" fill="#000" radius={[4, 4, 0, 0]} barSize={40} />
+                                    <Bar dataKey="classe" name="Moyenne Classe" fill="#94a3b8" radius={[4, 4, 0, 0]} barSize={40} />
+                                </BarChart>
+                            )}
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* 2. Radar Chart Section */}
+                {config?.stats?.chartType === 'RADAR' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[340px]">
+                        <div className="bg-black text-white p-8 rounded-[40px] relative overflow-hidden flex flex-col">
+                            <div className="relative z-10">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-accent mb-2">Analyse Radiale</h3>
+                                <p className="text-[10px] font-medium text-gray-400 leading-relaxed">
+                                    Ce diagramme illustre l'équilibre des compétences. Un radar étendu vers les bords indique une maîtrise homogène, tandis que des pics isolés révèlent des pôles d'excellence spécifiques.
+                                </p>
+                            </div>
+
+                            <div className="flex-1 mt-4">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                                        <PolarGrid stroke="#333" />
+                                        <PolarAngleAxis dataKey="subject" tick={{fill: '#94a3b8', fontSize: 8, fontWeight: 800}} />
+                                        <Radar
+                                            name="Score"
+                                            dataKey="score"
+                                            stroke="#10b981"
+                                            fill="#10b981"
+                                            fillOpacity={0.5}
+                                        />
+                                    </RadarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        <div className="bg-white border-2 border-black p-8 rounded-[40px] flex flex-col justify-between">
+                            <div>
+                                <h3 className="text-sm font-black uppercase tracking-widest mb-6">Forces & Faiblesses</h3>
+                                <div className="space-y-6">
+                                    {radarData.sort((a, b) => b.score - a.score).slice(0, 3).map((item, idx) => (
+                                        <div key={idx} className="flex items-center gap-4">
+                                            <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-600 font-black text-[10px]">
+                                                +{idx+1}
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-black uppercase">{item.subject}</p>
+                                                <div className="w-32 h-1 bg-gray-100 rounded-full mt-1">
+                                                    <div className="h-full bg-green-500 rounded-full" style={{width: `${(item.score/20)*100}%`}} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="pt-8 border-t border-gray-100 mt-8">
+                                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
+                                    L'élève présente un profil {data.performance.average >= 14 ? 'EXCELLENT' : data.performance.average >= 10 ? 'ÉQUILIBRÉ' : 'À SOUTENIR'}.
+                                    {config?.stats?.showRadarAnalysis && (
+                                        <span className="block mt-2 text-black">
+                                            Dominante actuelle : {radarData.sort((a, b) => b.score - a.score)[0]?.subject}
+                                        </span>
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Footer Page 2 */}
+            <div className="mt-auto pt-8 border-t border-gray-100 flex justify-between items-center">
+                <p className="text-[7px] font-black text-gray-300 uppercase tracking-[0.3em]">Scholar Analyse System v3.0</p>
+                <p className="text-[7px] font-black text-gray-300 uppercase tracking-[0.3em]">Page 2 / 2</p>
             </div>
         </div>
     );

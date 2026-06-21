@@ -70,7 +70,8 @@ const BulletinConfigPage: React.FC = () => {
         showStudentPhoto: true,
         showMainTeacher: true,
         showSubjectTeachers: true,
-        showPeriodAbreviations: false, // New option
+        showAppreciations: true,
+        showPeriodAbreviations: false,
         passingGrade: 10.0,
         successColor: '#10B981',
         failColor: '#EF4444',
@@ -88,7 +89,9 @@ const BulletinConfigPage: React.FC = () => {
         showClassAverage: true,
         showSuccessRate: true,
         showCharts: false,
-        chartType: 'BAR' as 'BAR' | 'RADAR'
+        chartType: 'BAR' as 'BAR' | 'RADAR',
+        chartScope: 'GENERAL' as 'GENERAL' | 'SPECIFIC',
+        showRadarAnalysis: true
     },
 
     // Advanced
@@ -243,7 +246,13 @@ const BulletinConfigPage: React.FC = () => {
           <div className="lg:col-span-8 space-y-6">
             <div className="bg-white rounded-[40px] shadow-sm border border-gray-50 overflow-hidden">
               {/* Accordion A: Périmètre */}
-              <AccordionHeader id="A" title="Périmètre & Données de base" icon={Layout} />
+              <AccordionHeader
+                id="A"
+                title="Périmètre & Données de base"
+                icon={Layout}
+                isOpen={openAccordions.includes('A')}
+                onClick={() => toggleAccordion('A')}
+              />
               {openAccordions.includes('A') && (
                 <div className="p-8 space-y-6 bg-gray-50/30 animate-in fade-in duration-500">
                   {/* Validation Overrides */}
@@ -380,7 +389,13 @@ const BulletinConfigPage: React.FC = () => {
               )}
 
               {/* Accordion B: En-tête */}
-              <AccordionHeader id="B" title="En-tête & Bloc Institutionnel" icon={School} />
+              <AccordionHeader
+                id="B"
+                title="En-tête & Bloc Institutionnel"
+                icon={School}
+                isOpen={openAccordions.includes('B')}
+                onClick={() => toggleAccordion('B')}
+              />
               {openAccordions.includes('B') && (
                 <div className="p-8 space-y-8 bg-gray-50/30 animate-in fade-in duration-500">
                   <div className="flex justify-between items-center bg-white p-6 rounded-[24px] border border-gray-100 shadow-sm">
@@ -440,13 +455,20 @@ const BulletinConfigPage: React.FC = () => {
               )}
 
               {/* Accordion C: Corps */}
-              <AccordionHeader id="C" title="Corps du Bulletin (Notes & Styles)" icon={Type} />
+              <AccordionHeader
+                id="C"
+                title="Corps du Bulletin (Notes & Styles)"
+                icon={Type}
+                isOpen={openAccordions.includes('C')}
+                onClick={() => toggleAccordion('C')}
+              />
               {openAccordions.includes('C') && (
                 <div className="p-8 space-y-8 bg-gray-50/30">
                    <div className="grid grid-cols-2 gap-4">
                         <ConfigSwitch label="Photo Élève" checked={config.body.showStudentPhoto} onChange={(v) => setConfig({...config, body: {...config.body, showStudentPhoto: v}})} />
                         <ConfigSwitch label="Prof Principal" checked={config.body.showMainTeacher} onChange={(v) => setConfig({...config, body: {...config.body, showMainTeacher: v}})} />
                         <ConfigSwitch label="Noms Enseignants" checked={config.body.showSubjectTeachers} onChange={(v) => setConfig({...config, body: {...config.body, showSubjectTeachers: v}})} />
+                        <ConfigSwitch label="Afficher Appréciations" checked={config.body.showAppreciations} onChange={(v) => setConfig({...config, body: {...config.body, showAppreciations: v}})} />
                         <ConfigSwitch label="Abrév. Périodes" checked={config.body.showPeriodAbreviations} onChange={(v) => setConfig({...config, body: {...config.body, showPeriodAbreviations: v}})} />
                    </div>
 
@@ -507,7 +529,13 @@ const BulletinConfigPage: React.FC = () => {
               )}
 
               {/* Accordion D: Statistiques */}
-              <AccordionHeader id="D" title="Profil de Classe & Statistiques" icon={BarChart3} />
+              <AccordionHeader
+                id="D"
+                title="Profil de Classe & Statistiques"
+                icon={BarChart3}
+                isOpen={openAccordions.includes('D')}
+                onClick={() => toggleAccordion('D')}
+              />
               {openAccordions.includes('D') && (
                 <div className="p-8 space-y-6 bg-gray-50/30">
                     <ConfigSwitch label="Bloc Statistiques Globales" checked={config.stats.showGlobalStats} onChange={(v) => setConfig({...config, stats: {...config.stats, showGlobalStats: v}})} />
@@ -521,6 +549,43 @@ const BulletinConfigPage: React.FC = () => {
                         </div>
                     )}
                     <ConfigSwitch label="Graphiques Analytiques" checked={config.stats.showCharts} onChange={(v) => setConfig({...config, stats: {...config.stats, showCharts: v}})} />
+
+                    {config.stats.showCharts && (
+                        <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm space-y-6 ml-8 animate-in slide-in-from-top-4">
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Type de Diagramme</label>
+                                <div className="flex gap-4">
+                                    <button
+                                        onClick={() => setConfig({...config, stats: {...config.stats, chartType: 'BAR'}})}
+                                        className={clsx("flex-1 p-4 rounded-2xl border-2 text-[10px] font-black uppercase transition-all", config.stats.chartType === 'BAR' ? "border-black bg-black text-white" : "border-gray-100 bg-white text-gray-400")}
+                                    >Barres (Histogramme)</button>
+                                    <button
+                                        onClick={() => setConfig({...config, stats: {...config.stats, chartType: 'RADAR'}})}
+                                        className={clsx("flex-1 p-4 rounded-2xl border-2 text-[10px] font-black uppercase transition-all", config.stats.chartType === 'RADAR' ? "border-black bg-black text-white" : "border-gray-100 bg-white text-gray-400")}
+                                    >Radar (Forces/Faiblesses)</button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Mode d'Affichage</label>
+                                <div className="flex gap-4">
+                                    <button
+                                        onClick={() => setConfig({...config, stats: {...config.stats, chartScope: 'GENERAL'}})}
+                                        className={clsx("flex-1 p-4 rounded-2xl border-2 text-[10px] font-black uppercase transition-all", config.stats.chartScope === 'GENERAL' ? "border-black bg-black text-white" : "border-gray-100 bg-white text-gray-400")}
+                                    >Général (Groupe Matières)</button>
+                                    <button
+                                        onClick={() => setConfig({...config, stats: {...config.stats, chartScope: 'SPECIFIC'}})}
+                                        className={clsx("flex-1 p-4 rounded-2xl border-2 text-[10px] font-black uppercase transition-all", config.stats.chartScope === 'SPECIFIC' ? "border-black bg-black text-white" : "border-gray-100 bg-white text-gray-400")}
+                                    >Spécifique (Comparatif)</button>
+                                </div>
+                                <p className="text-[8px] text-gray-400 font-medium italic">Le mode spécifique permet de comparer les performances entre les séquences ou trimestres.</p>
+                            </div>
+
+                            {config.stats.chartType === 'RADAR' && (
+                                <ConfigSwitch label="Analyse Profil (Scientifique/Littéraire)" checked={config.stats.showRadarAnalysis} onChange={(v) => setConfig({...config, stats: {...config.stats, showRadarAnalysis: v}})} />
+                            )}
+                        </div>
+                    )}
                 </div>
               )}
             </div>
@@ -645,14 +710,21 @@ const BulletinConfigPage: React.FC = () => {
   );
 };
 
-const AccordionHeader: React.FC<{ id: string, title: string, icon: any }> = ({ id, title, icon: Icon }) => (
-    <div className="p-8 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-all border-b border-gray-50">
+const AccordionHeader: React.FC<{ id: string, title: string, icon: any, onClick: () => void, isOpen: boolean }> = ({ id, title, icon: Icon, onClick, isOpen }) => (
+    <div
+        onClick={onClick}
+        className="p-8 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-all border-b border-gray-50"
+    >
         <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-black text-white rounded-xl flex items-center justify-center shadow-lg">
+            <div className={clsx(
+                "w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-all",
+                isOpen ? "bg-accent text-white" : "bg-black text-white"
+            )}>
                 <Icon size={20} />
             </div>
             <h3 className="text-sm font-black uppercase tracking-widest text-black">{title}</h3>
         </div>
+        {isOpen ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
     </div>
 );
 
