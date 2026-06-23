@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSchoolYear } from '../context/SchoolYearContext';
 import { schoolService } from '../api/schoolService';
 import { dashboardService } from '../api/dashboardService';
-import { School, SetupProgress } from '../types/models';
+import { School } from '../types/models';
 import { menuGroups } from '../utils/menuStructure';
 import { Link } from 'react-router-dom';
 import {
@@ -15,10 +15,14 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import ServerConfigModal from '../components/ServerConfigModal';
+import { useUI } from '../context/UIContext';
 
 const Dashboard: React.FC = () => {
   const { user, hasPermission } = useAuth();
   const { years, selectedYear, fetchYears, selectYear } = useSchoolYear();
+  const { settings } = useUI();
+  const cardScale = settings.dashboardCardScale;
+  const textScale = settings.textScale;
 
   const [schools, setSchools] = useState<School[]>([]);
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
@@ -154,19 +158,24 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500">
+    <div className="animate-in fade-in duration-500 flex flex-col" style={{ gap: `${2.5 * settings.globalDensity}rem` }}>
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
         <div>
-          <h1 className="text-6xl font-black text-black mb-3 tracking-tighter uppercase leading-none">Tableau de bord</h1>
-          <div className="flex items-center space-x-4">
+          <h1
+            className="font-black text-black tracking-tighter uppercase leading-none"
+            style={{ fontSize: `${3.75 * textScale}rem` }}
+          >
+            Tableau de bord
+          </h1>
+          <div className="flex items-center space-x-4 mt-4">
             <button
               onClick={() => setIsConfigOpen(true)}
               className="flex items-center bg-white px-4 py-2 border border-border rounded-sharp hover:border-black transition-all group"
             >
               {isOnline ? <Wifi size={14} className="text-green-500 mr-2" /> : <WifiOff size={14} className="text-red-500 mr-2" />}
               <span className={clsx("text-[10px] font-black uppercase tracking-widest mr-3", isOnline ? "text-green-600" : "text-red-600")}>
-                {isOnline ? "Connecté au serveur" : "Serveur hors-ligne"}
+                {isOnline ? "Connecté" : "Hors-ligne"}
               </span>
               <Globe size={12} className="text-[#9E9E9E] group-hover:text-accent transition-colors" />
             </button>
@@ -176,7 +185,7 @@ const Dashboard: React.FC = () => {
         {/* Selectors Row */}
         <div className="flex flex-wrap gap-4">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase text-[#9E9E9E] tracking-widest ml-1">Établissement Actif</label>
+            <label className="text-[10px] font-black uppercase text-[#9E9E9E] tracking-widest ml-1">Établissement</label>
             <div className="relative">
               <select
                 className="appearance-none bg-white border border-border px-6 py-3.5 pr-14 rounded-sharp font-black text-xs uppercase tracking-tight focus:border-black outline-none transition-all cursor-pointer shadow-sm hover:shadow-lg"
@@ -220,37 +229,71 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        style={{ gap: `${1.5 * settings.globalDensity}rem` }}
+      >
         {flatMenuItems.map((item, idx) => {
           const theme = cardTheme(item.title);
           return (
             <Link
               key={idx}
               to={item.path}
-              className="group bg-white p-6 border border-border rounded-[24px] hover:border-black hover:shadow-xl transition-all duration-300 flex flex-col justify-between min-h-[170px] relative overflow-hidden"
+              className="group bg-white border border-border rounded-[24px] hover:border-black hover:shadow-xl transition-all duration-300 flex flex-col justify-between relative overflow-hidden"
+              style={{
+                padding: `${1.5 * cardScale}rem`,
+                minHeight: `${170 * cardScale}px`
+              }}
             >
               <div className="flex justify-between items-start relative z-10">
-                <div className={`p-3 rounded-soft shadow-sm transition-all duration-300 ${theme.badge}`}>
-                  <item.icon size={24} className={`${theme.icon} transition-colors`} />
+                <div
+                    className={clsx("rounded-soft shadow-sm transition-all duration-300", theme.badge)}
+                    style={{ padding: `${0.75 * cardScale}rem` }}
+                >
+                  <item.icon size={24 * cardScale} className={`${theme.icon} transition-colors`} />
                 </div>
                 <div className="w-3 h-3 rounded-full bg-black/10 shadow-[0_0_12px_rgba(0,0,0,0.08)] animate-pulse"></div>
               </div>
-              <div className="relative z-10 mt-6">
-                <h3 className={`font-black text-lg uppercase tracking-tight mb-1 transition-transform duration-300 group-hover:translate-x-1 ${theme.title}`}>{item.title}</h3>
-                <p className="text-[11px] font-black uppercase tracking-[0.26em] text-black opacity-80">Gérer le module {item.title.toLowerCase()}</p>
+              <div className="relative z-10" style={{ marginTop: `${1.5 * cardScale}rem` }}>
+                <h3
+                    className={clsx("font-black uppercase tracking-tight mb-1 transition-transform duration-300 group-hover:translate-x-1", theme.title)}
+                    style={{ fontSize: `${1.125 * textScale}rem` }}
+                >
+                    {item.title}
+                </h3>
+                <p
+                    className="font-black uppercase tracking-[0.26em] text-black opacity-80"
+                    style={{ fontSize: `${11 * textScale}px` }}
+                >
+                    Gérer le module {item.title.toLowerCase()}
+                </p>
               </div>
               <div className="absolute -right-6 -bottom-6 opacity-[0.04] group-hover:opacity-[0.08] group-hover:scale-110 transition-all duration-700 pointer-events-none">
-                <item.icon size={130} className="text-black/5" />
+                <item.icon size={130 * cardScale} className="text-black/5" />
               </div>
             </Link>
           );
         })}
 
-        <button className="border-2 border-dashed border-border p-6 rounded-[24px] hover:border-black hover:bg-gray-50 transition-all flex flex-col items-center justify-center space-y-3 group min-h-[170px]">
-          <div className="p-3 bg-gray-100 rounded-full group-hover:bg-black group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-xl group-hover:shadow-black/20">
-            <Plus size={24} />
+        <button
+            className="border-2 border-dashed border-border rounded-[24px] hover:border-black hover:bg-gray-50 transition-all flex flex-col items-center justify-center space-y-3 group"
+            style={{
+                padding: `${1.5 * cardScale}rem`,
+                minHeight: `${170 * cardScale}px`
+            }}
+        >
+          <div
+            className="bg-gray-100 rounded-full group-hover:bg-black group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-xl group-hover:shadow-black/20"
+            style={{ padding: `${0.75 * cardScale}rem` }}
+          >
+            <Plus size={24 * cardScale} />
           </div>
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#9E9E9E] group-hover:text-black">Ajouter</span>
+          <span
+            className="font-black uppercase tracking-[0.3em] text-[#9E9E9E] group-hover:text-black"
+            style={{ fontSize: `${10 * textScale}px` }}
+          >
+            Ajouter
+          </span>
         </button>
       </div>
 

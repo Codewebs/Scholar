@@ -198,8 +198,20 @@ const StaffManagementPage: React.FC = () => {
       dateNaissance: '',
       lieuNaissance: '',
       sexe: 'M',
+      diplomes: '',
       addedPerms: [] as string[],
       removedPerms: [] as string[]
+  });
+
+  // Edit Modal State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+      idUtilisateur: 0,
+      nom: '',
+      prenom: '',
+      diplomes: '',
+      email: '',
+      telephone: ''
   });
 
   useEffect(() => {
@@ -235,6 +247,7 @@ const StaffManagementPage: React.FC = () => {
           dateNaissance: '',
           lieuNaissance: '',
           sexe: 'M',
+          diplomes: '',
           addedPerms: [],
           removedPerms: []
       });
@@ -253,6 +266,7 @@ const StaffManagementPage: React.FC = () => {
               dateNaissance: valForm.dateNaissance,
               lieuNaissance: valForm.lieuNaissance,
               sexe: valForm.sexe,
+              diplomes: valForm.diplomes,
               permissionsAjoutees: valForm.addedPerms,
               permissionsRetirees: valForm.removedPerms
           });
@@ -319,6 +333,37 @@ const StaffManagementPage: React.FC = () => {
     try {
         await staffService.updatePermissions(selectedStaff.idInscriptionPersonnel, addedPerms, removedPerms);
         setShowPermModal(false);
+        loadData();
+    } catch (err) {
+        alert("Erreur lors de la mise à jour");
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const openEditModal = (member: PersonnelEntity) => {
+    setEditForm({
+        idUtilisateur: member.idUtilisateur,
+        nom: member.nom,
+        prenom: member.prenom || '',
+        diplomes: member.utilisateur?.diplomes || '',
+        email: member.email || member.utilisateur?.email || '',
+        telephone: (member.utilisateur?.telephone || member.telephone1 || '').toString()
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateStaff = async () => {
+    setLoading(true);
+    try {
+        await staffService.updateStaffProfile(editForm.idUtilisateur, {
+            nom: editForm.nom,
+            prenom: editForm.prenom,
+            diplomes: editForm.diplomes,
+            email: editForm.email,
+            telephone: editForm.telephone
+        });
+        setShowEditModal(false);
         loadData();
     } catch (err) {
         alert("Erreur lors de la mise à jour");
@@ -439,7 +484,10 @@ const StaffManagementPage: React.FC = () => {
                                     )}>
                                         {member.bloque ? "Bloqué" : "Actif"}
                                     </div>
-                                    <button className="mt-2 p-1.5 hover:bg-gray-100 rounded-full text-gray-300 hover:text-black transition-all">
+                                    <button
+                                        onClick={() => openEditModal(member)}
+                                        className="mt-2 p-1.5 hover:bg-gray-100 rounded-full text-gray-300 hover:text-black transition-all"
+                                    >
                                         <MoreVertical size={16} />
                                     </button>
                                 </div>
@@ -631,6 +679,13 @@ const StaffManagementPage: React.FC = () => {
                             onChange={e => setValForm({...valForm, lieuNaissance: e.target.value})}
                         />
 
+                        <AuthInput
+                            label="Diplômes / Qualifications"
+                            placeholder="Doctorat, Master, etc."
+                            value={valForm.diplomes}
+                            onChange={e => setValForm({...valForm, diplomes: e.target.value})}
+                        />
+
                         <div className="space-y-3">
                             <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">Rôle</label>
                             <div className="grid grid-cols-2 gap-2">
@@ -703,7 +758,66 @@ const StaffManagementPage: React.FC = () => {
           </div>
       )}
 
-      {loading && !showPermModal && !showValModal && (
+      {/* Edit Profile Modal */}
+      {showEditModal && (
+          <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-xl flex items-center justify-center p-6">
+              <div className="max-w-xl w-full bg-white rounded-[56px] shadow-2xl border border-gray-100 overflow-hidden">
+                  <div className="p-12 border-b border-gray-50">
+                        <h2 className="text-4xl font-black uppercase tracking-tighter text-black">Modifier Profil</h2>
+                        <p className="text-xs font-bold text-gray-400 mt-2">Mise à jour des informations du personnel</p>
+                  </div>
+
+                  <div className="p-12 space-y-8">
+                        <div className="grid grid-cols-2 gap-4">
+                            <AuthInput
+                                label="Nom"
+                                value={editForm.nom}
+                                onChange={e => setEditForm({...editForm, nom: e.target.value})}
+                            />
+                            <AuthInput
+                                label="Prénom"
+                                value={editForm.prenom}
+                                onChange={e => setEditForm({...editForm, prenom: e.target.value})}
+                            />
+                        </div>
+
+                        <AuthInput
+                            label="Diplômes / Qualifications"
+                            placeholder="Doctorat en Mathématiques, etc."
+                            value={editForm.diplomes}
+                            onChange={e => setEditForm({...editForm, diplomes: e.target.value})}
+                        />
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <AuthInput
+                                label="Email"
+                                value={editForm.email}
+                                onChange={e => setEditForm({...editForm, email: e.target.value})}
+                            />
+                            <AuthInput
+                                label="Téléphone"
+                                value={editForm.telephone}
+                                onChange={e => setEditForm({...editForm, telephone: e.target.value})}
+                            />
+                        </div>
+
+                        <div className="pt-8 flex gap-4">
+                            <AuthButton onClick={handleUpdateStaff} disabled={loading} className="flex-1">
+                                Sauvegarder
+                            </AuthButton>
+                            <button
+                                onClick={() => setShowEditModal(false)}
+                                className="px-10 py-5 bg-gray-50 text-gray-400 rounded-sharp font-black uppercase text-[11px] tracking-widest hover:text-black transition-all"
+                            >
+                                Annuler
+                            </button>
+                        </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {loading && !showPermModal && !showValModal && !showEditModal && (
         <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-[200] flex flex-col items-center justify-center space-y-4">
              <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
              <p className="font-black uppercase text-[10px] tracking-widest text-black">Mise à jour...</p>

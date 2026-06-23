@@ -15,4 +15,7 @@ router.get("/:idEleve", verifyToken, controller.getStudentById);
 router.put("/:idEleve", verifyToken, controller.updateStudent);
 router.delete("/enrollment/:idEleve/:idAnneeScolaire", verifyToken, controller.deleteEnrollment);
 
+// Documents Officiels
+router.get("/official-documents/:idEleve/:idAnneeScolaire", verifyToken, controller.getOfficialDocumentData);
+
 module.exports = router;

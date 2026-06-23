@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 import { pedagogyService } from '../../api/pedagogyService';
 import { schoolService } from '../../api/schoolService';
 import {
@@ -15,6 +16,7 @@ import {
 import { clsx } from 'clsx';
 
 const ReportPrintPage: React.FC = () => {
+    const { user } = useAuth();
     const [searchParams] = useSearchParams();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<any[]>([]);
@@ -89,7 +91,7 @@ const ReportPrintPage: React.FC = () => {
             {/* Print Content */}
             <div className="flex flex-col items-center space-y-8 print:space-y-0">
                 {data.map((section, sIdx) => (
-                    <div key={sIdx} className="report-page w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[15mm] print:shadow-none print:w-[210mm] print:page-break-after-always relative overflow-hidden flex flex-col">
+                    <div key={sIdx} className="report-page w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[15mm] print:shadow-none print:w-[210mm] print:page-break-after-always relative flex flex-col">
 
                         {/* School Header */}
                         <div className="flex justify-between items-start pb-4 mb-6 border-b-2 border-black">
@@ -120,6 +122,9 @@ const ReportPrintPage: React.FC = () => {
                             <div className="inline-block border-2 border-black px-8 py-2 bg-gray-50 rounded-xl">
                                 <h2 className="text-xl font-black uppercase tracking-[0.2em] text-black">{reportInfo?.name}</h2>
                             </div>
+                            {reportInfo?.id === 'daily_payments' && (
+                                <p className="text-sm font-black mt-2">JOURNÉE DU {new Date(section.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase()}</p>
+                            )}
                             <p className="text-[10px] font-black uppercase tracking-widest mt-3 text-gray-500">
                                 Année Scolaire : {searchParams.get('yearLabel') || 'N/A'} • Salle : {section.nomSalle}
                             </p>
@@ -127,27 +132,213 @@ const ReportPrintPage: React.FC = () => {
 
                         {/* Dynamic Design based on Type */}
                         <div className="flex-1">
-                            {reportInfo?.type === 'A' && section.eleves && (
+                            {reportInfo?.id === 'insolvent_fees' && section.eleves && (
+                                <div className="space-y-6">
+                                    <div className="flex justify-end">
+                                        <div className="bg-black text-white px-6 py-2 rounded-xl text-center">
+                                            <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Taux de Recouvrement</p>
+                                            <p className="text-xl font-black">{section.stats?.tauxRecouvrement || 0}%</p>
+                                        </div>
+                                    </div>
+                                    <table className="w-full border-collapse">
+                                        <thead>
+                                            <tr className="bg-gray-100 text-black">
+                                                <th className="border border-black px-2 py-2 text-[9px] font-black uppercase w-8 text-center">N°</th>
+                                                <th className="border border-black px-4 py-2 text-[9px] font-black uppercase text-left">Élève</th>
+                                                <th className="border border-black px-3 py-2 text-[9px] font-black uppercase text-right w-24">Dû</th>
+                                                <th className="border border-black px-3 py-2 text-[9px] font-black uppercase text-right w-24">Versé</th>
+                                                <th className="border border-black px-3 py-2 text-[9px] font-black uppercase text-right w-28 bg-red-50 text-red-600">Reste à Payer</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {section.eleves.map((item: any, idx: number) => (
+                                                <tr key={idx}>
+                                                    <td className="border border-black px-2 py-2 text-[10px] text-center">{idx + 1}</td>
+                                                    <td className="border border-black px-4 py-2 text-[11px] font-black uppercase">{item.nom} {item.prenom}</td>
+                                                    <td className="border border-black px-3 py-2 text-[10px] text-right font-bold">{item.attendu?.toLocaleString()}</td>
+                                                    <td className="border border-black px-3 py-2 text-[10px] text-right font-bold text-green-600">{item.paye?.toLocaleString()}</td>
+                                                    <td className="border border-black px-3 py-2 text-[11px] text-right font-black text-red-600 bg-red-50/30">{item.reste?.toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                            {reportInfo?.id === 'insolvent_perischool' && section.eleves && (
+                                <div className="space-y-6">
+                                    <table className="w-full border-collapse">
+                                        <thead>
+                                            <tr className="bg-gray-100 text-black">
+                                                <th className="border border-black px-2 py-2 text-[9px] font-black uppercase w-8 text-center">N°</th>
+                                                <th className="border border-black px-4 py-2 text-[9px] font-black uppercase text-left">Nom de l'élève</th>
+                                                <th className="border border-black px-3 py-2 text-[9px] font-black uppercase text-left">Activité</th>
+                                                <th className="border border-black px-2 py-2 text-[9px] font-black uppercase text-right w-20">Tarif</th>
+                                                <th className="border border-black px-2 py-2 text-[9px] font-black uppercase text-right w-20">Cumul Payé</th>
+                                                <th className="border border-black px-2 py-2 text-[9px] font-black uppercase text-right w-24 bg-red-50 text-red-600">Dette</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {section.eleves.map((item: any, idx: number) => (
+                                                <tr key={idx}>
+                                                    <td className="border border-black px-2 py-2 text-[10px] text-center font-bold">{idx + 1}</td>
+                                                    <td className="border border-black px-4 py-2 text-[11px] font-black uppercase text-black">{item.nom}</td>
+                                                    <td className="border border-black px-3 py-2 text-[10px] uppercase font-bold text-gray-500">{item.activite}</td>
+                                                    <td className="border border-black px-2 py-2 text-[10px] text-right font-bold">{item.tarif.toLocaleString()}</td>
+                                                    <td className="border border-black px-2 py-2 text-[10px] text-right font-bold text-green-600">{item.paye.toLocaleString()}</td>
+                                                    <td className="border border-black px-2 py-2 text-[11px] text-right font-black text-red-600 bg-red-50/30">{item.dette.toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                            {reportInfo?.id === 'global_financial' && section.eleves && (
+                                <div className="report-landscape">
+                                    <table className="w-full border-collapse">
+                                        <thead>
+                                            <tr className="bg-black text-white">
+                                                <th rowSpan={2} className="border border-black px-4 py-2 text-[9px] font-black uppercase text-left">Élève</th>
+                                                <th colSpan={2} className="border border-black px-2 py-2 text-[8px] font-black uppercase text-center">Scolarité</th>
+                                                <th colSpan={1} className="border border-black px-2 py-2 text-[8px] font-black uppercase text-center">Activités</th>
+                                                <th colSpan={2} className="border border-black px-2 py-2 text-[8px] font-black uppercase text-center">Transport</th>
+                                                <th rowSpan={2} className="border border-black px-4 py-2 text-[9px] font-black uppercase text-right bg-red-600">Solde Total</th>
+                                            </tr>
+                                            <tr className="bg-gray-100 text-[7px] font-black uppercase">
+                                                <th className="border border-black p-1 text-center">Dû</th>
+                                                <th className="border border-black p-1 text-center">Payé</th>
+                                                <th className="border border-black p-1 text-center">Payé</th>
+                                                <th className="border border-black p-1 text-center">Dû</th>
+                                                <th className="border border-black p-1 text-center">Payé</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {section.eleves.map((item: any, idx: number) => (
+                                                <tr key={idx} className="text-[9px]">
+                                                    <td className="border border-black px-4 py-2 font-black uppercase flex items-center gap-2">
+                                                        <div className={clsx("w-2 h-2 rounded-full", item.solde <= 0 ? "bg-green-500" : "bg-red-500")}></div>
+                                                        {item.nom}
+                                                    </td>
+                                                    <td className="border border-black px-2 py-2 text-center text-gray-400">{item.exigible.du.toLocaleString()}</td>
+                                                    <td className="border border-black px-2 py-2 text-center font-bold">{item.exigible.paye.toLocaleString()}</td>
+                                                    <td className="border border-black px-2 py-2 text-center font-bold">{item.peri.paye.toLocaleString()}</td>
+                                                    <td className="border border-black px-2 py-2 text-center text-gray-400">{item.transport.du.toLocaleString()}</td>
+                                                    <td className="border border-black px-2 py-2 text-center font-bold">{item.transport.paye.toLocaleString()}</td>
+                                                    <td className={clsx("border border-black px-4 py-2 text-right font-black", item.solde > 0 ? "text-red-600 bg-red-50" : "text-green-600")}>
+                                                        {item.solde.toLocaleString()} CFA
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                            {reportInfo?.id === 'daily_payments' && section.eleves && (
+                                <div className="space-y-8">
+                                    <table className="w-full border-collapse">
+                                        <thead>
+                                            <tr className="bg-gray-100 text-black">
+                                                <th className="border border-black px-2 py-2 text-[8px] font-black uppercase text-center w-16">Heure</th>
+                                                <th className="border border-black px-4 py-2 text-[9px] font-black uppercase text-left">Élève</th>
+                                                <th className="border border-black px-2 py-2 text-[8px] font-black uppercase text-center w-20">Mode</th>
+                                                <th className="border border-black px-2 py-2 text-[8px] font-black uppercase text-left">Réf.</th>
+                                                <th className="border border-black px-2 py-2 text-[8px] font-black uppercase text-right w-20">Scolarité</th>
+                                                <th className="border border-black px-2 py-2 text-[8px] font-black uppercase text-right w-20">Autres</th>
+                                                <th className="border border-black px-4 py-2 text-[9px] font-black uppercase text-right w-28 bg-black text-white">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {section.eleves.map((item: any, idx: number) => (
+                                                <tr key={idx} className="text-[9.5px]">
+                                                    <td className="border border-black px-2 py-2 text-center font-bold text-gray-400">{item.heure}</td>
+                                                    <td className="border border-black px-4 py-2 font-black uppercase">{item.nom}</td>
+                                                    <td className="border border-black px-2 py-2 text-center font-bold">{item.mode}</td>
+                                                    <td className="border border-black px-2 py-2 italic text-gray-500">{item.ref}</td>
+                                                    <td className="border border-black px-2 py-2 text-right">{item.scolarite.toLocaleString()}</td>
+                                                    <td className="border border-black px-2 py-2 text-right">{(item.peri + item.transport).toLocaleString()}</td>
+                                                    <td className="border border-black px-4 py-2 text-right font-black bg-gray-50">{item.total.toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot className="bg-black text-white font-black text-[10px]">
+                                            <tr>
+                                                <td colSpan={6} className="border border-black px-4 py-3 text-right uppercase tracking-widest">Total Journalier Recouvré</td>
+                                                <td className="border border-black px-4 py-3 text-right">{section.eleves.reduce((s: number, e: any) => s + e.total, 0).toLocaleString()} CFA</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            )}
+
+                            {reportInfo?.id.startsWith('fees_bilan') && (
+                                <div className="space-y-12">
+                                    <div className="grid grid-cols-2 gap-10">
+                                        <div className="bg-gray-50 p-8 rounded-[40px] border-2 border-black flex flex-col items-center justify-center">
+                                            <p className="text-[10px] font-black uppercase tracking-widest mb-2">Taux de Réalisation</p>
+                                            <p className="text-5xl font-black">{section.taux}%</p>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between border-b border-gray-100 pb-2">
+                                                <span className="text-[10px] font-bold uppercase text-gray-500">Prévisions</span>
+                                                <span className="font-black">{section.attendu.toLocaleString()} CFA</span>
+                                            </div>
+                                            <div className="flex justify-between border-b border-gray-100 pb-2">
+                                                <span className="text-[10px] font-bold uppercase text-gray-500">Réalisations</span>
+                                                <span className="font-black text-green-600">{section.paye.toLocaleString()} CFA</span>
+                                            </div>
+                                            <div className="flex justify-between border-b border-gray-100 pb-2">
+                                                <span className="text-[10px] font-bold uppercase text-gray-500">Écart</span>
+                                                <span className="font-black text-red-600">{section.ecart.toLocaleString()} CFA</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <table className="w-full border-collapse">
+                                        <thead>
+                                            <tr className="bg-black text-white">
+                                                <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-left">Rubrique détaillée</th>
+                                                <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-right">Attendu</th>
+                                                <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-right">Recouvré</th>
+                                                <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-right">RP (%)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {section.details.map((d: any, idx: number) => (
+                                                <tr key={idx}>
+                                                    <td className="border border-black px-4 py-2 text-[11px] font-bold uppercase">{d.label}</td>
+                                                    <td className="border border-black px-4 py-2 text-[11px] text-right">{d.attendu?.toLocaleString() || '-'}</td>
+                                                    <td className="border border-black px-4 py-2 text-[11px] text-right font-black">{d.paye.toLocaleString()}</td>
+                                                    <td className="border border-black px-4 py-2 text-[11px] text-right font-black">
+                                                        {d.attendu ? Math.round((d.paye / d.attendu) * 100) : '-'}%
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                            {reportInfo?.id === 'scholarship' && section.eleves && (
                                 <table className="w-full border-collapse">
                                     <thead>
                                         <tr className="bg-black text-white">
-                                            <th className="border border-black px-2 py-2 text-[9px] font-black uppercase w-8 text-center">N°</th>
-                                            <th className="border border-black px-3 py-2 text-[9px] font-black uppercase text-left w-24">Matricule</th>
-                                            <th className="border border-black px-4 py-2 text-[9px] font-black uppercase text-left">Nom & Prénom de l'élève</th>
-                                            <th className="border border-black px-2 py-2 text-[9px] font-black uppercase w-10 text-center">Sexe</th>
-                                            <th className="border border-black px-3 py-2 text-[9px] font-black uppercase w-24 text-center">Né(e) le</th>
-                                            <th className="border border-black px-3 py-2 text-[9px] font-black uppercase w-20 text-center">Statut</th>
+                                            <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-left">Matricule</th>
+                                            <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-left">Nom complet</th>
+                                            <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-right">Tarif Normal</th>
+                                            <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-right">Tarif Appliqué</th>
+                                            <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-left">Motif</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {section.eleves.map((item: any, idx: number) => (
-                                            <tr key={item.id} className={clsx(idx % 2 === 1 && "bg-gray-50")}>
-                                                <td className="border border-black px-2 py-2 text-[10px] text-center font-bold">{idx + 1}</td>
-                                                <td className="border border-black px-3 py-2 text-[10px] font-bold text-gray-500 uppercase">{item.matricule}</td>
-                                                <td className="border border-black px-4 py-2 text-[11px] font-black uppercase text-black">{item.nom} {item.prenom}</td>
-                                                <td className="border border-black px-2 py-2 text-[10px] text-center font-black">{item.sexe}</td>
-                                                <td className="border border-black px-3 py-2 text-[10px] text-center">{new Date(item.date).toLocaleDateString()}</td>
-                                                <td className="border border-black px-3 py-2 text-[9px] text-center font-black uppercase">{item.statut}</td>
+                                            <tr key={idx}>
+                                                <td className="border border-black px-4 py-2 text-[11px] font-bold">{item.matricule}</td>
+                                                <td className="border border-black px-4 py-2 text-[11px] font-black uppercase">{item.nom}</td>
+                                                <td className="border border-black px-4 py-2 text-[11px] text-right">{item.tarifNormal.toLocaleString()} CFA</td>
+                                                <td className="border border-black px-4 py-2 text-[11px] text-right font-black">{item.tarifApplique.toLocaleString()} CFA</td>
+                                                <td className="border border-black px-4 py-2 text-[10px] italic">{item.motif}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -258,10 +449,13 @@ const ReportPrintPage: React.FC = () => {
                         </div>
 
                         {/* Footer / Validation */}
-                        <div className="mt-auto pt-10">
+                        <div className="mt-auto pt-10 border-t border-gray-100">
                             <div className="flex justify-between items-end">
-                                <div className="text-[8px] text-gray-400 italic">
-                                    Extrait le {new Date().toLocaleString()} - Logiciel Scholar v3.1
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black uppercase text-black">Imprimé par : {user?.nom || user?.identifiant || "Administrateur"}</p>
+                                    <p className="text-[8px] text-gray-400 italic">
+                                        Extrait le {new Date().toLocaleString()} - Logiciel Scholar v3.1
+                                    </p>
                                 </div>
                                 <div className="flex space-x-12">
                                     <div className="w-48 text-center">

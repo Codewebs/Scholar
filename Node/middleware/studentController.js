@@ -161,6 +161,101 @@ exports.searchStudents = async (req, res) => {
     }
 };
 
+// 9. DOCUMENTS OFFICIELS (CERTIFICATS, REÇUS GLOBAUX)
+exports.getOfficialDocumentData = async (req, res) => {
+    const { idEleve, idAnneeScolaire } = req.params;
+    const { docType } = req.query;
+    const user = req.user;
+
+    try {
+        const { Inscription, Salle, Classe, AnneeScolaire, Etablissement, PaiementFraisGlobal, PaiementFraisExigible, PaiementFraisPeriscolaire, PaiementTransport, TarifFraisExigible, FraisExigible, TarifFraisPeriscolaire, FraisActivitePeriscolaire, TarifTransport } = require("../models");
+
+        const student = await Eleve.findByPk(idEleve);
+        if (!student) return res.status(404).json({ error: "Élève non trouvé." });
+
+        const inscription = await Inscription.findOne({
+            where: { idEleve, idAnneeScolaire, supprimer: false },
+            include: [{ model: Salle, include: [{ model: Classe, as: 'Classe' }] }, { model: AnneeScolaire }]
+        });
+
+        const school = await Etablissement.findOne();
+        const printerName = user.nom || user.identifiant || "Utilisateur Système";
+
+        let documentData = {
+            student: {
+                ...student.toJSON(),
+                nomComplet: `${student.nom} ${student.prenom || ""}`.trim(),
+                classeLabel: inscription?.Salle?.Classe?.libelleClasseFr || "N/A",
+                salleLabel: inscription?.Salle?.nomSalle || "N/A"
+            },
+            inscription: inscription ? inscription.toJSON() : null,
+            school: school ? school.toJSON() : null,
+            printerName,
+            printDate: new Date(),
+            docType
+        };
+
+        if (docType === 'GLOBAL_RECEIPT_HISTORY' || docType === 'YEAR_RECEIPT') {
+            const yearFilter = docType === 'YEAR_RECEIPT' ? { idAnneeScolaire } : {};
+
+            const allPayments = await PaiementFraisGlobal.findAll({
+                where: { idEleve, annule: false, ...yearFilter },
+                include: [
+                    { model: AnneeScolaire },
+                    { model: PaiementFraisExigible, as: 'detailsExigibles', where: { annule: false }, required: false, include: [{ model: TarifFraisExigible, as: 'Tarif', include: [{ model: FraisExigible, as: 'Frais' }] }] },
+                    { model: PaiementFraisPeriscolaire, as: 'detailsPeriscolaires', where: { annule: false }, required: false, include: [{ model: TarifFraisPeriscolaire, as: 'Tarif', include: [{ model: FraisActivitePeriscolaire, as: 'Frais' }] }] },
+                    { model: PaiementTransport, as: 'detailsTransport', where: { annule: false }, required: false }
+                ],
+                order: [['createdAt', 'DESC']]
+            });
+
+            // Grouping by year and aggregating by fee type
+            const historyByYear = {};
+            allPayments.forEach(p => {
+                const yLabel = p.AnneeScolaire?.libelleAnneeScolaire || "Inconnue";
+                if (!historyByYear[yLabel]) historyByYear[yLabel] = {
+                    exigiblesMap: {},
+                    periscolairesMap: {},
+                    transport: 0,
+                    total: 0
+                };
+
+                p.detailsExigibles?.forEach(d => {
+                    const label = d.Tarif?.Frais?.fraisFr || "Scolarité";
+                    historyByYear[yLabel].exigiblesMap[label] = (historyByYear[yLabel].exigiblesMap[label] || 0) + d.montantAlloue;
+                });
+
+                p.detailsPeriscolaires?.forEach(d => {
+                    const label = d.Tarif?.Frais?.libelleFr || "Activité";
+                    historyByYear[yLabel].periscolairesMap[label] = (historyByYear[yLabel].periscolairesMap[label] || 0) + d.montantAlloue;
+                });
+
+                p.detailsTransport?.forEach(d => {
+                    historyByYear[yLabel].transport += d.montantVerse;
+                });
+
+                historyByYear[yLabel].total += p.montantTotal;
+            });
+
+            documentData.paymentHistory = Object.keys(historyByYear).map(y => {
+                const yearData = historyByYear[y];
+                return {
+                    year: y,
+                    exigibles: Object.keys(yearData.exigiblesMap).map(label => ({ label, amount: yearData.exigiblesMap[label] })),
+                    periscolaires: Object.keys(yearData.periscolairesMap).map(label => ({ label, amount: yearData.periscolairesMap[label] })),
+                    transport: yearData.transport,
+                    total: yearData.total
+                };
+            });
+        }
+
+        res.json(documentData);
+    } catch (error) {
+        console.error("❌ Erreur getOfficialDocumentData:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
 // 4. RECUPERER TOUS LES ELEVES DE L'ETABLISSEMENT POUR UNE ANNEE (AVEC SCOPING)
 exports.getStudentsBySchoolYear = async (req, res) => {
     const { idAnneeScolaire } = req.params;
@@ -177,15 +272,15 @@ exports.getStudentsBySchoolYear = async (req, res) => {
             console.log("🛡️ Rôle ADMINISTRATEUR: Accès global autorisé.");
         } else if (role === 'ENSEIGNANT' || role === 'CHEF_DE_DEPARTEMENT') {
             console.log(`👨‍🏫 Rôle ${role}: Scoping par salles assignées...`);
-            const { AffectationPersonnelSalle, InscriptionPersonnel } = require("../models");
+            const { RepartitionEnseignant, InscriptionPersonnel } = require("../models");
             const insPersonnel = await InscriptionPersonnel.findOne({
                 where: { idUtilisateur: userId, idAnneeScolaire, supprimer: false }
             });
             if (insPersonnel) {
-                const affectations = await AffectationPersonnelSalle.findAll({
-                    where: { idInscriptionPersonnel: insPersonnel.idInscriptionPersonnel }
+                const affectations = await RepartitionEnseignant.findAll({
+                    where: { idInscriptionPersonnel: insPersonnel.idInscriptionPersonnel, supprimer: false }
                 });
-                const idSalles = affectations.map(a => a.idSalle);
+                const idSalles = [...new Set(affectations.map(a => a.idSalle))];
                 whereInscription.idSalle = idSalles;
                 console.log(`   -> ${idSalles.length} salles trouvées pour cet enseignant.`);
             } else {
@@ -517,6 +612,101 @@ exports.globalSearchStudents = async (req, res) => {
 
         res.json(result);
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 9. DOCUMENTS OFFICIELS (CERTIFICATS, REÇUS GLOBAUX)
+exports.getOfficialDocumentData = async (req, res) => {
+    const { idEleve, idAnneeScolaire } = req.params;
+    const { docType } = req.query;
+    const user = req.user;
+
+    try {
+        const { Inscription, Salle, Classe, AnneeScolaire, Etablissement, PaiementFraisGlobal, PaiementFraisExigible, PaiementFraisPeriscolaire, PaiementTransport, TarifFraisExigible, FraisExigible, TarifFraisPeriscolaire, FraisActivitePeriscolaire, TarifTransport } = require("../models");
+
+        const student = await Eleve.findByPk(idEleve);
+        if (!student) return res.status(404).json({ error: "Élève non trouvé." });
+
+        const inscription = await Inscription.findOne({
+            where: { idEleve, idAnneeScolaire, supprimer: false },
+            include: [{ model: Salle, include: [{ model: Classe, as: 'Classe' }] }, { model: AnneeScolaire }]
+        });
+
+        const school = await Etablissement.findOne();
+        const printerName = user.nom || user.identifiant || "Utilisateur Système";
+
+        let documentData = {
+            student: {
+                ...student.toJSON(),
+                nomComplet: `${student.nom} ${student.prenom || ""}`.trim(),
+                classeLabel: inscription?.Salle?.Classe?.libelleClasseFr || "N/A",
+                salleLabel: inscription?.Salle?.nomSalle || "N/A"
+            },
+            inscription: inscription ? inscription.toJSON() : null,
+            school: school ? school.toJSON() : null,
+            printerName,
+            printDate: new Date(),
+            docType
+        };
+
+        if (docType === 'GLOBAL_RECEIPT_HISTORY' || docType === 'YEAR_RECEIPT') {
+            const yearFilter = docType === 'YEAR_RECEIPT' ? { idAnneeScolaire } : {};
+
+            const allPayments = await PaiementFraisGlobal.findAll({
+                where: { idEleve, annule: false, ...yearFilter },
+                include: [
+                    { model: AnneeScolaire },
+                    { model: PaiementFraisExigible, as: 'detailsExigibles', where: { annule: false }, required: false, include: [{ model: TarifFraisExigible, as: 'Tarif', include: [{ model: FraisExigible, as: 'Frais' }] }] },
+                    { model: PaiementFraisPeriscolaire, as: 'detailsPeriscolaires', where: { annule: false }, required: false, include: [{ model: TarifFraisPeriscolaire, as: 'Tarif', include: [{ model: FraisActivitePeriscolaire, as: 'Frais' }] }] },
+                    { model: PaiementTransport, as: 'detailsTransport', where: { annule: false }, required: false }
+                ],
+                order: [['createdAt', 'DESC']]
+            });
+
+            // Grouping by year and aggregating by fee type
+            const historyByYear = {};
+            allPayments.forEach(p => {
+                const yLabel = p.AnneeScolaire?.libelleAnneeScolaire || "Inconnue";
+                if (!historyByYear[yLabel]) historyByYear[yLabel] = {
+                    exigiblesMap: {},
+                    periscolairesMap: {},
+                    transport: 0,
+                    total: 0
+                };
+
+                p.detailsExigibles?.forEach(d => {
+                    const label = d.Tarif?.Frais?.fraisFr || "Scolarité";
+                    historyByYear[yLabel].exigiblesMap[label] = (historyByYear[yLabel].exigiblesMap[label] || 0) + d.montantAlloue;
+                });
+
+                p.detailsPeriscolaires?.forEach(d => {
+                    const label = d.Tarif?.Frais?.libelleFr || "Activité";
+                    historyByYear[yLabel].periscolairesMap[label] = (historyByYear[yLabel].periscolairesMap[label] || 0) + d.montantAlloue;
+                });
+
+                p.detailsTransport?.forEach(d => {
+                    historyByYear[yLabel].transport += d.montantVerse;
+                });
+
+                historyByYear[yLabel].total += p.montantTotal;
+            });
+
+            documentData.paymentHistory = Object.keys(historyByYear).map(y => {
+                const yearData = historyByYear[y];
+                return {
+                    year: y,
+                    exigibles: Object.keys(yearData.exigiblesMap).map(label => ({ label, amount: yearData.exigiblesMap[label] })),
+                    periscolaires: Object.keys(yearData.periscolairesMap).map(label => ({ label, amount: yearData.periscolairesMap[label] })),
+                    transport: yearData.transport,
+                    total: yearData.total
+                };
+            });
+        }
+
+        res.json(documentData);
+    } catch (error) {
+        console.error("❌ Erreur getOfficialDocumentData:", error);
         res.status(500).json({ error: error.message });
     }
 };

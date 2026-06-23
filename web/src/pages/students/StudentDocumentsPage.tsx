@@ -13,7 +13,11 @@ import {
   Info,
   ArrowLeft,
   Mail,
-  MoreVertical
+  MoreVertical,
+  X,
+  Building2,
+  Calendar,
+  LayoutGrid
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import AuthInput from '../../components/ui/AuthInput';
@@ -27,19 +31,53 @@ const StudentDocumentsPage: React.FC = () => {
     const [students, setStudents] = useState<any[]>([]);
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+    const [activeMenu, setActiveMenu] = useState<number | null>(null);
+
+    // Filters
+    const [selectedClassId, setSelectedClassId] = useState<string>('ALL');
+    const [classes, setClasses] = useState<any[]>([]);
 
     useEffect(() => {
-        if (searchTerm.length >= 3 && yearId) {
-            const timer = setTimeout(searchStudents, 500);
+        if (yearId) {
+            loadInitialData();
+        }
+    }, [yearId]);
+
+    useEffect(() => {
+        if (yearId) {
+            const timer = setTimeout(fetchStudents, 500);
             return () => clearTimeout(timer);
         }
-    }, [searchTerm]);
+    }, [searchTerm, selectedClassId, yearId]);
 
-    const searchStudents = async () => {
+    const loadInitialData = async () => {
+        try {
+            const roomsRes = await studentService.getRooms(yearId!);
+            // Extract unique classes from rooms
+            const uniqueClasses = Array.from(new Map(roomsRes.data.map((r: any) => [r.idClasse, r.classeLabel || r.Classe?.libelleClasseFr])).entries())
+                .map(([id, label]) => ({ id, label }));
+            setClasses(uniqueClasses);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const fetchStudents = async () => {
         setLoading(true);
         try {
-            const res = await studentService.globalSearch(searchTerm, yearId!);
-            setStudents(res.data);
+            let res;
+            if (searchTerm.length >= 3) {
+                res = await studentService.globalSearch(searchTerm, yearId!);
+            } else {
+                res = await studentService.getAllStudents(yearId!);
+            }
+
+            let filtered = res.data;
+            if (selectedClassId !== 'ALL') {
+                filtered = filtered.filter((s: any) => s.idClasse === parseInt(selectedClassId));
+            }
+
+            setStudents(filtered);
         } catch (err) {
             console.error(err);
         } finally {
@@ -47,161 +85,166 @@ const StudentDocumentsPage: React.FC = () => {
         }
     };
 
-    const DocCard = ({ title, desc, icon: Icon, onClick }: any) => (
+    const handlePrintDoc = (docType: string, student: any) => {
+        const studentId = student.idEleve;
+        const url = `/app/students/documents/print?docType=${docType}&idEleve=${studentId}&idAnneeScolaire=${yearId}`;
+        window.open(url, '_blank');
+        setActiveMenu(null);
+    };
+
+    const DocOption = ({ label, icon: Icon, onClick, color = "text-black" }: any) => (
         <button
             onClick={onClick}
-            className="p-8 bg-white border border-gray-100 rounded-[40px] shadow-sm hover:shadow-2xl hover:border-black transition-all group flex flex-col text-left"
+            className="w-full text-left px-6 py-4 hover:bg-gray-50 transition-all flex items-center justify-between group"
         >
-            <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center text-secondary mb-6 group-hover:bg-black group-hover:text-white transition-colors">
-                <Icon size={28} />
+            <div className="flex items-center space-x-4">
+                <div className={clsx("w-8 h-8 rounded-xl bg-gray-50 flex items-center justify-center group-hover:bg-white group-hover:shadow-md transition-all", color)}>
+                    <Icon size={16} />
+                </div>
+                <span className="text-xs font-black uppercase tracking-tight text-gray-600 group-hover:text-black">{label}</span>
             </div>
-            <h4 className="font-black uppercase text-sm tracking-tight text-black mb-2">{title}</h4>
-            <p className="text-[10px] font-bold text-secondary leading-relaxed uppercase tracking-tight">{desc}</p>
-            <div className="mt-8 flex items-center text-accent text-[9px] font-black uppercase tracking-widest gap-2 group-hover:translate-x-2 transition-transform">
-                Générer maintenant <ChevronRight size={14} />
-            </div>
+            <ChevronRight size={14} className="text-gray-300 group-hover:text-black transition-all" />
         </button>
     );
 
     return (
-        <div className="max-w-[1500px] mx-auto space-y-10 animate-in fade-in duration-500 pb-20 p-4">
-            {/* Header */}
-            <div className="bg-white p-10 rounded-[48px] shadow-xl border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-8 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+        <div className="max-w-[1600px] mx-auto space-y-10 animate-in fade-in duration-500 pb-20 p-4">
+            {/* Header with Search and Filters */}
+            <div className="bg-white p-10 rounded-[48px] shadow-xl border border-gray-100 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
 
-                <div className="flex items-center gap-6 relative z-10">
-                    <button onClick={() => window.history.back()} className="p-4 bg-gray-50 rounded-full hover:bg-gray-100 transition-all">
-                        <ArrowLeft size={28} />
-                    </button>
-                    <div>
-                        <h1 className="text-4xl font-black uppercase tracking-tighter text-black">Documents Officiels</h1>
-                        <p className="text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest mt-1">Certificats, cartes et fiches administratives</p>
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-10 relative z-10">
+                    <div className="flex items-center gap-6">
+                        <button onClick={() => window.history.back()} className="p-4 bg-gray-50 rounded-full hover:bg-gray-100 transition-all">
+                            <ArrowLeft size={28} />
+                        </button>
+                        <div>
+                            <h1 className="text-4xl font-black uppercase tracking-tighter text-black">Documents Officiels</h1>
+                            <p className="text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest mt-1">Édition des certificats et reçus académiques</p>
+                        </div>
                     </div>
-                </div>
 
-                <div className="relative w-full md:w-[400px]">
-                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                    <input
-                        type="text"
-                        placeholder="Rechercher un élève (Nom ou Matricule)..."
-                        className="w-full h-16 pl-16 pr-8 bg-gray-50 border border-transparent rounded-[24px] font-black text-xs uppercase focus:bg-white focus:border-black transition-all outline-none shadow-inner"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
+                    <div className="flex flex-col md:flex-row items-center gap-4 flex-1 max-w-4xl">
+                        <div className="relative flex-1 w-full">
+                            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                            <input
+                                type="text"
+                                placeholder="Nom ou Matricule de l'élève..."
+                                className="w-full h-16 pl-16 pr-8 bg-gray-50 border border-transparent rounded-[24px] font-black text-xs uppercase focus:bg-white focus:border-black transition-all outline-none shadow-inner"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="w-full md:w-64">
+                            <select
+                                className="w-full h-16 px-8 bg-gray-50 border border-transparent rounded-[24px] font-black text-xs uppercase focus:bg-white focus:border-black transition-all outline-none shadow-inner appearance-none"
+                                value={selectedClassId}
+                                onChange={e => setSelectedClassId(e.target.value)}
+                            >
+                                <option value="ALL">Toutes les classes</option>
+                                {classes.map(c => (
+                                    <option key={c.id} value={c.id}>{c.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr_450px] gap-8 items-start">
-                {/* Left side: Results or Selection */}
-                <div className="space-y-8">
-                    {!selectedStudent ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {students.map(s => (
-                                <div
-                                    key={s.idEleve}
-                                    onClick={() => setSelectedStudent(s)}
-                                    className="p-6 bg-white border border-gray-100 rounded-[32px] hover:border-accent cursor-pointer transition-all flex items-center justify-between group shadow-sm hover:shadow-xl"
-                                >
-                                    <div className="flex items-center gap-5">
-                                        <div className="w-16 h-16 bg-gray-50 rounded-[20px] flex items-center justify-center text-gray-300 font-black text-2xl group-hover:bg-accent/10 group-hover:text-accent transition-colors">
-                                            {s.nom[0]}
-                                        </div>
-                                        <div>
-                                            <h3 className="font-black uppercase text-sm text-black">{s.nom} {s.prenom}</h3>
-                                            <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mt-1">
-                                                {s.classeLabel || 'Non inscrit'} • {s.matricule || 'N/A'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <ChevronRight className="text-gray-200 group-hover:text-accent transition-colors" />
+            <div className="grid grid-cols-1 gap-4">
+                {students.map(student => (
+                    <div
+                        key={student.idEleve}
+                        className={clsx(
+                            "bg-white border rounded-[32px] p-6 transition-all flex items-center justify-between group relative",
+                            activeMenu === student.idEleve ? "border-black shadow-2xl z-20 scale-[1.01]" : "border-gray-100 hover:border-gray-300 hover:shadow-lg"
+                        )}
+                    >
+                        <div className="flex items-center gap-8">
+                            <div className="w-16 h-16 bg-gray-50 rounded-[22px] flex items-center justify-center text-gray-300 font-black text-2xl group-hover:bg-accent/10 group-hover:text-accent transition-colors">
+                                {student.nom[0]}
+                            </div>
+                            <div>
+                                <h3 className="font-black uppercase text-base text-black tracking-tight">{student.nomComplet}</h3>
+                                <div className="flex items-center gap-4 mt-1">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                                        <Building2 size={12} /> {student.classeLabel} • {student.salleLabel}
+                                    </p>
+                                    <p className="text-[10px] font-black text-accent uppercase tracking-widest">{student.matricule}</p>
                                 </div>
-                            ))}
-                            {searchTerm.length >= 3 && students.length === 0 && !loading && (
-                                <div className="col-span-full p-20 text-center opacity-30 border-4 border-dashed border-gray-100 rounded-[48px]">
-                                    <Info size={48} className="mx-auto mb-4" />
-                                    <p className="font-black uppercase">Aucun élève trouvé</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <div className="hidden md:flex items-center gap-2 mr-6">
+                                <span className={clsx(
+                                    "px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest",
+                                    student.isSolded ? "bg-green-100 text-green-700" : "bg-red-50 text-red-600"
+                                )}>
+                                    {student.isSolded ? 'Soldé' : 'Insolvable'}
+                                </span>
+                            </div>
+
+                            <button
+                                onClick={() => setActiveMenu(activeMenu === student.idEleve ? null : student.idEleve)}
+                                className={clsx(
+                                    "p-4 rounded-2xl transition-all",
+                                    activeMenu === student.idEleve ? "bg-black text-white" : "bg-gray-50 text-gray-400 hover:text-black hover:bg-gray-100"
+                                )}
+                            >
+                                <MoreVertical size={20} />
+                            </button>
+
+                            {/* Contextual Menu */}
+                            {activeMenu === student.idEleve && (
+                                <div className="absolute right-6 top-24 w-80 bg-white border border-gray-100 rounded-[32px] shadow-2xl z-30 py-4 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="px-6 py-2 border-b border-gray-50 mb-2">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Documents Disponibles</p>
+                                    </div>
+                                    <DocOption
+                                        label="Certificat de Scolarité"
+                                        icon={UserCheck}
+                                        onClick={() => handlePrintDoc('CERTIFICAT_SCOLARITE', student)}
+                                        color="text-blue-600"
+                                    />
+                                    <DocOption
+                                        label="Certificat de Promotion"
+                                        icon={GraduationCap}
+                                        onClick={() => handlePrintDoc('CERTIFICAT_PROMOTION', student)}
+                                        color="text-green-600"
+                                    />
+                                    <div className="h-px bg-gray-50 my-2 mx-6"></div>
+                                    <DocOption
+                                        label="Reçu Global de l'Année"
+                                        icon={FileText}
+                                        onClick={() => handlePrintDoc('YEAR_RECEIPT', student)}
+                                        color="text-accent"
+                                    />
+                                    <DocOption
+                                        label="Historique Global (A4)"
+                                        icon={History}
+                                        onClick={() => handlePrintDoc('GLOBAL_RECEIPT_HISTORY', student)}
+                                        color="text-violet-600"
+                                    />
                                 </div>
                             )}
                         </div>
-                    ) : (
-                        <div className="animate-in slide-in-from-left-8 duration-500 space-y-8">
-                            {/* Selected Student Banner */}
-                            <div className="bg-black p-10 rounded-[56px] text-white flex items-center justify-between">
-                                <div className="flex items-center gap-8">
-                                    <div className="w-24 h-24 bg-white/10 rounded-[32px] flex items-center justify-center text-4xl font-black">
-                                        {selectedStudent.nom[0]}
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500">Élève sélectionné</p>
-                                        <h2 className="text-4xl font-black uppercase tracking-tight mt-2">{selectedStudent.nom} {selectedStudent.prenom}</h2>
-                                        <p className="text-xs font-bold text-accent uppercase tracking-widest mt-2">{selectedStudent.classeLabel}</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setSelectedStudent(null)}
-                                    className="px-6 py-3 bg-white/10 rounded-full text-[9px] font-black uppercase hover:bg-white/20 transition-all"
-                                >Changer d'élève</button>
-                            </div>
-
-                            {/* Document Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <DocCard
-                                    title="Certificat de Scolarité"
-                                    desc="Document officiel attestant de l'inscription régulière de l'élève pour l'année en cours."
-                                    icon={UserCheck}
-                                />
-                                <DocCard
-                                    title="Carte d'Identité Scolaire"
-                                    desc="Badge format PVC avec photo, matricule et classe pour le contrôle d'accès."
-                                    icon={BadgeCheck}
-                                />
-                                <DocCard
-                                    title="Fiche de Suivi Individuel"
-                                    desc="Historique complet des notes, absences et sanctions depuis le début de l'année."
-                                    icon={History}
-                                />
-                                <DocCard
-                                    title="Attestation de Fin d'Études"
-                                    desc="Document provisoire en attendant le diplôme officiel ou pour transfert."
-                                    icon={GraduationCap}
-                                />
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Right side: Sidebar Info */}
-                <div className="space-y-6">
-                    <div className="bg-white border border-gray-100 rounded-[40px] p-8 shadow-sm">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#9E9E9E] mb-8">Statistiques Documents</h3>
-                        <div className="space-y-6">
-                             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-3xl">
-                                 <span className="text-[10px] font-black uppercase text-secondary">Générés aujourd'hui</span>
-                                 <span className="font-black text-xl">12</span>
-                             </div>
-                             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-3xl">
-                                 <span className="text-[10px] font-black uppercase text-secondary">En attente de signature</span>
-                                 <span className="font-black text-xl">05</span>
-                             </div>
-                        </div>
                     </div>
-
-                    <div className="bg-accent/5 border border-accent/10 rounded-[40px] p-8">
-                        <div className="flex items-center gap-3 text-accent mb-4">
-                            <Info size={20} />
-                            <h3 className="text-[10px] font-black uppercase tracking-widest">Aide Rapide</h3>
-                        </div>
-                        <p className="text-[10px] font-bold text-secondary leading-relaxed uppercase">
-                            Les documents sont générés au format PDF A4. Assurez-vous que le logo et les informations de l'établissement sont à jour dans le profil de l'école.
-                        </p>
-                    </div>
-                </div>
+                ))}
             </div>
 
             {loading && (
                 <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-[100] flex flex-col items-center justify-center space-y-4">
                     <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
-                    <p className="font-black uppercase text-[10px] tracking-widest text-black">Recherche en cours...</p>
+                    <p className="font-black uppercase text-[10px] tracking-widest text-black">Mise à jour de la liste...</p>
+                </div>
+            )}
+
+            {!loading && students.length === 0 && (
+                <div className="p-32 text-center border-4 border-dashed border-gray-100 rounded-[56px] opacity-30">
+                    <Search size={48} className="mx-auto mb-4" />
+                    <p className="font-black uppercase tracking-widest">Aucun élève ne correspond à vos critères</p>
                 </div>
             )}
         </div>

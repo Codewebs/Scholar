@@ -93,10 +93,10 @@ exports.getTarifsByClasse = async (req, res) => {
 exports.getCockpitAggregates = async (req, res) => {
     try {
         const idAnneeScolaire = parseInt(req.params.idAnneeScolaire);
-        const { idSalle, period } = req.query;
+        const { idSalle, idClasse, idCycle, period } = req.query;
         let { startDate, endDate } = req.query;
 
-        console.log(`[Cockpit] Request for year ${idAnneeScolaire}, period ${period}, salle ${idSalle}`);
+        console.log(`[Cockpit] Request for year ${idAnneeScolaire}, period ${period}, salle ${idSalle}, classe ${idClasse}, cycle ${idCycle}`);
 
         // Détermination de la plage si non fournie
         if (!startDate || !endDate) {
@@ -125,17 +125,30 @@ exports.getCockpitAggregates = async (req, res) => {
                 include: [{
                     model: Inscription,
                     where: { idAnneeScolaire, supprimer: false },
-                    include: [{ model: Salle, include: [{ model: Classe, as: 'Classe' }] }]
+                    include: [{
+                        model: Salle,
+                        include: [{
+                            model: Classe,
+                            as: 'Classe',
+                            include: [{ model: Cycle, as: 'Cycle' }]
+                        }]
+                    }]
                 }]
             }],
             order: [['createdAt', 'ASC']]
         });
 
         let filteredTransactions = transactions;
-        if (idSalle) {
-            filteredTransactions = transactions.filter(t =>
-                t.Eleve?.Inscriptions?.some(ins => ins.idSalle == idSalle)
-            );
+        if (idSalle || idClasse || idCycle) {
+            filteredTransactions = transactions.filter(t => {
+                const inscriptions = t.Eleve?.Inscriptions || [];
+                return inscriptions.some(ins => {
+                    if (idSalle && ins.idSalle != idSalle) return false;
+                    if (idClasse && ins.Salle?.idClasse != idClasse) return false;
+                    if (idCycle && ins.Salle?.Classe?.idCycle != idCycle) return false;
+                    return true;
+                });
+            });
         }
 
         const totalEncaisse = filteredTransactions.reduce((sum, t) => sum + parseFloat(t.montantTotal || 0), 0);
@@ -151,12 +164,34 @@ exports.getCockpitAggregates = async (req, res) => {
 
         const studentWhere = { idAnneeScolaire, supprimer: false };
         if (idSalle) studentWhere.idSalle = parseInt(idSalle);
-        const studentCount = await Inscription.count({ where: studentWhere });
+        const studentCount = await Inscription.count({
+            where: {
+                idAnneeScolaire,
+                supprimer: false,
+                ...(idSalle ? { idSalle: parseInt(idSalle) } : {})
+            },
+            include: (idClasse || idCycle) ? [{
+                model: Salle,
+                required: true,
+                where: idClasse ? { idClasse: parseInt(idClasse) } : {},
+                include: idCycle ? [{
+                    model: Classe,
+                    as: 'Classe',
+                    required: true,
+                    where: { idCycle: parseInt(idCycle) }
+                }] : []
+            }] : []
+        });
 
         // Taux de Recouvrement (Dates Limites)
         const now = new Date();
         const tarifsUrgent = await TarifFraisExigible.findAll({
-            where: { idAnneeScolaire, supprimer: false, dateLimite: { [Op.lte]: now } }
+            where: {
+                idAnneeScolaire,
+                supprimer: false,
+                dateLimite: { [Op.lte]: now },
+                ...(idClasse ? { idClasse: parseInt(idClasse) } : {})
+            }
         });
 
         let totalAttenduUrgent = 0;
@@ -164,8 +199,22 @@ exports.getCockpitAggregates = async (req, res) => {
 
         for (const tarif of tarifsUrgent) {
             const count = await Inscription.count({
-                where: { idAnneeScolaire, supprimer: false },
-                include: [{ model: Salle, where: { idClasse: tarif.idClasse } }]
+                where: {
+                    idAnneeScolaire,
+                    supprimer: false,
+                    ...(idSalle ? { idSalle: parseInt(idSalle) } : {})
+                },
+                include: [{
+                    model: Salle,
+                    where: { idClasse: tarif.idClasse },
+                    required: true,
+                    include: idCycle ? [{
+                        model: Classe,
+                        as: 'Classe',
+                        required: true,
+                        where: { idCycle: parseInt(idCycle) }
+                    }] : []
+                }]
             });
             totalAttenduUrgent += (tarif.montantFraisExigible * count);
         }
@@ -174,32 +223,90 @@ exports.getCockpitAggregates = async (req, res) => {
             const tarifIds = tarifsUrgent.map(t => t.idTarifFraisExigible);
             totalRecouvreUrgent = await PaiementFraisExigible.sum('montantAlloue', {
                 where: { idTarifFraisExigible: { [Op.in]: tarifIds } },
-                include: [{ model: PaiementFraisGlobal, where: { annule: 0 }, required: true }]
+                include: [{
+                    model: PaiementFraisGlobal,
+                    as: 'PaiementFraisGlobal',
+                    where: { annule: 0 },
+                    required: true,
+                    include: (idSalle || idClasse || idCycle) ? [{
+                        model: Eleve,
+                        required: true,
+                        include: [{
+                            model: Inscription,
+                            required: true,
+                            where: {
+                                idAnneeScolaire,
+                                supprimer: false,
+                                ...(idSalle ? { idSalle: parseInt(idSalle) } : {})
+                            },
+                            include: (idClasse || idCycle) ? [{
+                                model: Salle,
+                                required: true,
+                                where: idClasse ? { idClasse: parseInt(idClasse) } : {},
+                                include: idCycle ? [{
+                                    model: Classe,
+                                    as: 'Classe',
+                                    required: true,
+                                    where: { idCycle: parseInt(idCycle) }
+                                }] : []
+                            }] : []
+                        }]
+                    }] : []
+                }]
             }) || 0;
         }
 
         const recoveryRate = totalAttenduUrgent > 0 ? (totalRecouvreUrgent / totalAttenduUrgent) * 100 : 100;
 
         // Correction pour éviter l'ambiguïté sur idAnneeScolaire
-        const avgNote = await Note.avg('note', {
+        const avgNote = await Note.findAll({
+            attributes: [[sequelize.fn('AVG', sequelize.col('Note.note')), 'average']],
             where: { idAnneeScolaire },
             include: [{
                 model: Inscription,
+                attributes: [],
                 where: {
-                    ...(idSalle ? { idSalle: parseInt(idSalle) } : {}),
-                    supprimer: false
-                }
-            }]
-        }) || 0;
+                    supprimer: false,
+                    ...(idSalle ? { idSalle: parseInt(idSalle) } : {})
+                },
+                required: true,
+                include: (idClasse || idCycle) ? [{
+                    model: Salle,
+                    attributes: [],
+                    required: true,
+                    where: idClasse ? { idClasse: parseInt(idClasse) } : {},
+                    include: idCycle ? [{
+                        model: Classe,
+                        as: 'Classe',
+                        attributes: [],
+                        required: true,
+                        where: { idCycle: parseInt(idCycle) }
+                    }] : []
+                }] : []
+            }],
+            raw: true
+        }).then(res => parseFloat(res[0]?.average || 0));
 
         const totalAbsences = await SuiviAbsence.count({
             where: { idAnneeScolaire },
             include: [{
                 model: Inscription,
                 where: {
-                    ...(idSalle ? { idSalle: parseInt(idSalle) } : {}),
-                    supprimer: false
-                }
+                    supprimer: false,
+                    ...(idSalle ? { idSalle: parseInt(idSalle) } : {})
+                },
+                required: true,
+                include: (idClasse || idCycle) ? [{
+                    model: Salle,
+                    required: true,
+                    where: idClasse ? { idClasse: parseInt(idClasse) } : {},
+                    include: idCycle ? [{
+                        model: Classe,
+                        as: 'Classe',
+                        required: true,
+                        where: { idCycle: parseInt(idCycle) }
+                    }] : []
+                }] : []
             }]
         });
         const attendanceRate = Math.max(0, 100 - (totalAbsences * 0.2));
@@ -397,10 +504,18 @@ exports.getClassesMissingFrais = async (req, res) => {
 exports.getStudentTransactions = async (req, res) => {
     try {
         const { idEleve, idAnneeScolaire } = req.params;
-        const transactions = await PaiementFraisGlobal.findAll({ where: { idEleve, idAnneeScolaire }, order: [['createdAt', 'DESC']] });
+        const transactions = await PaiementFraisGlobal.findAll({
+            where: { idEleve, idAnneeScolaire },
+            include: [
+                { model: PaiementFraisExigible, as: 'detailsExigibles' },
+                { model: PaiementFraisPeriscolaire, as: 'detailsPeriscolaires' },
+                { model: PaiementTransport, as: 'detailsTransport' }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
         res.json(transactions);
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
+        console.error("Error in getStudentTransactions:", error);
         res.status(500).json({ error: error.message });
     }
 };

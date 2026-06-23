@@ -28,7 +28,8 @@ const initDatabase = async () => {
     // Charger tous les modèles et associations
     require("./models");
 
-    await sequelize.sync({ alter: true });
+    // Une fois la structure stable, évitez { alter: true } en production
+    await sequelize.sync();
     console.log("✅ Modèles synchronisés avec succès.");
   } catch (error) {
     console.error("❌ Erreur d'initialisation de la base de données :", error);

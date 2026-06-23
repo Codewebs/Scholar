@@ -8,7 +8,7 @@ const {
     Eleve,
     InscriptionPersonnel,
     TarifFraisExigible,
-    AffectationPersonnelSalle,
+    RepartitionEnseignant,
     sequelize
 } = require("../models");
 
@@ -75,12 +75,12 @@ exports.getSallesByAnnee = async (req, res) => {
 
             if (ins) {
                 console.log(`   -> Inscription Personnel trouvée ID: ${ins.idInscriptionPersonnel} (Rôle: ${ins.role})`);
-                const { Salle } = require("../models");
-                const affs = await AffectationPersonnelSalle.findAll({
-                    where: { idInscriptionPersonnel: ins.idInscriptionPersonnel },
+                const { RepartitionEnseignant, Salle } = require("../models");
+                const affs = await RepartitionEnseignant.findAll({
+                    where: { idInscriptionPersonnel: ins.idInscriptionPersonnel, supprimer: false },
                     include: [{ model: Salle, as: 'Salle', attributes: ['nomSalle'] }]
                 });
-                const assignedSalleIds = affs.map(a => a.idSalle);
+                const assignedSalleIds = [...new Set(affs.map(a => a.idSalle))];
                 const assignedNames = affs.map(a => a.Salle?.nomSalle || 'Inconnu').join(", ");
 
                 salleFilter.idSalle = assignedSalleIds;
@@ -166,10 +166,10 @@ exports.getClassesWithRoomStats = async (req, res) => {
                 where: { idUtilisateur: user.idUtilisateur || user.userId, idAnneeScolaire, supprimer: false }
             });
             if (ins) {
-                const affs = await AffectationPersonnelSalle.findAll({
-                    where: { idInscriptionPersonnel: ins.idInscriptionPersonnel }
+                const affs = await RepartitionEnseignant.findAll({
+                    where: { idInscriptionPersonnel: ins.idInscriptionPersonnel, supprimer: false }
                 });
-                const sIds = affs.map(a => a.idSalle);
+                const sIds = [...new Set(affs.map(a => a.idSalle))];
                 const assignedSalles = await Salle.findAll({ where: { idSalle: sIds } });
                 classeFilter.idClasse = [...new Set(assignedSalles.map(s => s.idClasse))];
                 console.log(`✅ [SalleController] Classes autorisées pour l'enseignant:`, classeFilter.idClasse);
@@ -234,6 +234,14 @@ exports.getClassesWithRoomStats = async (req, res) => {
                 where: { idClasse: c.idClasse, idAnneeScolaire }
             });
 
+            const sallesData = (c.salles || []).map(s => {
+                const sJson = s.get({ plain: true });
+                return {
+                    ...sJson,
+                    effectif: sJson.Inscriptions ? sJson.Inscriptions.length : 0
+                };
+            });
+
             return {
                 idClasse: c.idClasse,
                 idAnneeScolaire: parseInt(idAnneeScolaire),
@@ -249,7 +257,7 @@ exports.getClassesWithRoomStats = async (req, res) => {
                 totalCapacity,
                 boys,
                 girls,
-                salles: c.salles || []
+                salles: sallesData
             };
         }));
 

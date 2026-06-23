@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { SchoolYearProvider } from './context/SchoolYearContext';
+import { UIProvider } from './context/UIContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './components/MainLayout';
 import SessionGuard from './components/SessionGuard';
@@ -25,8 +26,13 @@ import SettingsPage from './pages/admin/SettingsPage';
 import StaffManagementPage from './pages/admin/StaffManagementPage';
 import ApcConfigurationPage from './pages/admin/ApcConfigurationPage';
 import BulletinConfigPage from './pages/pedagogy/BulletinConfigPage';
+import TeacherRepartitionPage from './pages/pedagogy/TeacherRepartitionPage';
 import BulletinPrintPage from './pages/pedagogy/BulletinPrintPage';
+import TeacherTeamPrintPage from './pages/pedagogy/TeacherTeamPrintPage';
 import ReportPrintPage from './pages/reports/ReportPrintPage';
+import StudentDocumentPrintPage from './pages/students/StudentDocumentPrintPage';
+import PaymentReceiptPrintPage from './pages/finance/PaymentReceiptPrintPage';
+import TransportReceiptPrintPage from './pages/finance/TransportReceiptPrintPage';
 import FinanceLibraryPage from './pages/finance/FinanceLibraryPage';
 import AcademicStructurePage from './pages/pedagogy/AcademicStructurePage';
 import PeriodeManagementPage from './pages/pedagogy/PeriodeManagementPage';
@@ -44,8 +50,9 @@ function App() {
   return (
     <AuthProvider>
       <SchoolYearProvider>
-        <Router>
-          <Routes>
+        <UIProvider>
+          <Router>
+            <Routes>
             <Route path="/" element={<Welcome />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -60,10 +67,42 @@ function App() {
               </SessionGuard>
             } />
 
+            <Route path="/app/pedagogy/teachers-repartition/print" element={
+              <SessionGuard>
+                <ProtectedRoute permission={AcademicPermission.MANAGE_GRADES}>
+                  <TeacherTeamPrintPage />
+                </ProtectedRoute>
+              </SessionGuard>
+            } />
+
             <Route path="/app/reports/print" element={
               <SessionGuard>
                 <ProtectedRoute permission={AcademicPermission.DASHBOARD_ETABLISSEMENT}>
                   <ReportPrintPage />
+                </ProtectedRoute>
+              </SessionGuard>
+            } />
+
+            <Route path="/app/students/documents/print" element={
+              <SessionGuard>
+                <ProtectedRoute permission={AcademicPermission.VIEW_STUDENT_LIST}>
+                  <StudentDocumentPrintPage />
+                </ProtectedRoute>
+              </SessionGuard>
+            } />
+
+            <Route path="/app/finance/receipt/print" element={
+              <SessionGuard>
+                <ProtectedRoute permission={AcademicPermission.COLLECT_TUITION_FEE}>
+                  <PaymentReceiptPrintPage />
+                </ProtectedRoute>
+              </SessionGuard>
+            } />
+
+            <Route path="/app/finance/receipt/transport/print" element={
+              <SessionGuard>
+                <ProtectedRoute permission={AcademicPermission.COLLECT_TUITION_FEE}>
+                  <TransportReceiptPrintPage />
                 </ProtectedRoute>
               </SessionGuard>
             } />
@@ -240,6 +279,14 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="pedagogy/teachers-repartition"
+                element={
+                  <ProtectedRoute permission={AcademicPermission.MANAGE_ACADEMIC_CONFIG}>
+                    <TeacherRepartitionPage />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Administration Routes */}
               <Route
@@ -285,6 +332,7 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
+        </UIProvider>
       </SchoolYearProvider>
     </AuthProvider>
   );

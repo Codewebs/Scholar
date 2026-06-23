@@ -112,7 +112,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
     if (selectedSalleId) {
         const salle = salles.find(s => s.idSalle === selectedSalleId);
         if (salle) {
-            matiereService.getRepartition(yearId!, salle.idClasse).then(res => {
+            matiereService.getRepartition(yearId!, salle.idClasse, salle.idSalle).then(res => {
                 const normalized = res.data.map((r: any) => ({
                     ...r,
                     Matiere: {

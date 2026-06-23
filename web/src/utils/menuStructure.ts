@@ -132,6 +132,12 @@ export const menuGroups: { group: string, items: MenuItem[] }[] = [
         permission: AcademicPermission.MANAGE_USERS
       },
       {
+        title: "Équipe Pédagogique",
+        icon: Users,
+        path: "/app/pedagogy/teachers-repartition",
+        permission: AcademicPermission.MANAGE_ACADEMIC_CONFIG
+      },
+      {
         title: "Configuration",
         icon: Settings,
         path: "/app/admin/config",

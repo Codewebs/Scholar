@@ -95,6 +95,7 @@ fun PeriodeManagementScreen(
                                 showSousPeriodeDialog = SousPeriodeEntity(
                                     idPeriodeServeur = periode.idServeur, 
                                     libelleSousPeriodeFr = "", 
+                                    abrevLibelleFr = "",
                                     dateDebut = periode.dateDebut, 
                                     dateFin = periode.dateFin
                                 )

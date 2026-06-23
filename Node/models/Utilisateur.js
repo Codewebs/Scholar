@@ -47,6 +47,10 @@ const Utilisateur = sequelize.define("Utilisateur", {
   photo: {
     type: DataTypes.STRING,
     allowNull: true
+  },
+  diplomes: {
+    type: DataTypes.TEXT,
+    allowNull: true
   }
 }, {
   tableName: "utilisateur",

@@ -46,9 +46,19 @@ export const studentService = {
   getRooms: (yearId: number) =>
     api.get<any[]>(`/salles/annee/${yearId}`),
 
+  getCycles: (yearId: number) =>
+    api.get<any[]>(`/academic-structure/cycles/${yearId}`),
+
+  getClasses: (yearId: number) =>
+    api.get<any[]>(`/salles/classes/stats/${yearId}`),
+
   globalSearch: (q: string, yearId: number) =>
     api.get<any[]>(`/students/global/search`, { params: { q, idAnneeScolaire: yearId } }),
 
   getStudentsBySalle: (yearId: number, idSalle: number) =>
     api.get<any[]>(`/students/room/${yearId}/${idSalle}`),
+
+  // Official Documents
+  getOfficialDocumentData: (idEleve: number, yearId: number, docType: string) =>
+    api.get(`/students/official-documents/${idEleve}/${yearId}`, { params: { docType } }),
 };

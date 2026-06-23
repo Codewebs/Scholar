@@ -7,7 +7,6 @@ import { StudentPaymentDetails, PaiementPayload } from '../../types/finance';
 import { EleveUiModel } from '../../types/student';
 import AuthButton from '../../components/ui/AuthButton';
 import AuthInput from '../../components/ui/AuthInput';
-import PaymentReceipt from '../../components/finance/PaymentReceipt';
 import {
   ArrowLeft,
   Wallet,
@@ -28,7 +27,9 @@ import {
   X,
   CreditCard as CardIcon,
   RefreshCw,
-  Trash2
+  Trash2,
+  ShieldCheck,
+  Check
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -63,6 +64,8 @@ const PaymentPage: React.FC = () => {
   const [cancelling, setCancelling] = useState(false);
   const [availableTarifs, setAvailableTarifs] = useState<any[]>([]);
   const [subscribing, setSubscribing] = useState(false);
+  const [showTransportConfirm, setShowTransportConfirm] = useState(false);
+  const [pendingTarifId, setPendingTarifId] = useState<number | null>(null);
 
   useEffect(() => {
     if (showSubscriptionModal && yearId) {
@@ -70,12 +73,16 @@ const PaymentPage: React.FC = () => {
     }
   }, [showSubscriptionModal, yearId]);
 
-  const handleSubscription = async (tarifId: number) => {
-      if (!selectedStudent || !yearId) return;
+  const handleSubscriptionClick = (tarifId: number) => {
+      setPendingTarifId(tarifId);
+      setShowTransportConfirm(true);
+  };
+
+  const handleConfirmSubscription = async () => {
+      if (!selectedStudent || !yearId || !pendingTarifId) return;
       setSubscribing(true);
       try {
-          // Generate default monthly echeances (Oct to June)
-          const tarif = availableTarifs.find(t => t.idTarifTransport === tarifId);
+          const tarif = availableTarifs.find(t => t.idTarifTransport === pendingTarifId);
           const monthlyAmount = Math.ceil(tarif.montantTransport / 9);
           const echeances = [
               { libelle: 'Octobre', montantDu: monthlyAmount, dateLimite: '2025-10-31' },
@@ -91,11 +98,13 @@ const PaymentPage: React.FC = () => {
 
           await financeService.subscribeStudentToTransport({
               idEleve: selectedStudent.idEleve,
-              idTarifTransport: tarifId,
+              idTarifTransport: pendingTarifId,
               reduction: 0,
               echeances
           });
+          setShowTransportConfirm(false);
           setShowSubscriptionModal(false);
+          setPendingTarifId(null);
           loadDetails();
       } catch (err) {
           console.error(err);
@@ -104,11 +113,10 @@ const PaymentPage: React.FC = () => {
           setSubscribing(false);
       }
   };
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [amount, setAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState('CASH');
   const [success, setSuccess] = useState(false);
-  const [receiptData, setReceiptData] = useState<any | null>(null);
-  const [showReceipt, setShowReceipt] = useState(false);
   const [highlightActive, setHighlightActive] = useState(false);
 
   useEffect(() => {
@@ -204,20 +212,66 @@ const PaymentPage: React.FC = () => {
     }
   };
 
-  const handlePayment = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePayment = async (e: React.FormEvent | null, force: boolean = false) => {
+    if (e) e.preventDefault();
     if (!selectedStudent || !amount || Number(amount) <= 0) return;
 
-    setLoading(true);
     const amountVal = Number(amount);
     if (isNaN(amountVal) || amountVal <= 0) {
         alert("Veuillez entrer un montant valide.");
-        setLoading(false);
         return;
     }
 
-    if (amountVal > (details?.resteGlobal || 0)) {
-        alert(`Montant trop élevé. Le reste à payer est de ${(details?.resteGlobal || 0).toLocaleString()} FCFA.`);
+    // DUPLICATE VERIFICATION
+    if (!force) {
+        const today = new Date().toDateString();
+        const duplicate = transactions.find(tx => {
+            if (tx.annule) return false;
+            const txDate = new Date(tx.createdAt).toDateString();
+            if (txDate !== today) return false;
+
+            const isSimilarAmount = tx.montantTotal === amountVal;
+
+            // On vérifie si c'est le même type de frais avec les détails maintenant fournis par le backend
+            let sameType = false;
+            if (isTransport) {
+                sameType = tx.detailsTransport && tx.detailsTransport.length > 0;
+            } else if (isPeriscolaire) {
+                sameType = tx.detailsPeriscolaires && tx.detailsPeriscolaires.some((p: any) => p.idTarifFraisActivitePeriscolaire === selectedFraisId);
+            } else {
+                // Scolarité (Exigibles)
+                sameType = tx.detailsExigibles && tx.detailsExigibles.length > 0;
+            }
+
+            return isSimilarAmount && sameType;
+        });
+
+        if (duplicate) {
+            setShowDuplicateModal(true);
+            return;
+        }
+    }
+
+    setLoading(true);
+    setShowDuplicateModal(false);
+
+    // Calcul du reste à payer selon le contexte
+    let resteAPayer = 0;
+    if (isTransport) {
+        resteAPayer = transportSub?.echeances?.reduce((sum: number, e: any) => sum + (e.montantDu - e.montantPaye), 0) || 0;
+    } else if (isPeriscolaire) {
+        if (selectedFraisId) {
+            const f = details?.frais.find(f => f.idTarif === selectedFraisId);
+            resteAPayer = f ? (f.montantDu - f.montantPaye) : 0;
+        } else {
+            resteAPayer = 0;
+        }
+    } else {
+        resteAPayer = details?.resteGlobal || 0;
+    }
+
+    if (amountVal > resteAPayer) {
+        alert(`Montant trop élevé. Le reste à payer est de ${resteAPayer.toLocaleString()} FCFA.`);
         setLoading(false);
         return;
     }
@@ -226,7 +280,7 @@ const PaymentPage: React.FC = () => {
       idEleve: selectedStudent.idEleve,
       idAnneeScolaire: yearId,
       idClasse: selectedStudent.idClasse,
-      montantVerse: Number(amount),
+      montantVerse: amountVal,
       modePaiement: paymentMode
     };
 
@@ -262,17 +316,32 @@ const PaymentPage: React.FC = () => {
 
   const handleReprint = async () => {
       if (!selectedStudent) return;
-      setLoading(true);
-      try {
-          const recRes = await financeService.getRegistrationReceiptData(selectedStudent.idEleve, yearId);
-          setReceiptData(recRes.data);
-          setShowReceipt(true);
-      } catch (err) {
-          console.error("[PaymentPage] ❌ Erreur ré-impression:", err);
-          alert("Erreur lors de la récupération du reçu");
-      } finally {
-          setLoading(false);
+      let docType = 'YEAR_RECEIPT';
+      let baseUrl = '/app/finance/receipt/print';
+
+      if (isTransport) {
+          docType = 'TRANSPORT_RECEIPT';
+          baseUrl = '/app/finance/receipt/transport/print';
       }
+      if (isPeriscolaire) docType = 'PERISCOLAIRE_RECEIPT';
+
+      const url = `${baseUrl}?idEleve=${selectedStudent.idEleve}&idAnneeScolaire=${yearId}&docType=${docType}`;
+      window.open(url, '_blank');
+  };
+
+  const handlePrintReceipt = () => {
+      if (!selectedStudent) return;
+      let docType = 'YEAR_RECEIPT';
+      let baseUrl = '/app/finance/receipt/print';
+
+      if (isTransport) {
+          docType = 'TRANSPORT_RECEIPT';
+          baseUrl = '/app/finance/receipt/transport/print';
+      }
+      if (isPeriscolaire) docType = 'PERISCOLAIRE_RECEIPT';
+
+      const url = `${baseUrl}?idEleve=${selectedStudent.idEleve}&idAnneeScolaire=${yearId}&docType=${docType}`;
+      window.open(url, '_blank');
   };
 
   const handleCancelPayment = async (id: number) => {
@@ -671,6 +740,44 @@ const PaymentPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Duplicate Payment Confirmation Modal */}
+      {showDuplicateModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[80] p-6 animate-in zoom-in-95 duration-300">
+              <div className="bg-white rounded-[48px] p-10 max-w-md w-full shadow-2xl relative border-4 border-orange-500/20">
+                  <div className="text-center">
+                      <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                          <RefreshCw size={40} />
+                      </div>
+                      <h3 className="text-2xl font-black uppercase tracking-tight text-black">Doublon Détecté ?</h3>
+                      <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mt-4 leading-relaxed">
+                          Un paiement de <span className="text-orange-600">{Number(amount).toLocaleString()} FCFA</span> a déjà été effectué aujourd'hui pour cet élève concernant ce même type de frais.
+                      </p>
+                      <div className="mt-8 p-4 bg-orange-50 rounded-2xl border border-orange-100 flex items-start gap-3 text-left">
+                          <AlertCircle size={18} className="text-orange-600 shrink-0 mt-0.5" />
+                          <p className="text-[9px] font-black uppercase tracking-widest text-orange-800">
+                              Voulez-vous vraiment enregistrer ce second versement ? Cela pourrait être une erreur de manipulation.
+                          </p>
+                      </div>
+                  </div>
+
+                  <div className="mt-10 flex flex-col gap-3">
+                      <button
+                        onClick={() => handlePayment(null, true)}
+                        className="w-full py-5 bg-black text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-gray-900 transition-all shadow-xl active:scale-95"
+                      >
+                          Oui, confirmer le doublon
+                      </button>
+                      <button
+                        onClick={() => setShowDuplicateModal(false)}
+                        className="w-full py-5 bg-gray-100 text-secondary rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-gray-200 transition-all active:scale-95"
+                      >
+                          Non, annuler
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* Payment Modal */}
       {showPaymentModal && selectedStudent && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-in fade-in duration-300">
@@ -703,7 +810,7 @@ const PaymentPage: React.FC = () => {
                               <p className="text-[11px] font-bold text-secondary uppercase tracking-widest mt-2">Enregistrement terminé avec succès</p>
                           </div>
                           <div className="flex flex-col gap-3">
-                              <AuthButton onClick={() => setShowReceipt(true)}>
+                              <AuthButton onClick={handlePrintReceipt}>
                                   <Printer size={20} className="mr-3" /> Imprimer le reçu
                               </AuthButton>
                               <button
@@ -768,13 +875,6 @@ const PaymentPage: React.FC = () => {
           </div>
       )}
 
-      {showReceipt && receiptData && (
-          <PaymentReceipt
-            data={receiptData}
-            onClose={() => setShowReceipt(false)}
-          />
-      )}
-
       {showSubscriptionModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[60] p-6 animate-in fade-in duration-300">
               <div className="bg-white rounded-[56px] p-12 max-w-2xl w-full shadow-2xl relative">
@@ -788,7 +888,7 @@ const PaymentPage: React.FC = () => {
                       {availableTarifs.map(t => (
                           <div
                             key={t.idTarifTransport}
-                            onClick={() => !subscribing && handleSubscription(t.idTarifTransport)}
+                            onClick={() => !subscribing && handleSubscriptionClick(t.idTarifTransport)}
                             className="p-6 border-2 border-gray-50 rounded-[32px] hover:border-black cursor-pointer transition-all group bg-gray-50/30"
                           >
                               <p className="font-black text-xs uppercase tracking-tight">{t.Quartier?.libelle}</p>
@@ -850,6 +950,46 @@ const PaymentPage: React.FC = () => {
                               {cancelling ? <RefreshCw className="animate-spin mx-auto" size={18} /> : "Confirmer"}
                           </button>
                       </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {showTransportConfirm && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-[100] p-6 animate-in zoom-in-95 duration-300">
+              <div className="bg-white rounded-[56px] p-12 max-w-xl w-full shadow-2xl relative overflow-hidden border border-gray-100">
+                  <div className="absolute top-0 left-0 w-full h-2 bg-accent"></div>
+
+                  <div className="mb-10 text-center">
+                      <div className="w-20 h-20 bg-accent/10 text-accent rounded-full flex items-center justify-center mx-auto mb-6">
+                          <ShieldCheck size={40} />
+                      </div>
+                      <h3 className="text-3xl font-black uppercase tracking-tighter text-black">Conditions Générales</h3>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-secondary mt-2">Abonnement au Service de Transport Scolaire</p>
+                  </div>
+
+                  <div className="bg-gray-50 p-8 rounded-[32px] mb-10 max-h-[300px] overflow-y-auto custom-scrollbar text-[11px] leading-relaxed text-gray-600 space-y-4">
+                      <p className="font-black text-black uppercase tracking-widest text-[9px]">1. Engagement de l'élève</p>
+                      <p>L'élève s'engage à respecter les horaires de passage du bus et les consignes de sécurité du chauffeur. Tout retard ne pourra être imputé à l'établissement.</p>
+
+                      <p className="font-black text-black uppercase tracking-widest text-[9px]">2. Modalités de Paiement</p>
+                      <p>L'abonnement est annuel. Le montant total peut être réglé en une seule fois ou selon l'échéancier mensuel défini par l'établissement (Octobre à Juin).</p>
+
+                      <p className="font-black text-black uppercase tracking-widest text-[9px]">3. Suspension du Service</p>
+                      <p>Tout retard de paiement supérieur à 10 jours entraînera la suspension immédiate de l'accès au transport scolaire jusqu'à régularisation totale de l'échéance.</p>
+
+                      <p className="font-black text-black uppercase tracking-widest text-[9px]">4. Responsabilité</p>
+                      <p>L'établissement décline toute responsabilité en cas de perte d'objets personnels à l'intérieur du véhicule.</p>
+                  </div>
+
+                  <div className="flex flex-col gap-4">
+                      <AuthButton onClick={handleConfirmSubscription} disabled={subscribing}>
+                          {subscribing ? "Traitement..." : "J'accepte et je m'abonne"}
+                      </AuthButton>
+                      <button
+                        onClick={() => setShowTransportConfirm(false)}
+                        className="py-4 font-black uppercase text-[10px] tracking-widest text-secondary hover:text-red-500 transition-all"
+                      >Annuler</button>
                   </div>
               </div>
           </div>

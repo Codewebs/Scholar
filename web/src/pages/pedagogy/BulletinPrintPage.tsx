@@ -40,7 +40,12 @@ import { clsx } from 'clsx';
 interface BulletinData {
     school: any;
     student: any;
-    salle: any;
+    salle: {
+        idSalle?: number;
+        idClasse?: number;
+        nomSalle: string;
+        effectif: number;
+    };
     year: any;
     period: {
         label: string;
@@ -65,6 +70,7 @@ interface BulletinData {
         absencesUnjustified: number;
         conductNotes: string[];
     };
+    institutionalHeader?: any;
 }
 
 interface SubjectGroup {
@@ -209,7 +215,9 @@ const BulletinPrintPage: React.FC = () => {
                 // 2. Fetch Data
                 const response = await api.get('/pedagogy/notes/bulletins/export', {
                     params: {
-                        perimeter: currentConfig.selectedPerimeter,
+                        perimeter: (currentConfig.printMode === 'PV' || currentConfig.printMode === 'LIST' || currentConfig.printMode === 'HONORS') && currentConfig.selectedPerimeter === 'SALLE'
+                            ? 'CLASSE' // Fetch entire class for comparison
+                            : currentConfig.selectedPerimeter,
                         id: currentConfig.selectedId,
                         periodType: currentConfig.periodType,
                         selectedPeriodId: currentConfig.selectedPeriodId,
@@ -219,7 +227,32 @@ const BulletinPrintPage: React.FC = () => {
                     }
                 });
 
-                setBulletins(response.data);
+                const data: BulletinData[] = response.data;
+                setBulletins(data);
+
+                // Update document title for browser tab and default filename
+                if (data.length > 0) {
+                    const first = data[0];
+
+                    let periodPart = first.period.label;
+                    if (currentConfig.periodType === 'ANNUAL') {
+                        periodPart = `Ann ${first.year.libelle}`;
+                    } else if (currentConfig.periodType === 'SEQUENCE') {
+                        const num = first.period.label.match(/\d+/);
+                        periodPart = num ? `Seq ${num[0]}` : first.period.label;
+                    } else if (currentConfig.periodType === 'TRIMESTER') {
+                        const num = first.period.label.match(/\d+/);
+                        periodPart = num ? `Trim ${num[0]}` : first.period.label;
+                    }
+
+                    const salleLabel = first.salle.nomSalle;
+                    const modeLabel = currentConfig.printMode === 'PV' ? 'PV de Classe' :
+                                     currentConfig.printMode === 'LIST' ? 'Liste Résultats' :
+                                     currentConfig.printMode === 'HONORS' ? 'Tableau d\'Honneur' :
+                                     'Bulletins';
+                    document.title = `${modeLabel} - ${salleLabel} - ${periodPart}`;
+                }
+
                 setLoading(false);
             } catch (err: any) {
                 console.error("Error loading bulletins:", err);
@@ -253,13 +286,7 @@ const BulletinPrintPage: React.FC = () => {
     };
 
     const handleExportPDF = () => {
-        const oldTitle = document.title;
-        const filename = bulletins.length > 0
-            ? `Bulletins_${bulletins[0].salle.nomSalle}_${bulletins[0].period.label}`.replace(/\s+/g, '_')
-            : 'Bulletins_Export';
-        document.title = filename;
         window.print();
-        document.title = oldTitle;
     };
 
     if (loading) {
@@ -495,14 +522,22 @@ const BulletinPrintPage: React.FC = () => {
             )}
 
             <div className="flex flex-col items-center space-y-8 print:space-y-0">
-                {bulletins.map((data, index) => (
-                    <React.Fragment key={index}>
-                        <BulletinPage data={data} config={config} overrides={overrides} />
-                        {config?.stats?.showCharts && (
-                            <StatisticsPage data={data} config={config} />
-                        )}
-                    </React.Fragment>
-                ))}
+                {config?.printMode === 'PV' ? (
+                    <PVPage bulletins={bulletins} config={config} />
+                ) : config?.printMode === 'LIST' ? (
+                    <ResultsListPage bulletins={bulletins} config={config} />
+                ) : config?.printMode === 'HONORS' ? (
+                    <HonorsListPage bulletins={bulletins} config={config} />
+                ) : (
+                    bulletins.map((data, index) => (
+                        <React.Fragment key={index}>
+                            <BulletinPage data={data} config={config} overrides={overrides} />
+                            {config?.stats?.showCharts && (
+                                <StatisticsPage data={data} config={config} />
+                            )}
+                        </React.Fragment>
+                    ))
+                )}
             </div>
 
             <style>{`
@@ -510,6 +545,9 @@ const BulletinPrintPage: React.FC = () => {
                     @page {
                         size: A4 portrait;
                         margin: 0;
+                    }
+                    .landscape-page {
+                        @page { size: A4 landscape; }
                     }
                     body {
                         margin: 0;
@@ -524,6 +562,17 @@ const BulletinPrintPage: React.FC = () => {
                         page-break-inside: avoid !important;
                         break-after: page !important;
                     }
+                    .landscape-page {
+                        page-break-after: always !important;
+                        page-break-inside: avoid !important;
+                        break-after: page !important;
+                    }
+                }
+                @media print and (orientation: landscape) {
+                   .landscape-page {
+                      width: 297mm !important;
+                      height: 210mm !important;
+                   }
                 }
                 .no-print-bg {
                     background-color: #E5E7EB;
@@ -555,6 +604,68 @@ const WidgetSwitch: React.FC<{ label: string, checked: boolean, onChange: (v: bo
         </div>
     </button>
 );
+
+const InstitutionalHeader: React.FC<{ school: any, customHeader?: any }> = ({ school, customHeader }) => {
+    if (customHeader) {
+        return (
+            <div className="w-full flex justify-between items-start mb-8 text-[10px] uppercase font-black">
+                <div className="text-center space-y-0.5">
+                    {customHeader.blocGaucheLigne1 && <p>{customHeader.blocGaucheLigne1}</p>}
+                    {customHeader.blocGaucheLigne2 && <p className="italic font-bold text-gray-500">{customHeader.blocGaucheLigne2}</p>}
+                    <div className="h-px w-12 bg-gray-200 mx-auto my-1" />
+                    {customHeader.blocGaucheLigne3 && <p>{customHeader.blocGaucheLigne3}</p>}
+                    {customHeader.blocGaucheLigne4 && <p>{customHeader.blocGaucheLigne4}</p>}
+                    {customHeader.blocGaucheLigne5 && <p>{customHeader.blocGaucheLigne5}</p>}
+                    {customHeader.blocGaucheLigne6 && <p>{customHeader.blocGaucheLigne6}</p>}
+                </div>
+
+                {school?.logo && (
+                    <div className="w-20 h-20">
+                        <img src={school.logo} alt="Logo" className="w-full h-full object-contain" />
+                    </div>
+                )}
+
+                <div className="text-center space-y-0.5">
+                    {customHeader.blocDroitLigne1 && <p>{customHeader.blocDroitLigne1}</p>}
+                    {customHeader.blocDroitLigne2 && <p className="italic font-bold text-gray-500">{customHeader.blocDroitLigne2}</p>}
+                    <div className="h-px w-12 bg-gray-200 mx-auto my-1" />
+                    {customHeader.blocDroitLigne3 && <p>{customHeader.blocDroitLigne3}</p>}
+                    {customHeader.blocDroitLigne4 && <p>{customHeader.blocDroitLigne4}</p>}
+                    {customHeader.blocDroitLigne5 && <p>{customHeader.blocDroitLigne5}</p>}
+                    {customHeader.blocDroitLigne6 && <p>{customHeader.blocDroitLigne6}</p>}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="w-full flex justify-between items-start mb-8 text-[10px] uppercase font-black">
+            <div className="text-center space-y-0.5">
+                <p>REPUBLIQUE DU CAMEROUN</p>
+                <p className="italic font-bold text-gray-500">Paix - Travail - Patrie</p>
+                <div className="h-px w-12 bg-gray-200 mx-auto my-1" />
+                <p>MINISTERE DES ENSEIGNEMENTS SECONDAIRES</p>
+                <p>{school?.delegationRegionale || "DELEGATION REGIONALE DU LITTORAL"}</p>
+                <p>{school?.delegationDepartementale || "DELEGATION DEPARTEMENTALE DU WOURI"}</p>
+            </div>
+
+            {school?.logo && (
+                <div className="w-20 h-20">
+                    <img src={school.logo} alt="Logo" className="w-full h-full object-contain" />
+                </div>
+            )}
+
+            <div className="text-center space-y-0.5">
+                <p>REPUBLIC OF CAMEROON</p>
+                <p className="italic font-bold text-gray-500">Peace - Work - Fatherland</p>
+                <div className="h-px w-12 bg-gray-200 mx-auto my-1" />
+                <p>MINISTRY OF SECONDARY EDUCATION</p>
+                <p>{school?.regionalDelegationEn || "LITTORAL REGIONAL DELEGATION"}</p>
+                <p>{school?.divisionalDelegationEn || "WOURI DIVISIONAL DELEGATION"}</p>
+            </div>
+        </div>
+    );
+};
 
 const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }> = ({ data, config, overrides }) => {
     const totalCols = 1 +
@@ -1218,6 +1329,574 @@ const StatisticsPage: React.FC<{ data: BulletinData, config: any }> = ({ data, c
         </div>
     );
 };
+
+// --- NEW COMPONENTS FOR PV, RESULTS AND HONORS ---
+
+const PVPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ bulletins, config }) => {
+    if (bulletins.length === 0) return null;
+
+    // If we fetched the entire class but the user selected a specific SALLE,
+    // we use the selectedId to filter the PV and identify the primary room.
+    const selectedRoomId = config.selectedPerimeter === 'SALLE' ? config.selectedId : bulletins[0]?.salle?.idSalle;
+    const currentRoomBulletins = bulletins.filter(b => b.salle.idSalle === selectedRoomId);
+
+    // Fallback if filtering returns empty (e.g. selectedId is not an idSalle but a class)
+    const targetBulletins = currentRoomBulletins.length > 0 ? currentRoomBulletins : bulletins;
+    const first = targetBulletins[0];
+
+    // Extract all unique subjects for the target bulletins
+    const subjectNames = Array.from(new Set(
+        targetBulletins.flatMap(b => b.performance.groups.flatMap(g => g.subjects.map(s => s.name)))
+    ));
+
+    // Stats for the room
+    const averages = targetBulletins.map(b => b.performance.average);
+    const roomAvg = averages.length > 0 ? averages.reduce((a, b) => a + b, 0) / averages.length : 0;
+    const maxAvg = averages.length > 0 ? Math.max(...averages) : 0;
+    const minAvg = averages.length > 0 ? Math.max(0, Math.min(...averages)) : 0;
+    const successCount = averages.filter(a => a >= 10).length;
+
+    // Room Comparison Data
+    const rooms = Array.from(new Set(bulletins.map(b => b.salle.nomSalle)));
+    const comparisonData = rooms.map(roomName => {
+        const roomBulletins = bulletins.filter(b => b.salle.nomSalle === roomName);
+        return {
+            name: roomName,
+            moyenne: roomBulletins.reduce((a, b) => a + b.performance.average, 0) / roomBulletins.length,
+            isCurrent: roomBulletins.some(b => b.salle.idSalle === selectedRoomId)
+        };
+    });
+
+    return (
+        <div className="space-y-10">
+            <div className="landscape-page w-[297mm] min-h-[210mm] bg-white p-10 print:p-5 print:shadow-none shadow-2xl relative overflow-hidden flex flex-col">
+                <header className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
+                    <div className="w-1/3 text-[8px] font-black uppercase">
+                        <p>REPUBLIQUE DU CAMEROUN</p>
+                        <p className="text-gray-400">Année Scolaire {first.year.libelle}</p>
+                    </div>
+                    <div className="flex-1 text-center">
+                        <h1 className="text-xl font-black uppercase tracking-widest">Procès-Verbal de la Salle de Classe</h1>
+                        <p className="text-[10px] font-black text-accent uppercase tracking-widest mt-1">
+                            {first.salle.nomSalle} — {first.period.label}
+                        </p>
+                    </div>
+                    <div className="w-1/3 text-right text-[8px] font-black uppercase">
+                        <p>{first.school.nomFr}</p>
+                        <p className="text-gray-400">Effectif: {targetBulletins.length}</p>
+                    </div>
+                </header>
+
+                {/* Stat Block */}
+                <div className="grid grid-cols-4 gap-4 mb-8">
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col items-center">
+                        <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Moyenne Générale</span>
+                        <span className="text-xl font-black">{roomAvg.toFixed(2)}</span>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col items-center">
+                        <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Note Max / Min</span>
+                        <span className="text-xl font-black">{maxAvg.toFixed(2)} / {minAvg.toFixed(2)}</span>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col items-center">
+                        <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Taux de Réussite</span>
+                        <span className="text-xl font-black text-green-600">{((successCount/targetBulletins.length)*100).toFixed(1)}%</span>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col items-center">
+                        <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Présents / Absents</span>
+                        <span className="text-xl font-black">{targetBulletins.length} / 0</span>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-x-auto">
+                    <table className="w-full border-collapse border border-black text-[9px]">
+                        <thead>
+                            <tr className="bg-black text-white">
+                                <th className="border border-black p-1 text-left sticky left-0 bg-black z-10" rowSpan={2}>Noms & Prénoms</th>
+                                <th className="border border-black p-1 text-center" colSpan={subjectNames.length}>Matières</th>
+                                <th className="border border-black p-1 text-center" rowSpan={2}>Moyenne</th>
+                                <th className="border border-black p-1 text-center" rowSpan={2}>Rang</th>
+                            </tr>
+                            <tr className="bg-gray-100 text-black">
+                                {subjectNames.map((name, i) => (
+                                    <th key={i} className="border border-black p-1 text-center text-[7px] uppercase vertical-text h-32">{name}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {targetBulletins.map((b, idx) => (
+                                <tr key={idx} className={clsx(idx % 2 === 0 ? "bg-white" : "bg-gray-50")}>
+                                    <td className="border border-black p-1 font-black uppercase text-[8px] sticky left-0 bg-inherit z-10 whitespace-nowrap">
+                                        {b.student.nomComplet}
+                                    </td>
+                                    {subjectNames.map((name, i) => {
+                                        const sub = b.performance.groups.flatMap(g => g.subjects).find(s => s.name === name);
+                                        const note = sub?.total;
+                                        return (
+                                            <td key={i} className={clsx(
+                                                "border border-black p-1 text-center font-bold",
+                                                note !== null && note < 10 ? "bg-red-50 text-red-600" : ""
+                                            )}>
+                                                {note?.toFixed(2) || '--'}
+                                            </td>
+                                        );
+                                    })}
+                                    <td className={clsx(
+                                        "border border-black p-1 text-center font-black bg-gray-100",
+                                        b.performance.average < 10 ? "text-red-600" : "text-black"
+                                    )}>
+                                        {b.performance.average.toFixed(2)}
+                                    </td>
+                                    <td className="border border-black p-1 text-center font-bold">
+                                        {b.performance.rank}<sup>{b.performance.rank === 1 ? 'er' : 'ème'}</sup>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div className="mt-10 grid grid-cols-2 gap-20">
+                    <div className="text-center">
+                        <p className="text-[10px] font-black uppercase underline">Le Professeur Principal</p>
+                        <div className="h-20" />
+                    </div>
+                    <div className="text-center">
+                        <p className="text-[10px] font-black uppercase underline">Le Chef d'Établissement</p>
+                        <div className="h-20" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Performance Comparison Page */}
+            {comparisonData.length > 1 && (
+                <div className="w-[210mm] min-h-[297mm] bg-white p-16 print:p-8 shadow-2xl flex flex-col items-center print:page-break-before-always">
+                    <div className="w-full mb-12">
+                        <h2 className="text-2xl font-black uppercase tracking-tighter">Comparaison de Performance Inter-Salles</h2>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Analyse du niveau {first.salle.nomSalle.split(' ')[0]}</p>
+                    </div>
+
+                    <div className="h-[400px] w-full bg-gray-50 p-10 rounded-[40px] border border-gray-100 mb-12">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={comparisonData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                                <XAxis dataKey="name" tick={{fontSize: 10, fontWeight: 900}} />
+                                <YAxis domain={[0, 20]} tick={{fontSize: 10, fontWeight: 800}} />
+                                <Tooltip
+                                    contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)'}}
+                                />
+                                <Bar dataKey="moyenne" radius={[10, 10, 0, 0]}>
+                                    {comparisonData.map((entry, index) => (
+                                        <rect key={`cell-${index}`} fill={entry.isCurrent ? '#6366f1' : '#e2e8f0'} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+
+                    <div className="w-full grid grid-cols-1 gap-4">
+                        {comparisonData.sort((a,b) => b.moyenne - a.moyenne).map((room, idx) => (
+                            <div key={idx} className={clsx(
+                                "p-6 rounded-[24px] border-2 flex justify-between items-center",
+                                room.isCurrent ? "border-black bg-black text-white" : "border-gray-100 bg-white"
+                            )}>
+                                <div className="flex items-center gap-6">
+                                    <span className="text-2xl font-black opacity-20">{idx+1}</span>
+                                    <span className="text-sm font-black uppercase tracking-widest">{room.name}</span>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xl font-black">{room.moyenne.toFixed(2)}</p>
+                                    <p className={clsx("text-[8px] font-black uppercase tracking-widest", room.isCurrent ? "text-white/50" : "text-gray-400")}>Moyenne de Salle</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <style>{`
+                .vertical-text {
+                    writing-mode: vertical-rl;
+                    transform: rotate(180deg);
+                    white-space: nowrap;
+                    min-width: 25px;
+                }
+            `}</style>
+        </div>
+    );
+};
+
+const ResultsListPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ bulletins, config }) => {
+    if (bulletins.length === 0) return null;
+    const first = bulletins[0];
+
+    return (
+        <div className="w-[210mm] min-h-[297mm] bg-white p-10 print:p-5 shadow-2xl flex flex-col">
+            <div className="flex justify-between items-start mb-10 border-b border-gray-200 pb-6">
+                <div>
+                    <h1 className="text-2xl font-black uppercase tracking-tighter">Liste des Résultats</h1>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">
+                        {first.salle.nomSalle} — {first.period.label}
+                    </p>
+                </div>
+                <div className="text-right">
+                    <p className="text-[10px] font-black uppercase">{first.school.nomFr}</p>
+                    <p className="text-[8px] font-bold text-gray-400">Année: {first.year.libelle}</p>
+                </div>
+            </div>
+
+            <table className="w-full border-collapse">
+                <thead>
+                    <tr className="bg-black text-white">
+                        <th className="p-3 text-left text-[10px] font-black uppercase tracking-widest">Rang</th>
+                        <th className="p-3 text-left text-[10px] font-black uppercase tracking-widest">Nom de l'Élève</th>
+                        <th className="p-3 text-center text-[10px] font-black uppercase tracking-widest">Moyenne</th>
+                        <th className="p-3 text-center text-[10px] font-black uppercase tracking-widest">Décision</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {bulletins.sort((a,b) => a.performance.rank - b.performance.rank).map((b, idx) => (
+                        <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                            <td className="p-4 text-[11px] font-black">{b.performance.rank}<sup>{b.performance.rank === 1 ? 'er' : 'ème'}</sup></td>
+                            <td className="p-4 text-[11px] font-black uppercase">{b.student.nomComplet}</td>
+                            <td className={clsx(
+                                "p-4 text-center text-[11px] font-black",
+                                b.performance.average < 10 ? "text-red-500" : "text-green-600"
+                            )}>
+                                {b.performance.average.toFixed(2)}
+                            </td>
+                            <td className="p-4 text-center text-[9px] font-bold uppercase tracking-widest text-gray-400">
+                                {b.performance.average >= 10 ? 'Admis' : 'Échec'}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
+
+const HonorsListPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ bulletins, config }) => {
+    if (bulletins.length === 0) return null;
+    const first = bulletins[0];
+    const threshold = config?.honors?.threshold || 12.0;
+    const honors = bulletins.filter(b => b.performance.average >= threshold).sort((a,b) => b.performance.average - a.performance.average);
+
+    if (honors.length === 0) {
+        return (
+            <div className="w-[210mm] min-h-[297mm] bg-white p-16 shadow-2xl flex flex-col items-center justify-center">
+                <div className="text-center py-20 bg-gray-50 rounded-[40px] border-2 border-dashed border-gray-200 w-full">
+                    <p className="text-xl font-black uppercase tracking-widest text-gray-300">Aucun élève au tableau d'honneur (Seuil: {threshold})</p>
+                </div>
+            </div>
+        );
+    }
+
+    const design = config?.honors?.design || 'MINIMAL';
+
+    return (
+        <div className="flex flex-col gap-10">
+            {honors.map((b, idx) => (
+                <HonorsCertificate key={idx} data={b} config={config} design={design} />
+            ))}
+        </div>
+    );
+};
+
+const HonorsCertificate: React.FC<{ data: BulletinData, config: any, design: string }> = ({ data, config, design }) => {
+    switch (design) {
+        case 'MINIMAL': return <MinimalHonors data={data} config={config} />;
+        case 'CLASSIC': return <ClassicHonors data={data} config={config} />;
+        case 'PLAYFUL': return <PlayfulHonors data={data} config={config} />;
+        case 'CORPORATE': return <CorporateHonors data={data} config={config} />;
+        default: return <MinimalHonors data={data} config={config} />;
+    }
+};
+
+const MinimalHonors: React.FC<{ data: BulletinData, config: any }> = ({ data, config }) => (
+    <div className="landscape-page w-[297mm] h-[210mm] bg-white relative overflow-hidden shadow-2xl print:shadow-none flex items-center">
+        {/* Abstract Fluid Background */}
+        <div className="absolute inset-0 pointer-events-none">
+            <svg viewBox="0 0 1000 1000" className="absolute -left-40 -top-40 w-[600px] h-[600px] opacity-20">
+                <path fill="#1E3A8A" d="M444.5,231.4c100.3-43,205.8-23.7,287.5,41.4s139.7,169.1,141.4,271c1.7,101.9-53,201.8-135.2,263.7s-191.9,85.8-292,52.3s-190.7-124.4-209.7-226.3S270.3,313,344.2,274.4C418.1,235.8,444.5,231.4,444.5,231.4z" />
+            </svg>
+            <div className="absolute top-0 left-0 w-1/3 h-full bg-gradient-to-br from-blue-600/10 to-transparent skew-x-[-15deg] -translate-x-20" />
+
+            {/* Blue and Gold Waves like inspiration */}
+            <div className="absolute top-0 right-0 w-[400px] h-[400px]">
+                <svg viewBox="0 0 200 200" className="w-full h-full text-blue-900 opacity-80">
+                    <path fill="currentColor" d="M40,-62.7C52.2,-54.5,62.5,-44.4,69.5,-32.4C76.4,-20.3,80.1,-6.4,78.2,7C76.3,20.4,68.8,33.3,58.8,44.1C48.8,54.8,36.4,63.4,22.6,67.8C8.9,72.2,-6.1,72.3,-20.5,68.2C-34.9,64.1,-48.7,55.8,-59.4,44.4C-70.1,33.1,-77.7,18.7,-79,3.7C-80.3,-11.3,-75.4,-26.8,-66.1,-39.8C-56.9,-52.8,-43.3,-63.3,-29.4,-70.2C-15.6,-77,1.4,-80.1,16.6,-77.5C31.9,-75,40,-62.7,40,-62.7Z" transform="translate(100 100)" />
+                </svg>
+                <div className="absolute top-20 right-20 w-32 h-32 border-8 border-[#D4AF37] rounded-full opacity-30" />
+            </div>
+        </div>
+
+        <div className="relative z-10 flex flex-col justify-between p-16 h-full items-start pl-40 w-full">
+            {config.honors.showInstitutionalHeader && <InstitutionalHeader school={data.school} customHeader={data.institutionalHeader} />}
+
+            <div className="space-y-2">
+                <p className="text-[12px] font-black uppercase tracking-[0.5em] text-[#D4AF37]">Certification d'Excellence</p>
+                <h1 className="text-7xl font-black uppercase tracking-tighter text-[#1E3A8A] leading-none">Tableau<br/>d'Honneur</h1>
+            </div>
+
+            <div className="space-y-6 max-w-2xl">
+                <p className="text-xl font-medium text-gray-500 italic">Décerné avec félicitations à</p>
+                <h2 className="text-6xl font-black text-[#1E3A8A] border-b-4 border-[#D4AF37] pb-4 inline-block">{data.student.nomComplet}</h2>
+                <p className="text-lg font-bold text-gray-400 uppercase tracking-widest mt-4">
+                    Pour ses résultats exceptionnels au cours du <span className="text-black">{data.period.label}</span>
+                    <br/>avec une moyenne générale de <span className="text-accent text-2xl">{data.performance.average.toFixed(2)} / 20</span>
+                </p>
+            </div>
+
+            <div className="w-full flex justify-between items-end">
+                <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Délivré par {data.school.nomFr}</p>
+                    <p className="text-[9px] font-bold text-gray-300">Année Scolaire {data.year.libelle}</p>
+                </div>
+
+                {config.honors.showSeal && (
+                    <div className="w-32 h-32 relative flex items-center justify-center">
+                        <svg viewBox="0 0 100 100" className="w-full h-full text-[#D4AF37] drop-shadow-lg">
+                            <path fill="currentColor" d="M50 0 L58.8 31.2 L90.5 31.2 L64.8 50 L73.6 81.2 L50 62.4 L26.4 81.2 L35.2 50 L9.5 31.2 L41.2 31.2 Z" />
+                        </svg>
+                        <span className="absolute text-[10px] font-black text-white uppercase text-center leading-tight">Sceau<br/>Officiel</span>
+                    </div>
+                )}
+            </div>
+        </div>
+    </div>
+);
+
+const ClassicHonors: React.FC<{ data: BulletinData, config: any }> = ({ data, config }) => (
+    <div className="landscape-page w-[297mm] h-[210mm] bg-[#FAF9F6] p-4 shadow-2xl print:shadow-none flex flex-col items-center justify-center">
+        <div className="w-full h-full border-[12px] border-double border-[#1E3A8A] p-10 flex flex-col items-center justify-between text-center relative overflow-hidden">
+            {config.honors.showInstitutionalHeader && <InstitutionalHeader school={data.school} customHeader={data.institutionalHeader} />}
+
+            {/* Ornaments in corners */}
+            <div className="absolute top-2 left-2 w-20 h-20 text-[#D4AF37] opacity-60">
+                <svg viewBox="0 0 100 100" fill="currentColor"><path d="M0 0 L100 0 L0 100 Z" /></svg>
+            </div>
+            <div className="absolute top-2 right-2 w-20 h-20 text-[#D4AF37] opacity-60 rotate-90">
+                <svg viewBox="0 0 100 100" fill="currentColor"><path d="M0 0 L100 0 L0 100 Z" /></svg>
+            </div>
+            <div className="absolute bottom-2 left-2 w-20 h-20 text-[#D4AF37] opacity-60 -rotate-90">
+                <svg viewBox="0 0 100 100" fill="currentColor"><path d="M0 0 L100 0 L0 100 Z" /></svg>
+            </div>
+            <div className="absolute bottom-2 right-2 w-20 h-20 text-[#D4AF37] opacity-60 rotate-180">
+                <svg viewBox="0 0 100 100" fill="currentColor"><path d="M0 0 L100 0 L0 100 Z" /></svg>
+            </div>
+
+            <div className="space-y-2">
+                <p className="text-sm font-black uppercase tracking-[0.4em] text-gray-500">{data.school.nomFr}</p>
+                <div className="h-px w-32 bg-[#D4AF37] mx-auto" />
+            </div>
+
+            <div className="space-y-4">
+                <h1 className="text-6xl font-serif font-bold uppercase tracking-widest text-[#1E3A8A]">Tableau d'Honneur</h1>
+                <p className="text-xl font-serif italic text-gray-600">Le conseil des professeurs de l'établissement décerne ce titre à</p>
+            </div>
+
+            <div className="space-y-2">
+                <h2 className="text-7xl font-serif font-black text-black tracking-tight underline decoration-[#D4AF37] decoration-4 underline-offset-8">{data.student.nomComplet}</h2>
+                <p className="text-xl font-bold uppercase tracking-widest text-gray-400 mt-4">Élève en classe de <span className="text-black">{data.salle.nomSalle}</span></p>
+            </div>
+
+            <p className="text-lg font-serif italic max-w-3xl leading-relaxed">
+                En reconnaissance de son assiduité et de ses excellents résultats académiques obtenus durant la période de <span className="font-bold not-italic">{data.period.label}</span>,
+                marquée par une moyenne générale de <span className="font-bold not-italic text-2xl">{data.performance.average.toFixed(2)} / 20</span>.
+            </p>
+
+            <div className="w-full flex justify-between items-center px-20 mt-10">
+                <div className="text-center">
+                    <div className="w-48 border-t border-gray-400 pt-2">
+                        <p className="text-[10px] font-black uppercase">Le Titulaire</p>
+                    </div>
+                </div>
+
+                {config.honors.showSeal && (
+                    <div className="w-24 h-24 rounded-full border-4 border-[#D4AF37] bg-white flex items-center justify-center shadow-lg transform rotate-[-15deg]">
+                         <ImageIcon size={40} className="text-[#D4AF37] opacity-20" />
+                         <span className="absolute text-[8px] font-black text-[#D4AF37] uppercase text-center">Sceau de<br/>L'école</span>
+                    </div>
+                )}
+
+                <div className="text-center">
+                    <div className="w-48 border-t border-gray-400 pt-2">
+                        <p className="text-[10px] font-black uppercase">Le Chef d'Établissement</p>
+                    </div>
+                </div>
+            </div>
+
+            <p className="text-[8px] font-bold text-gray-300 uppercase tracking-widest">Année Scolaire {data.year.libelle}</p>
+        </div>
+    </div>
+);
+
+const PlayfulHonors: React.FC<{ data: BulletinData, config: any }> = ({ data, config }) => (
+    <div className="landscape-page w-[297mm] h-[210mm] bg-white p-8 shadow-2xl print:shadow-none flex flex-col relative overflow-hidden">
+        {config.honors.showInstitutionalHeader && <InstitutionalHeader school={data.school} customHeader={data.institutionalHeader} />}
+
+        {/* Playful dots border */}
+        <div className="absolute inset-0 border-[16px] border-transparent" style={{ backgroundImage: 'radial-gradient(#3B82F6 20%, transparent 20%), radial-gradient(#10B981 20%, transparent 20%)', backgroundSize: '40px 40px', backgroundPosition: '0 0, 20px 20px', opacity: 0.1 }} />
+
+        <div className="relative z-10 flex flex-col h-full border-4 border-dashed border-amber-400 rounded-[60px] p-12 bg-white/80 backdrop-blur-sm">
+            <header className="flex justify-between items-center mb-10">
+                <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center text-white shadow-lg rotate-3">
+                        <CheckCircle2 size={32} />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-black text-blue-600 uppercase tracking-tight">{data.school.nomFr}</h2>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Bravo pour tes efforts !</p>
+                    </div>
+                </div>
+                <div className="px-6 py-2 bg-amber-100 text-amber-600 rounded-full font-black text-xs uppercase tracking-widest">
+                    Année Scolaire {data.year.libelle}
+                </div>
+            </header>
+
+            <div className="flex-1 flex gap-12 items-center">
+                {config.honors.showStudentPhoto && (
+                    <div className="w-64 h-64 shrink-0 rounded-[60px] border-8 border-white shadow-2xl overflow-hidden bg-gray-100 rotate-[-2deg]">
+                        {data.student.photo ? (
+                            <img src={data.student.photo} alt="Photo" className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                <User size={100} />
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                <div className="flex-1 space-y-6">
+                    <h1 className="text-7xl font-black text-green-500 tracking-tighter uppercase leading-none">Super<br/>Élève !</h1>
+                    <div className="space-y-2">
+                        <p className="text-2xl font-bold text-gray-500">Un grand bravo à</p>
+                        <p className="text-6xl font-black text-blue-600 tracking-tight">{data.student.nomComplet}</p>
+                    </div>
+                    <p className="text-xl font-bold text-orange-500 uppercase tracking-widest">
+                        Pour ton magnifique travail en classe de <span className="bg-orange-100 px-3 py-1 rounded-lg">{data.salle.nomSalle}</span>
+                    </p>
+                </div>
+            </div>
+
+            <div className="mt-auto flex justify-between items-end pt-10 border-t-2 border-dashed border-gray-100">
+                <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg">
+                            <Check size={24} />
+                        </div>
+                        <p className="text-lg font-black text-gray-600 uppercase">Moyenne : {data.performance.average.toFixed(2)}</p>
+                    </div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Félicitations de toute l'équipe pédagogique !</p>
+                </div>
+
+                <div className="flex gap-12">
+                    <div className="text-center">
+                        <p className="text-[10px] font-black uppercase text-blue-400 mb-8">Ma Maîtresse / Mon Maître</p>
+                        <div className="w-40 h-px bg-gray-200 mx-auto" />
+                    </div>
+                    <div className="w-24 h-24 bg-amber-400 rounded-full flex items-center justify-center shadow-xl rotate-12">
+                         <span className="text-[10px] font-black text-white uppercase text-center leading-tight">Champion<br/>Médaille d'Or</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
+const CorporateHonors: React.FC<{ data: BulletinData, config: any }> = ({ data, config }) => (
+    <div className="landscape-page w-[297mm] h-[210mm] bg-white relative overflow-hidden shadow-2xl print:shadow-none flex flex-col">
+        {config.honors.showInstitutionalHeader && (
+            <div className="absolute top-4 left-1/3 right-0 px-16 z-20">
+                 <InstitutionalHeader school={data.school} customHeader={data.institutionalHeader} />
+            </div>
+        )}
+
+        {/* Dark Sidebar Header */}
+        <div className="absolute top-0 left-0 w-1/3 h-full bg-[#0F172A] flex flex-col p-16 justify-between text-white">
+            <div className="space-y-4">
+                <div className="w-16 h-1 bg-[#D4AF37]" />
+                <h2 className="text-xl font-black uppercase tracking-[0.3em] opacity-50">{data.school.abreviation || 'SCHOOL'}</h2>
+            </div>
+
+            <div className="space-y-8">
+                <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[#D4AF37]">Palmarès d'Excellence</p>
+                    <h1 className="text-5xl font-black uppercase tracking-tighter leading-none">Distinction Académique</h1>
+                </div>
+                <div className="h-px w-full bg-white/10" />
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                        <span className="opacity-40">Moyenne</span>
+                        <span className="text-xl text-[#D4AF37]">{data.performance.average.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                        <span className="opacity-40">Rang</span>
+                        <span className="text-xl">#{data.performance.rank}</span>
+                    </div>
+                </div>
+            </div>
+
+            <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-30">Session {data.year.libelle}</p>
+        </div>
+
+        {/* Golden Waves */}
+        <div className="absolute top-0 left-1/3 w-20 h-full overflow-hidden">
+            <div className="h-full w-full bg-gradient-to-r from-[#0F172A] to-transparent" />
+            <div className="absolute top-0 left-0 w-1 h-full bg-[#D4AF37]/50" />
+        </div>
+
+        <div className="ml-[33.33%] h-full p-24 flex flex-col justify-center items-start space-y-12">
+            <div className="space-y-2">
+                <p className="text-[12px] font-black uppercase tracking-widest text-gray-400">Le Comité Pédagogique certifie que l'élève</p>
+                <h2 className="text-7xl font-black text-[#0F172A] tracking-tighter uppercase">{data.student.nomComplet}</h2>
+            </div>
+
+            <div className="space-y-4 max-w-xl">
+                <p className="text-xl font-medium text-gray-500 leading-relaxed">
+                    A figuré au <span className="font-black text-black">Tableau d'Honneur</span> pour ses performances remarquables
+                    durant le <span className="font-black text-black">{data.period.label}</span>.
+                </p>
+                <div className="inline-flex items-center gap-4 bg-[#F8FAFC] p-4 rounded-2xl border border-gray-100">
+                    <div className="w-10 h-10 bg-[#0F172A] text-[#D4AF37] rounded-xl flex items-center justify-center">
+                        <BarChart3 size={20} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Discipline Majeure</p>
+                        <p className="text-xs font-black uppercase text-black">Excellence Pédagogique</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="w-full pt-16 grid grid-cols-2 gap-20">
+                <div className="space-y-4">
+                    <div className="h-px w-full bg-[#0F172A]/10" />
+                    <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Le Principal</span>
+                        <div className="w-12 h-1 bg-[#D4AF37]" />
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    <div className="h-px w-full bg-[#0F172A]/10" />
+                    <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Le Titulaire</span>
+                        <div className="w-12 h-1 bg-[#D4AF37]" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {config.honors.showSeal && (
+            <div className="absolute bottom-16 right-16 w-32 h-32 flex items-center justify-center">
+                <div className="absolute inset-0 bg-[#D4AF37]/10 rounded-full animate-pulse" />
+                <div className="w-24 h-24 bg-gradient-to-br from-[#D4AF37] to-[#B8860B] rounded-full shadow-2xl flex flex-col items-center justify-center text-white border-4 border-white">
+                    <span className="text-[14px] font-black">2026</span>
+                    <span className="text-[8px] font-black uppercase tracking-widest">Excellence</span>
+                </div>
+            </div>
+        )}
+    </div>
+);
 
 const StatRow: React.FC<{ label: string, value?: string | null, children?: React.ReactNode }> = ({ label, value, children }) => (
     <div className="flex justify-between items-center text-[8px] border-b border-gray-100 pb-1">

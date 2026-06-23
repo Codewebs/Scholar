@@ -32,8 +32,8 @@ export const matiereService = {
   getRepartitionStats: (yearId: number) =>
     api.get<ClassMatiereStat[]>(`/pedagogy/matieres/stats/repartition-classes/${yearId}`),
 
-  getRepartition: (yearId: number, classId?: number) =>
-    api.get<any[]>(`/pedagogy/matieres/repartition/${yearId}`, { params: { idClasse: classId } }),
+  getRepartition: (yearId: number, classId?: number, salleId?: number) =>
+    api.get<any[]>(`/pedagogy/matieres/repartition/${yearId}`, { params: { idClasse: classId, idSalle: salleId } }),
 
   // Groups
   getGroups: (idEtablissement?: number) =>

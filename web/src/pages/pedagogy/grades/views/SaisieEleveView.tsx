@@ -140,7 +140,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
 
       // 1. Get class subjects (repartition) and notes in parallel
       const [repartitionRes, notesRes] = await Promise.all([
-          matiereService.getRepartition(yearId!, salle.idClasse),
+          matiereService.getRepartition(yearId!, salle.idClasse, salle.idSalle),
           gradeService.getNotesByStudent(
             selectedStudentId!,
             selectedSequenceId!,

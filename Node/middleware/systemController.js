@@ -13,7 +13,7 @@ const {
     SousPeriode,
     RepartitionMatiere,
     InscriptionPersonnel,
-    AffectationPersonnelSalle,
+    RepartitionEnseignant,
     sequelize
 } = require("../models");
 
@@ -173,13 +173,13 @@ exports.getSetupProgress = async (req, res) => {
 
         // 8. Enseignants
         const totalTeachers = await InscriptionPersonnel.count({ where: { idAnneeScolaire: targetYearId, role: 'ENSEIGNANT', supprimer: false } });
-        const assignedTeachers = await AffectationPersonnelSalle.count({
+        const assignedTeachers = await RepartitionEnseignant.count({
             distinct: true,
             col: 'idInscriptionPersonnel',
             include: [{ model: Salle, where: { idAnneeScolaire: targetYearId, idClasse: classeIds } }]
         });
         const totalSallesActives = await Salle.count({ where: { idAnneeScolaire: targetYearId, idClasse: classeIds, supprimer: false } });
-        const sallesWithTeachers = await AffectationPersonnelSalle.count({
+        const sallesWithTeachers = await RepartitionEnseignant.count({
             distinct: true,
             col: 'idSalle',
             include: [{ model: Salle, where: { idAnneeScolaire: targetYearId, idClasse: classeIds } }]

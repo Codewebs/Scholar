@@ -25,7 +25,33 @@ const coteToNote = { 'A+': 19, 'A': 17.5, 'A-': 16.5, 'B+': 15.5, 'B': 14.8, 'B-
 // 1. SAISIE PAR MATIÈRE
 exports.getNotesByMatiere = async (req, res) => {
     try {
-        const { idRepartitionMatiere, idSequence, idAnneeScolaire } = req.query;
+        const { idRepartitionMatiere, idSequence, idAnneeScolaire, idSalle } = req.query;
+        const user = req.user;
+
+        // --- TEACHER SCOPING ---
+        if (user && user.role === 'ENSEIGNANT') {
+            const { RepartitionEnseignant, InscriptionPersonnel } = require("../models");
+            const ins = await InscriptionPersonnel.findOne({
+                where: { idUtilisateur: user.userId, idAnneeScolaire, supprimer: false }
+            });
+
+            if (!ins) return res.status(403).json({ error: "Accès refusé: Personnel non inscrit." });
+
+            const assigned = await RepartitionEnseignant.findOne({
+                where: {
+                    idInscriptionPersonnel: ins.idInscriptionPersonnel,
+                    idRepartitionMatiere,
+                    idSalle,
+                    idAnneeScolaire,
+                    supprimer: false
+                }
+            });
+
+            if (!assigned) {
+                console.warn(`🚫 [Security] Enseignant ${user.userId} tente d'accéder à Matière ${idRepartitionMatiere} en Salle ${idSalle}`);
+                return res.status(403).json({ error: "Vous n'êtes pas affecté à cette matière dans cette salle." });
+            }
+        }
 
         console.log(`🔍 [NotesByMatiere] Filter criteria:`, {
             idRepartitionMatiere,
@@ -62,7 +88,33 @@ exports.getNotesByMatiere = async (req, res) => {
 exports.saveNotes = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        const { notes, idSequence, idAnneeScolaire, modeSaisie } = req.body;
+        const { notes, idSequence, idAnneeScolaire, idRepartitionMatiere, modeSaisie } = req.body;
+        const user = req.user;
+
+        // --- TEACHER SCOPING ---
+        if (user && user.role === 'ENSEIGNANT') {
+            const { RepartitionEnseignant, InscriptionPersonnel } = require("../models");
+            const ins = await InscriptionPersonnel.findOne({
+                where: { idUtilisateur: user.userId, idAnneeScolaire, supprimer: false }
+            });
+
+            if (!ins) return res.status(403).json({ error: "Accès refusé: Personnel non inscrit." });
+
+            const assigned = await RepartitionEnseignant.findOne({
+                where: {
+                    idInscriptionPersonnel: ins.idInscriptionPersonnel,
+                    idRepartitionMatiere,
+                    idAnneeScolaire,
+                    supprimer: false
+                }
+            });
+
+            if (!assigned) {
+                console.warn(`🚫 [Security Save] Enseignant ${user.userId} tente d'enregistrer Matière ${idRepartitionMatiere}`);
+                return res.status(403).json({ error: "Vous n'êtes pas affecté à cette matière." });
+            }
+        }
+
         if (!notes || notes.length === 0) return res.json({ message: "Aucune note à enregistrer" });
 
         for (const item of notes) {
@@ -96,10 +148,39 @@ exports.saveNotes = async (req, res) => {
 // 2. SAISIE PAR ÉLÈVE
 exports.getNotesByStudent = async (req, res) => {
     try {
-        const { idInscription, idSequence, idAnneeScolaire } = req.query;
-        console.log(`🔍 [NotesByStudent] Filter:`, { idInscription, idSequence, idAnneeScolaire });
+        const { idInscription, idSequence, idAnneeScolaire, idClasse } = req.query;
+        const user = req.user;
+
+        let noteWhere = { idInscription, idSequence, idAnneeScolaire, supprimer: false };
+
+        // --- TEACHER SCOPING ---
+        if (user && user.role === 'ENSEIGNANT') {
+            const { RepartitionEnseignant, InscriptionPersonnel } = require("../models");
+            const ins = await InscriptionPersonnel.findOne({
+                where: { idUtilisateur: user.userId, idAnneeScolaire, supprimer: false }
+            });
+
+            if (!ins) return res.status(403).json({ error: "Accès refusé: Personnel non inscrit." });
+
+            const affs = await RepartitionEnseignant.findAll({
+                where: { idInscriptionPersonnel: ins.idInscriptionPersonnel, idAnneeScolaire, supprimer: false }
+            });
+
+            const assignedRepMatiereIds = affs.map(a => a.idRepartitionMatiere).filter(Boolean);
+
+            // On filtre les notes pour ne renvoyer que celles liées aux compétences des matières de l'enseignant
+            noteWhere.idRepartitionCompetence = {
+                [Op.in]: sequelize.literal(`(
+                    SELECT id FROM repartition_competence_sous_periode
+                    WHERE idRepartitionMatiere IN (${assignedRepMatiereIds.join(',') || 'NULL'})
+                    AND supprimer = false
+                )`)
+            };
+        }
+
+        console.log(`🔍 [NotesByStudent] Filter:`, noteWhere);
         const notes = await Note.findAll({
-            where: { idInscription, idSequence, idAnneeScolaire, supprimer: false }
+            where: noteWhere
         });
         console.log(`✅ [NotesByStudent] Found ${notes.length} notes`);
         res.json(notes);
@@ -113,7 +194,34 @@ exports.saveNotesByStudent = async (req, res) => {
     const t = await sequelize.transaction();
     try {
         const { notes, idInscription, idSequence, idAnneeScolaire, modeSaisie } = req.body;
+        const user = req.user;
+
+        // --- TEACHER SCOPING ---
+        let assignedRepMatiereIds = [];
+        if (user && user.role === 'ENSEIGNANT') {
+            const { RepartitionEnseignant, InscriptionPersonnel } = require("../models");
+            const ins = await InscriptionPersonnel.findOne({
+                where: { idUtilisateur: user.userId, idAnneeScolaire, supprimer: false }
+            });
+            if (!ins) return res.status(403).json({ error: "Accès refusé: Personnel non inscrit." });
+
+            const affs = await RepartitionEnseignant.findAll({
+                where: { idInscriptionPersonnel: ins.idInscriptionPersonnel, idAnneeScolaire, supprimer: false }
+            });
+            assignedRepMatiereIds = affs.map(a => a.idRepartitionMatiere).filter(Boolean);
+        }
+
         for (const item of notes) {
+            // Validation de sécurité pour l'enseignant
+            if (user && user.role === 'ENSEIGNANT') {
+                const { RepartitionCompetence } = require("../models");
+                const rc = await RepartitionCompetence.findByPk(item.idRepartitionCompetence);
+                if (!rc || !assignedRepMatiereIds.includes(rc.idRepartitionMatiere)) {
+                    console.warn(`🚫 [Security Student Save] Enseignant ${user.userId} tente d'enregistrer une note interdite.`);
+                    continue; // Skip this one
+                }
+            }
+
             let noteVal = item.note;
             let coteVal = item.cote;
             if (modeSaisie === 'ALPHABETIC' && coteVal) noteVal = coteToNote[coteVal] || null;

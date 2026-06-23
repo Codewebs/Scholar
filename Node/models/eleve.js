@@ -3,7 +3,7 @@ const sequelize = require("../db");
 
 const Eleve = sequelize.define("Eleve", {
   idEleve: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-  matricule: { type: DataTypes.STRING(20), unique: true, allowNull: true },
+  matricule: { type: DataTypes.STRING(20), allowNull: true },
   nom: { type: DataTypes.STRING(100), allowNull: false },
   prenom: { type: DataTypes.STRING(100), allowNull: true },
   dateNaissance: { type: DataTypes.DATEONLY, allowNull: false },
@@ -19,7 +19,14 @@ const Eleve = sequelize.define("Eleve", {
   supprimer: { type: DataTypes.BOOLEAN, defaultValue: false }
 }, {
   tableName: "eleve",
-  timestamps: true
+  timestamps: true,
+  indexes: [
+    {
+      unique: true,
+      fields: ['matricule'],
+      name: 'unique_matricule_eleve'
+    }
+  ]
 });
 
 module.exports = Eleve;

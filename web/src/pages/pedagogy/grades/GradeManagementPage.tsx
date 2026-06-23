@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 import { useSchoolYear } from '../../../context/SchoolYearContext';
 import { gradeService } from '../../../api/gradeService';
 import { studentService } from '../../../api/studentService';
@@ -74,6 +75,8 @@ type ViewType = 'matiere' | 'eleve' | 'absences' | 'pv' | 'config';
 type GradeEntryMode = 'DECIMAL' | 'ALPHABETIC';
 
 const GradeManagementPage: React.FC = () => {
+    const { user } = useAuth();
+    const role = (user?.role || '').toUpperCase();
     const { selectedYear } = useSchoolYear();
     const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
@@ -189,8 +192,13 @@ const GradeManagementPage: React.FC = () => {
     const loadMatieresForSalle = async (salle: Salle, sequence: Sequence) => {
         setLoading(true);
         try {
+            const params: any = { idClasse: salle.idClasse };
+            if (role === 'ENSEIGNANT') {
+                params.idSalle = salle.idSalle;
+            }
+
             const res = await api.get(`/pedagogy/matieres/repartition/${yearId}`, {
-                params: { idClasse: salle.idClasse }
+                params
             });
 
             // Map RepartitionMatiere data to Matiere interface
@@ -504,6 +512,24 @@ const GradeManagementPage: React.FC = () => {
     });
 
     const isEntryView = activeView === 'matiere' || activeView === 'eleve';
+
+    if (role === 'ELEVE' || role === 'PARENT') {
+        return (
+            <div className="h-[60vh] flex flex-col items-center justify-center space-y-4">
+                <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center text-red-500 shadow-inner">
+                    <Zap size={40} />
+                </div>
+                <h2 className="text-2xl font-black uppercase tracking-tighter text-black">Accès Interdit</h2>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Ce module est réservé au personnel pédagogique</p>
+                <button
+                    onClick={() => window.history.back()}
+                    className="mt-8 px-10 py-4 bg-black text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 transition-all"
+                >
+                    Retour
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-full mx-auto space-y-4 animate-in fade-in duration-500 pb-20 p-4">

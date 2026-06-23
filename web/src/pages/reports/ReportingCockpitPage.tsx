@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSchoolYear } from '../../context/SchoolYearContext';
 import { financeService } from '../../api/financeService';
 import { studentService } from '../../api/studentService';
+import { pedagogyService } from '../../api/pedagogyService';
 import {
   Wallet,
   TrendingUp,
@@ -13,7 +14,9 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
-  Filter
+  Filter,
+  Printer,
+  Banknote
 } from 'lucide-react';
 import {
   XAxis,
@@ -40,10 +43,19 @@ const ReportingCockpitPage: React.FC = () => {
   const [period, setPeriod] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ANNUAL'>('MONTHLY');
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  // Autres Filtres
-  const [selectedSalleId, setSelectedSalleId] = useState<string>('');
-  const [selectedFraisId, setSelectedFraisId] = useState<string>('');
+  // Scope & Granularité (Version 4.0)
+  const [scope, setScope] = useState<'ALL' | 'CYCLE' | 'CLASSE' | 'SALLE'>('ALL');
+  const [selectedScopeId, setSelectedScopeId] = useState<string>('');
+
+  // Data for Filters
+  const [cycles, setCycles] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
+  const [periodes, setPeriodes] = useState<any[]>([]);
+  const [selectedPeriodeId, setSelectedPeriodeId] = useState<string>('');
+
+  // Autres Filtres
+  const [selectedFraisId, setSelectedFraisId] = useState<string>('');
   const [libraryFees, setLibraryFees] = useState<any[]>([]);
 
   useEffect(() => {
@@ -56,16 +68,22 @@ const ReportingCockpitPage: React.FC = () => {
     if (yearId) {
       loadStats();
     }
-  }, [yearId, period, currentDate, selectedSalleId, selectedFraisId]);
+  }, [yearId, period, currentDate, scope, selectedScopeId, selectedFraisId, selectedPeriodeId]);
 
   const loadInitialData = async () => {
       try {
-          const [roomsRes, feesRes] = await Promise.all([
+          const [roomsRes, cyclesRes, classesRes, feesRes, periodesRes] = await Promise.all([
               studentService.getRooms(yearId!),
-              financeService.getExigibles()
+              studentService.getCycles(yearId!),
+              studentService.getClasses(yearId!),
+              financeService.getExigibles(),
+              pedagogyService.getPeriodes(yearId!)
           ]);
           setRooms(roomsRes.data);
+          setCycles(cyclesRes.data);
+          setClasses(classesRes.data);
           setLibraryFees(feesRes.data);
+          setPeriodes(periodesRes.data);
       } catch (err) {
           console.error("Error loading filter data", err);
       }
@@ -74,6 +92,14 @@ const ReportingCockpitPage: React.FC = () => {
   const getDateRange = () => {
       let start = new Date(currentDate);
       let end = new Date(currentDate);
+
+      // Si une période (séquence/trimestre) est sélectionnée, on utilise ses dates
+      if (selectedPeriodeId) {
+          const p = periodes.find(per => per.idPeriode.toString() === selectedPeriodeId);
+          if (p?.dateDebut && p?.dateFin) {
+              return { start: new Date(p.dateDebut), end: new Date(p.dateFin) };
+          }
+      }
 
       if (period === 'DAILY') {
           start.setHours(0,0,0,0);
@@ -111,7 +137,9 @@ const ReportingCockpitPage: React.FC = () => {
           period,
           startDate: start.toISOString(),
           endDate: end.toISOString(),
-          idSalle: selectedSalleId || undefined,
+          idSalle: scope === 'SALLE' ? selectedScopeId : undefined,
+          idClasse: scope === 'CLASSE' ? selectedScopeId : undefined,
+          idCycle: scope === 'CYCLE' ? selectedScopeId : undefined,
           idFrais: selectedFraisId || undefined
       });
       setStats(res.data);
@@ -158,48 +186,115 @@ const ReportingCockpitPage: React.FC = () => {
                     period === 'ANNUAL' ? selectedYear?.libelleAnneeScolaire :
                     `${start.toLocaleDateString()} — ${end.toLocaleDateString()}`;
 
+  const reportModules = [
+    { id: 1, title: "Journal de Caisse", desc: "Clôture & Détails journaliers", icon: Banknote },
+    { id: 2, title: "Bilan Mensuel", desc: "Ventilation par caisse", icon: TrendingUp },
+    { id: 3, title: "Annulations/Audit", desc: "Rectifications & Anomalies", icon: AlertCircle },
+    { id: 4, title: "Taux de Recouvrement", desc: "Jauge d'objectif budgétaire", icon: Target },
+    { id: 5, title: "Pyramide Impayés", desc: "Classement des insolvables", icon: Filter },
+    { id: 6, title: "Bourses & Remises", desc: "Manques à gagner", icon: Sparkles },
+    { id: 7, title: "Services Annexes", desc: "Transport & Périscolaire", icon: Wallet },
+    { id: 8, title: "Prévision Trésorerie", desc: "Timeline des échéances", icon: CalendarDays },
+    { id: 9, title: "Compte Résultat", desc: "Recettes vs Charges", icon: TrendingUp },
+    { id: 10, title: "Bilan Éducativo-Fin", desc: "Coût de revient par élève", icon: Users },
+  ];
+
+  const renderChips = () => {
+    let items: any[] = [];
+    if (scope === 'CYCLE') items = cycles.map(c => ({ id: c.idCycle.toString(), label: c.libelleCycle }));
+    else if (scope === 'CLASSE') items = classes.map(c => ({ id: c.idClasse.toString(), label: c.libelleClasseFr }));
+    else if (scope === 'SALLE') items = rooms.map(r => ({ id: r.idSalle.toString(), label: `${r.Classe?.libelleClasseFr || ''} ${r.nomSalle}` }));
+
+    if (items.length === 0 && scope !== 'ALL') return null;
+
+    return (
+        <div className="flex flex-wrap gap-2 mt-6 animate-in slide-in-from-top-4 duration-300">
+            {items.map(item => (
+                <button
+                    key={item.id}
+                    onClick={() => setSelectedScopeId(item.id)}
+                    className={clsx(
+                        "px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border",
+                        selectedScopeId === item.id
+                            ? "bg-black text-white border-black shadow-lg scale-105"
+                            : "bg-white text-gray-500 border-gray-100 hover:border-black hover:text-black"
+                    )}
+                >
+                    {item.label}
+                </button>
+            ))}
+        </div>
+    );
+  };
+
   return (
     <div className="max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500 pb-20 p-4">
-      {/* Header & Main Filters */}
-      <div className="bg-white p-10 rounded-[48px] shadow-xl border border-gray-100 relative overflow-hidden flex flex-col xl:flex-row xl:items-center justify-between gap-8">
+      {/* Header & Main Filters (Version 4.0 - Advanced Scope) */}
+      <div className="bg-white p-10 rounded-[48px] shadow-xl border border-gray-100 relative overflow-hidden flex flex-col gap-10">
          <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
 
-         <div className="relative z-10">
-            <h1 className="text-5xl font-black uppercase tracking-tighter text-black flex items-center gap-4">
-               Cockpit <span className="text-accent">D'Analyse</span>
-            </h1>
-            <div className="flex items-center gap-3 mt-3">
-               <div className="bg-black text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.2em]">Live Tracking</div>
-               <p className="text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest">Pilotage stratégique — {selectedYear?.libelleAnneeScolaire}</p>
+         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 relative z-10">
+            <div>
+                <h1 className="text-5xl font-black uppercase tracking-tighter text-black flex items-center gap-4">
+                   Cockpit <span className="text-accent">D'Analyse</span>
+                </h1>
+                <div className="flex items-center gap-3 mt-3">
+                   <div className="bg-black text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.2em]">Live Tracking</div>
+                   <p className="text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest">Pilotage stratégique — {selectedYear?.libelleAnneeScolaire}</p>
+                </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4">
+                <div className="flex p-1.5 bg-gray-100 rounded-[24px]">
+                    {[
+                        { id: 'ALL', label: 'Etablissement' },
+                        { id: 'CYCLE', label: 'Par Cycle' },
+                        { id: 'CLASSE', label: 'Par Classe' },
+                        { id: 'SALLE', label: 'Par Salle' },
+                    ].map(s => (
+                        <button
+                            key={s.id}
+                            onClick={() => { setScope(s.id as any); setSelectedScopeId(''); }}
+                            className={clsx(
+                                "px-6 py-3 rounded-[18px] text-[9px] font-black uppercase tracking-widest transition-all",
+                                scope === s.id ? "bg-white text-black shadow-md" : "text-gray-400 hover:text-black"
+                            )}
+                        >
+                            {s.label}
+                        </button>
+                    ))}
+                </div>
+
+                <AuthButton className="bg-black shadow-2xl px-8 h-14" onClick={() => window.print()}>
+                    <Download size={18} className="mr-2" /> Synthèse PDF
+                </AuthButton>
             </div>
          </div>
 
-         <div className="flex flex-wrap items-center gap-4 relative z-10">
-            <select
-                className="h-14 px-6 bg-gray-50 border-none rounded-2xl font-black text-[9px] uppercase tracking-widest focus:ring-2 focus:ring-accent outline-none"
-                value={selectedSalleId}
-                onChange={e => setSelectedSalleId(e.target.value)}
-            >
-                <option value="">Toutes les Salles</option>
-                {rooms.map(r => (
-                    <option key={r.idSalle} value={r.idSalle}>{r.Classe?.libelleClasseFr} {r.nomSalle}</option>
-                ))}
-            </select>
+         <div className="relative z-10">
+             <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                 <div className="flex gap-2">
+                    <button
+                        onClick={() => setSelectedPeriodeId('')}
+                        className={clsx(
+                            "px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border",
+                            !selectedPeriodeId ? "bg-accent text-white border-accent" : "bg-gray-50 text-gray-400 border-transparent"
+                        )}
+                    >Année Complète</button>
+                    {periodes.map(p => (
+                        <button
+                            key={p.idPeriode}
+                            onClick={() => setSelectedPeriodeId(p.idPeriode.toString())}
+                            className={clsx(
+                                "px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border",
+                                selectedPeriodeId === p.idPeriode.toString() ? "bg-accent text-white border-accent" : "bg-gray-50 text-gray-400 border-transparent"
+                            )}
+                        >{p.libellePeriodeFr}</button>
+                    ))}
+                 </div>
+             </div>
 
-            <select
-                className="h-14 px-6 bg-gray-50 border-none rounded-2xl font-black text-[9px] uppercase tracking-widest focus:ring-2 focus:ring-accent outline-none"
-                value={selectedFraisId}
-                onChange={e => setSelectedFraisId(e.target.value)}
-            >
-                <option value="">Tous les Frais</option>
-                {libraryFees.map(f => (
-                    <option key={f.idFraisExigible} value={f.idFraisExigible}>{f.fraisFr}</option>
-                ))}
-            </select>
-
-            <AuthButton className="bg-black shadow-2xl px-8 h-14" onClick={() => window.print()}>
-                <Download size={18} className="mr-2" /> Synthèse PDF
-            </AuthButton>
+             {renderChips()}
          </div>
       </div>
 
@@ -348,6 +443,39 @@ const ReportingCockpitPage: React.FC = () => {
                       Ce taux est calculé en comparant la moyenne actuelle de chaque élève aux seuils de réussite définis pour chaque cycle.
                   </p>
               </div>
+          </div>
+      </div>
+
+      {/* Robust Financial Reports Engine - 10 Modules Grid */}
+      <div className="space-y-6">
+          <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-black uppercase tracking-tighter">Moteur de Bilans <span className="text-accent">Financiers</span></h2>
+              <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-secondary">Aperçu A4 Prêt</span>
+              </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+              {reportModules.map((m) => (
+                  <div
+                    key={m.id}
+                    className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all group cursor-pointer relative overflow-hidden"
+                  >
+                      <div className="flex justify-between items-start mb-6">
+                          <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-black group-hover:bg-black group-hover:text-white transition-all">
+                              <m.icon size={24} />
+                          </div>
+                          <button className="p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-accent text-white rounded-xl">
+                              <Printer size={16} />
+                          </button>
+                      </div>
+                      <h4 className="text-xs font-black uppercase tracking-wider mb-2">{m.title}</h4>
+                      <p className="text-[10px] font-bold text-secondary leading-relaxed">{m.desc}</p>
+
+                      <div className="absolute bottom-0 left-0 w-full h-1 bg-accent scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+                  </div>
+              ))}
           </div>
       </div>
 

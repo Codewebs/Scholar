@@ -186,7 +186,11 @@ const FinancialReportsPage: React.FC = () => {
                                                 <p className="text-[9px] font-bold text-secondary uppercase mt-1">{p.Eleve?.matricule || 'N/A'}</p>
                                             </td>
                                             <td className="px-8 py-6">
-                                                <span className="text-[10px] font-black uppercase">{p.Eleve?.Inscription?.[0]?.Salle?.Classe?.libelleClasseFr || p.Eleve?.classeLabel || '---'}</span>
+                                                <span className="text-[10px] font-black uppercase">
+                                                    {p.Eleve?.Inscription?.[0]?.Salle?.Classe?.libelleClasseFr
+                                                        ? `${p.Eleve.Inscription[0].Salle.Classe.libelleClasseFr} ${p.Eleve.Inscription[0].Salle.nomSalle || ''}`
+                                                        : (p.Eleve?.classeLabel || '---')}
+                                                </span>
                                             </td>
                                             <td className="px-8 py-6">
                                                 <span className={clsx(

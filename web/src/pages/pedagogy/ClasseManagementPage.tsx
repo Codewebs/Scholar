@@ -68,9 +68,12 @@ const reportCategories = [
         name: "💰 II. Listes Financières & Recouvrement",
         reports: [
             { id: 'insolvent_fees', name: "Liste des insolvables – Frais exigibles", type: 'A' },
-            { id: 'insolvent_perischool', name: "Liste des insolvables – Frais périscolaires", type: 'A' },
-            { id: 'global_financial', name: "Liste de situation financière globale", type: 'A' },
+            { id: 'global_financial', name: "Liste de situation financière globale", type: 'B' },
+            { id: 'daily_payments', name: "État de paiement journalier", type: 'A' },
             { id: 'scholarship', name: "Liste des élèves boursiers / Exemptés", type: 'A' },
+            { id: 'fees_bilan_exigible', name: "Bilan des frais scolaires", type: 'C' },
+            { id: 'fees_bilan_perischool', name: "Bilan des frais périscolaires", type: 'C' },
+            { id: 'fees_bilan_transport', name: "Bilan des frais de transport", type: 'C' },
         ]
     },
     {
@@ -123,6 +126,70 @@ const ClasseManagementPage: React.FC = () => {
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [previewSearch, setPreviewSearch] = useState("");
   const [previewData, setPreviewData] = useState<any[]>([]);
+
+  // Fee Selection for Reports
+  const [availableFees, setAvailableFees] = useState<any[]>([]);
+  const [selectedFeeId, setSelectedFeeId] = useState<number | string>("");
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+
+  useEffect(() => {
+    if (isPreviewModalOpen && selectedReport && yearId) {
+        loadAvailableFees();
+    }
+  }, [isPreviewModalOpen, selectedReport]);
+
+  const loadAvailableFees = async () => {
+      if (!selectedReport || !yearId) return;
+      try {
+          if (selectedReport.id === 'insolvent_fees') {
+              const res = await api.get(`/finance/tarifs/all/${yearId}`);
+              setAvailableFees(res.data.exigibles.filter((f: any) => f.idClasse === selectedClassId));
+          } else if (selectedReport.id === 'insolvent_perischool') {
+              const res = await api.get(`/finance/tarifs/all/${yearId}`);
+              setAvailableFees(res.data.periscolaires);
+          }
+      } catch (error) {
+          console.error("Error loading fees for selector:", error);
+      }
+  };
+
+  const handleFeeChange = async (feeId: string) => {
+      setSelectedFeeId(feeId);
+      if (!selectedReport || !selectedClassId || !yearId) return;
+
+      setLoading(true);
+      try {
+          const params: any = { idClasse: selectedClassId, idAnneeScolaire: yearId };
+          if (selectedReport.id === 'insolvent_fees') params.idTarifFraisExigible = feeId;
+          if (selectedReport.id === 'insolvent_perischool') params.idTarifFraisActivitePeriscolaire = feeId;
+
+          const res = await pedagogyService.getReportData(selectedReport.id, params);
+          setPreviewData(res.data);
+      } catch (error) {
+          alert("Erreur lors du filtrage");
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  const handleDateChange = async (date: string) => {
+      setSelectedDate(date);
+      if (!selectedReport || !selectedClassId || !yearId) return;
+
+      setLoading(true);
+      try {
+          const res = await pedagogyService.getReportData(selectedReport.id, {
+              idClasse: selectedClassId,
+              idAnneeScolaire: yearId,
+              date: date
+          });
+          setPreviewData(res.data);
+      } catch (error) {
+          alert("Erreur lors du chargement de la date");
+      } finally {
+          setLoading(false);
+      }
+  };
 
   useEffect(() => {
     if (yearId) {
@@ -237,10 +304,15 @@ const ClasseManagementPage: React.FC = () => {
     if (!yearId) return;
     setLoading(true);
     try {
-        const res = await pedagogyService.getReportData(report.id, {
-            idClasse: classeId,
-            idAnneeScolaire: yearId
-        });
+        let reportId = report.id;
+        let params: any = { idClasse: classeId, idAnneeScolaire: yearId };
+
+        if (reportId.startsWith('fees_bilan_')) {
+            params.type = reportId.split('_').pop();
+            reportId = 'fees_bilan';
+        }
+
+        const res = await pedagogyService.getReportData(reportId, params);
 
         setSelectedReport({ ...report, classeId });
         setPreviewData(res.data);
@@ -668,7 +740,7 @@ const ClasseManagementPage: React.FC = () => {
                   </div>
 
                   {/* Search and Filters */}
-                  <div className="px-12 py-6 bg-white flex items-center gap-4">
+                  <div className="px-12 py-6 bg-white flex items-center gap-6">
                       <div className="relative flex-1">
                           <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                           <input
@@ -679,6 +751,35 @@ const ClasseManagementPage: React.FC = () => {
                             onChange={(e) => setPreviewSearch(e.target.value)}
                           />
                       </div>
+
+                      {(selectedReport.id === 'insolvent_fees' || selectedReport.id === 'insolvent_perischool') && (
+                          <div className="w-72">
+                              <select
+                                className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent rounded-[24px] text-sm font-black uppercase outline-none focus:border-black transition-all appearance-none"
+                                value={selectedFeeId}
+                                onChange={(e) => handleFeeChange(e.target.value)}
+                              >
+                                  <option value="">Tous les frais</option>
+                                  {availableFees.map(fee => (
+                                      <option key={fee.idTarifFraisExigible || fee.idTarifFraisActivitePeriscolaire} value={fee.idTarifFraisExigible || fee.idTarifFraisActivitePeriscolaire}>
+                                          {fee.Frais?.libelleFr || fee.Frais?.fraisFr}
+                                      </option>
+                                  ))}
+                              </select>
+                          </div>
+                      )}
+
+                      {selectedReport.id === 'daily_payments' && (
+                          <div className="w-72">
+                              <input
+                                type="date"
+                                className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent rounded-[24px] text-sm font-black outline-none focus:border-black transition-all"
+                                value={selectedDate}
+                                onChange={(e) => handleDateChange(e.target.value)}
+                                max={new Date().toISOString().split('T')[0]}
+                              />
+                          </div>
+                      )}
                   </div>
 
                   {/* Data Content */}

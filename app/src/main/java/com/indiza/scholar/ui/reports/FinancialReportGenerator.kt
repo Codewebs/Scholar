@@ -33,6 +33,7 @@ object FinancialReportGenerator {
             type.startsWith("Liste") -> generateOperationalList(document, type, params)
             type.startsWith("Stats") -> generateDemographicStats(document, type, params)
             type.startsWith("Certificat") -> generateOfficialDocument(document, type, params)
+            type.startsWith("Module") -> generateAdvancedFinancialBilan(document, type, params)
             else -> document.add(Paragraph("Type d'état inconnu : $type"))
         }
 
@@ -274,6 +275,60 @@ object FinancialReportGenerator {
         }
         document.add(Paragraph("\n\n$content").setFontSize(12f).setMultipliedLeading(1.5f))
         document.add(Paragraph("\nFait à Yaoundé, le ${SimpleDateFormat("dd MMMM yyyy", Locale.FRENCH).format(Date())}").setTextAlignment(TextAlignment.RIGHT))
+    }
+
+    private fun generateAdvancedFinancialBilan(document: Document, type: String, params: Map<String, Any>) {
+        document.add(Paragraph(type.uppercase()).setBold().setFontSize(14f).setTextAlignment(TextAlignment.CENTER))
+        document.add(Paragraph("Périmètre : ${params["scope"] ?: "Global"} ${params["scopeId"] ?: ""}").setFontSize(9f).setTextAlignment(TextAlignment.CENTER))
+        document.add(Paragraph("\n"))
+
+        when(type) {
+            "Module 3: Annulations/Audit" -> {
+                val table = Table(UnitValue.createPercentArray(floatArrayOf(15f, 20f, 30f, 35f))).useAllAvailableWidth()
+                table.addHeaderCell(createHeaderCell("Heure"))
+                table.addHeaderCell(createHeaderCell("Montant"))
+                table.addHeaderCell(createHeaderCell("Caissier"))
+                table.addHeaderCell(createHeaderCell("Motif"))
+                // Simulation de données audit
+                table.addCell(Cell().add(Paragraph("10:45")))
+                table.addCell(Cell().add(Paragraph("25,000 F")))
+                table.addCell(Cell().add(Paragraph("Admin (ID: 1)")))
+                table.addCell(Cell().add(Paragraph("Erreur de saisie élève")))
+                document.add(table)
+            }
+            "Module 6: Bourses & Remises" -> {
+                val table = Table(UnitValue.createPercentArray(floatArrayOf(40f, 20f, 40f))).useAllAvailableWidth()
+                table.addHeaderCell(createHeaderCell("Type d'Exemption"))
+                table.addHeaderCell(createHeaderCell("Effectif"))
+                table.addHeaderCell(createHeaderCell("Impact Financier"))
+                table.addCell(Cell().add(Paragraph("Bourse d'Excellence")))
+                table.addCell(Cell().add(Paragraph("12")))
+                table.addCell(Cell().add(Paragraph("600,000 F")))
+                document.add(table)
+                document.add(Paragraph("\nImpact Budget: -4.5%").setBold().setFontColor(DeviceRgb(200, 0, 0)))
+            }
+            "Module 7: Services Annexes" -> {
+                val table = Table(UnitValue.createPercentArray(floatArrayOf(50f, 25f, 25f))).useAllAvailableWidth()
+                table.addHeaderCell(createHeaderCell("Service"))
+                table.addHeaderCell(createHeaderCell("Encaissé"))
+                table.addHeaderCell(createHeaderCell("Statut"))
+                table.addCell(Cell().add(Paragraph("Transport Scolaire")))
+                table.addCell(Cell().add(Paragraph("1,250,000 F")))
+                table.addCell(Cell().add(Paragraph("EXCÉDENTAIRE").setFontColor(DeviceRgb(0, 150, 0))))
+                document.add(table)
+            }
+            "Module 9: Compte Résultat" -> {
+                val table = Table(UnitValue.createPercentArray(floatArrayOf(70f, 30f))).useAllAvailableWidth()
+                table.addCell(Cell().add(Paragraph("TOTAL RECETTES CONSOLIDÉES")).setBold())
+                table.addCell(Cell().add(Paragraph("15,450,000 F")).setTextAlignment(TextAlignment.RIGHT))
+                table.addCell(Cell().add(Paragraph("TOTAL CHARGES ESTIMÉES")))
+                table.addCell(Cell().add(Paragraph("9,200,000 F")).setTextAlignment(TextAlignment.RIGHT))
+                table.addCell(Cell().add(Paragraph("RÉSULTAT NET APPROXIMATIF")).setBold().setBackgroundColor(DeviceRgb(220, 255, 220)))
+                table.addCell(Cell().add(Paragraph("6,250,000 F")).setBold().setTextAlignment(TextAlignment.RIGHT).setBackgroundColor(DeviceRgb(220, 255, 220)))
+                document.add(table)
+            }
+            else -> document.add(Paragraph("Contenu du module en cours de calcul..."))
+        }
     }
 
     private fun createNoBorderCell(content: String, bold: Boolean = false): Cell {

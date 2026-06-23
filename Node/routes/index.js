@@ -20,8 +20,10 @@ const matieres = require("./matieres");
 const competences = require("./competences");
 const periodes = require("./periodes");
 const notes = require("./notes");
+const repartitionEnseignant = require("./repartitionEnseignant");
 const annonces = require("./annonces");
 const reports = require("./reportRoutes");
+const institutionalHeader = require("./institutionalHeader");
 
 // Montage des endpoints
 app.use((req, res, next) => {
@@ -43,7 +45,9 @@ app.use("/pedagogy/matieres", matieres);
 app.use("/pedagogy/competences", competences);
 app.use("/pedagogy/periodes", periodes);
 app.use("/pedagogy/notes", notes);
+app.use("/pedagogy/teachers-repartition", repartitionEnseignant);
 app.use("/pedagogy/reports", reports);
+app.use("/config/institutional-headers", institutionalHeader);
 app.use("/annonces", annonces);
 
 // Routes montées sur la racine

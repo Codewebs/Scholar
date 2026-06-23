@@ -83,6 +83,12 @@ export const pedagogyService = {
       case 'attendance_monthly': endpoint = '/pedagogy/reports/attendance'; break;
       case 'gender_split': endpoint = '/pedagogy/reports/gender-split'; break;
       case 'trombinoscope': endpoint = '/pedagogy/reports/trombinoscope'; break;
+      case 'insolvent_fees': endpoint = '/pedagogy/reports/insolvent-fees'; break;
+      case 'insolvent_perischool': endpoint = '/pedagogy/reports/insolvent-perischool'; break;
+      case 'global_financial': endpoint = '/pedagogy/reports/global-finance'; break;
+      case 'daily_payments': endpoint = '/pedagogy/reports/daily-payments'; break;
+      case 'scholarship': endpoint = '/pedagogy/reports/scholarship'; break;
+      case 'fees_bilan': endpoint = '/pedagogy/reports/fees-bilan'; break;
       default: endpoint = '/pedagogy/reports/alphabetical';
     }
     return api.get<any[]>(endpoint, { params });

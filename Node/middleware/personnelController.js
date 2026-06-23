@@ -2,7 +2,7 @@ const {
   DemandeInscriptionPersonnel,
   InscriptionPersonnel,
   CompetenceEnseignant,
-  AffectationPersonnelSalle,
+  RepartitionEnseignant,
   Utilisateur,
   Matiere,
   Salle,
@@ -74,9 +74,14 @@ exports.envoyerDemande = async (req, res) => {
 exports.validerDemande = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        const { idDemande, idAnneeScolaire, matricule, dateNaissance, lieuNaissance, sexe, role, permissionsAjoutees, permissionsRetirees } = req.body;
+        const { idDemande, idAnneeScolaire, matricule, dateNaissance, lieuNaissance, sexe, role, diplomes, permissionsAjoutees, permissionsRetirees } = req.body;
         const demande = await DemandeInscriptionPersonnel.findByPk(idDemande);
         if (!demande) return res.status(404).json({ error: "Demande introuvable." });
+
+        // Update diplomas in global user profile if provided
+        if (diplomes) {
+            await Utilisateur.update({ diplomes }, { where: { idUtilisateur: demande.idUtilisateur }, transaction: t });
+        }
 
         // Créer l'inscription avec surcharges de droits
         const inscription = await InscriptionPersonnel.create({
@@ -217,13 +222,13 @@ exports.affecterSalle = async (req, res) => {
         const { idInscriptionPersonnel, idSalle, idMatiere } = req.body;
 
         // Vérifier conflit de matière
-        const existing = await AffectationPersonnelSalle.findOne({
-            where: { idSalle, idMatiere }
+        const existing = await RepartitionEnseignant.findOne({
+            where: { idSalle, idMatiere, supprimer: false }
         });
         if (existing) return res.status(409).json({ error: "Un enseignant est déjà affecté à cette matière dans cette salle." });
 
-        const affectation = await AffectationPersonnelSalle.create({
-            idInscriptionPersonnel, idSalle, idMatiere
+        const affectation = await RepartitionEnseignant.create({
+            idInscriptionPersonnel, idSalle, idMatiere, idAnneeScolaire: req.body.idAnneeScolaire
         });
 
         res.status(201).json(affectation);
@@ -258,7 +263,7 @@ exports.getPersonnelActif = async (req, res) => {
             where: { idEtablissement, idAnneeScolaire, supprimer: false },
             include: [
                 { model: Matiere, as: 'specialites' },
-                { model: Utilisateur, attributes: ['idUtilisateur', 'nom', 'email', 'telephone'] }
+                { model: Utilisateur, attributes: ['idUtilisateur', 'nom', 'email', 'telephone', 'diplomes', 'photo'] }
             ]
         });
 
@@ -407,6 +412,37 @@ exports.getMyDemands = async (req, res) => {
         });
         res.json(demandes);
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 10. METTRE A JOUR PROFIL (NOM, PRENOM, DIPLOMES, ETC.)
+exports.updateProfile = async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { idUtilisateur } = req.params;
+        const { nom, prenom, diplomes, email, telephone } = req.body;
+
+        // 1. Mettre à jour l'utilisateur Global
+        await Utilisateur.update({
+            nom,
+            email,
+            telephone,
+            diplomes
+        }, { where: { idUtilisateur }, transaction: t });
+
+        // 2. Mettre à jour les inscriptions locales pour le nom/prenom/email
+        await InscriptionPersonnel.update({
+            nom,
+            prenom,
+            email
+        }, { where: { idUtilisateur }, transaction: t });
+
+        await t.commit();
+        res.json({ message: "Profil mis à jour avec succès." });
+    } catch (error) {
+        if (t) await t.rollback();
+        console.error("❌ [PersonnelCtrl] updateProfile error:", error);
         res.status(500).json({ error: error.message });
     }
 };

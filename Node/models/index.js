@@ -27,12 +27,13 @@ const SuiviAbsence = require("./suiviAbsence");
 const Annonce = require("./Annonce");
 const Specialite = require("./Specialite");
 const UtilisateurSpecialite = require("./UtilisateurSpecialite");
+const EnteteInstitutionnel = require("./enteteInstitutionnel");
 
 // Personnel Models
 const InscriptionPersonnel = require("./inscriptionPersonnel");
 const DemandeInscriptionPersonnel = require("./demandeInscriptionPersonnel");
 const CompetenceEnseignant = require("./competenceEnseignant");
-const AffectationPersonnelSalle = require("./affectationPersonnelSalle");
+const RepartitionEnseignant = require("./repartitionEnseignant");
 
 // Finance Models
 const FraisExigible = require("./fraisExigible");
@@ -169,14 +170,17 @@ Matiere.belongsToMany(InscriptionPersonnel, {
   foreignKey: "idMatiere"
 });
 
-InscriptionPersonnel.hasMany(AffectationPersonnelSalle, { foreignKey: "idInscriptionPersonnel" });
-AffectationPersonnelSalle.belongsTo(InscriptionPersonnel, { foreignKey: "idInscriptionPersonnel" });
+InscriptionPersonnel.hasMany(RepartitionEnseignant, { foreignKey: "idInscriptionPersonnel", as: "repartitions" });
+RepartitionEnseignant.belongsTo(InscriptionPersonnel, { foreignKey: "idInscriptionPersonnel" });
 
-Salle.hasMany(AffectationPersonnelSalle, { foreignKey: "idSalle" });
-AffectationPersonnelSalle.belongsTo(Salle, { foreignKey: "idSalle" });
+Salle.hasMany(RepartitionEnseignant, { foreignKey: "idSalle", as: "repartitionEnseignants" });
+RepartitionEnseignant.belongsTo(Salle, { foreignKey: "idSalle" });
 
-Matiere.hasMany(AffectationPersonnelSalle, { foreignKey: "idMatiere" });
-AffectationPersonnelSalle.belongsTo(Matiere, { foreignKey: "idMatiere" });
+RepartitionMatiere.hasMany(RepartitionEnseignant, { foreignKey: "idRepartitionMatiere" });
+RepartitionEnseignant.belongsTo(RepartitionMatiere, { foreignKey: "idRepartitionMatiere" });
+
+AnneeScolaire.hasMany(RepartitionEnseignant, { foreignKey: "idAnneeScolaire" });
+RepartitionEnseignant.belongsTo(AnneeScolaire, { foreignKey: "idAnneeScolaire" });
 
 // ✅ Finance Associations
 TarifFraisExigible.belongsTo(FraisExigible, { foreignKey: "idFraisExigible", as: "Frais" });
@@ -193,6 +197,9 @@ FraisActivitePeriscolaire.hasMany(TarifFraisPeriscolaire, { foreignKey: "idFrais
 
 PaiementFraisGlobal.belongsTo(Eleve, { foreignKey: "idEleve" });
 Eleve.hasMany(PaiementFraisGlobal, { foreignKey: "idEleve" });
+
+PaiementFraisGlobal.belongsTo(AnneeScolaire, { foreignKey: "idAnneeScolaire" });
+AnneeScolaire.hasMany(PaiementFraisGlobal, { foreignKey: "idAnneeScolaire" });
 
 PaiementFraisGlobal.belongsTo(Utilisateur, { foreignKey: "idCaissier", as: "Caissier" });
 Utilisateur.hasMany(PaiementFraisGlobal, { foreignKey: "idCaissier" });
@@ -261,6 +268,13 @@ Utilisateur.hasMany(Annonce, { foreignKey: "idAuteur" });
 Annonce.belongsTo(Etablissement, { foreignKey: "idEtablissement", as: "etablissement" });
 Etablissement.hasMany(Annonce, { foreignKey: "idEtablissement" });
 
+// ✅ En-têtes Institutionnels
+Etablissement.hasMany(EnteteInstitutionnel, { foreignKey: "idEtablissement", as: "entetes" });
+EnteteInstitutionnel.belongsTo(Etablissement, { foreignKey: "idEtablissement" });
+
+Enseignement.hasMany(EnteteInstitutionnel, { foreignKey: "idEnseignement", as: "entetes" });
+EnteteInstitutionnel.belongsTo(Enseignement, { foreignKey: "idEnseignement" });
+
 // ✅ Spécialités Utilisateur
 Utilisateur.belongsToMany(Specialite, {
   through: UtilisateurSpecialite,
@@ -305,7 +319,7 @@ module.exports = {
   InscriptionPersonnel,
   DemandeInscriptionPersonnel,
   CompetenceEnseignant,
-  AffectationPersonnelSalle,
+  RepartitionEnseignant,
   FraisExigible,
   TarifFraisExigible,
   FraisActivitePeriscolaire,
@@ -317,5 +331,6 @@ module.exports = {
   TarifTransport,
   EleveTransport,
   EcheancierTransport,
-  PaiementTransport
+  PaiementTransport,
+  EnteteInstitutionnel
 };

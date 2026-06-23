@@ -14,5 +14,6 @@ router.post("/affecter", verifyToken, controller.affecterSalle);
 router.get("/actif/:idEtablissement/:idAnneeScolaire", verifyToken, controller.getPersonnelActif);
 router.get("/user-associations/:userId", verifyToken, controller.getUserAssociations);
 router.get("/my-demands/:userId", verifyToken, controller.getMyDemands);
+router.put("/profile/:idUtilisateur", verifyToken, controller.updateProfile);
 
 module.exports = router;

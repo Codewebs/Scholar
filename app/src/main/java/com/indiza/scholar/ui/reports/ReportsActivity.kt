@@ -79,6 +79,11 @@ class ReportsActivity : ComponentActivity() {
             ScholarTheme {
                 var currentCardId by remember { mutableStateOf<Int?>(null) }
                 
+                // Advanced Scope State
+                var selectedScope by remember { mutableStateOf("ALL") } // ALL, CYCLE, CLASSE, SALLE
+                var selectedScopeId by remember { mutableStateOf<Long?>(null) }
+                var selectedPeriodeId by remember { mutableStateOf<Long?>(null) }
+
                 Scaffold { padding ->
                     Box(modifier = Modifier.padding(padding)) {
                         AnimatedContent(
@@ -88,7 +93,21 @@ class ReportsActivity : ComponentActivity() {
                             }, label = "ReportNavigation"
                         ) { targetCard ->
                             when (targetCard) {
-                                null -> MainReportsScreen(onCardClick = { currentCardId = it }, onBack = { finish() })
+                                null -> MainReportsScreen(
+                                    scope = selectedScope,
+                                    onScopeChange = { 
+                                        selectedScope = it
+                                        selectedScopeId = null 
+                                    },
+                                    selectedScopeId = selectedScopeId,
+                                    onScopeIdChange = { selectedScopeId = it },
+                                    selectedPeriodeId = selectedPeriodeId,
+                                    onPeriodeIdChange = { selectedPeriodeId = it },
+                                    anneeId = selectedAnneeId,
+                                    api = api,
+                                    onCardClick = { currentCardId = it }, 
+                                    onBack = { finish() }
+                                )
                                 1 -> Card1PaiementsScreen(
                                     anneeId = selectedAnneeId,
                                     api = api,
@@ -97,6 +116,8 @@ class ReportsActivity : ComponentActivity() {
                                 )
                                 2 -> Card2BilansScreen(
                                     anneeId = selectedAnneeId,
+                                    scope = selectedScope,
+                                    scopeId = selectedScopeId,
                                     api = api,
                                     userRole = userRole,
                                     onBack = { currentCardId = null },
@@ -111,6 +132,8 @@ class ReportsActivity : ComponentActivity() {
                                 )
                                 4 -> Card4ListesScreen(
                                     anneeId = selectedAnneeId,
+                                    scope = selectedScope,
+                                    scopeId = selectedScopeId,
                                     api = api,
                                     onBack = { currentCardId = null },
                                     onGenerate = { type, params -> generateReport(type, null, params) }
@@ -179,7 +202,37 @@ class ReportsActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainReportsScreen(onCardClick: (Int) -> Unit, onBack: () -> Unit) {
+fun MainReportsScreen(
+    scope: String,
+    onScopeChange: (String) -> Unit,
+    selectedScopeId: Long?,
+    onScopeIdChange: (Long?) -> Unit,
+    selectedPeriodeId: Long?,
+    onPeriodeIdChange: (Long?) -> Unit,
+    anneeId: Long,
+    api: ApiService,
+    onCardClick: (Int) -> Unit, 
+    onBack: () -> Unit
+) {
+    var cycles by remember { mutableStateOf<List<com.indiza.scholar.model.CycleEntity>>(emptyList()) }
+    var classes by remember { mutableStateOf<List<com.indiza.scholar.model.ClasseUiModel>>(emptyList()) }
+    var salles by remember { mutableStateOf<List<com.indiza.scholar.model.SalleEntity>>(emptyList()) }
+    var periodes by remember { mutableStateOf<List<com.indiza.scholar.model.PeriodeEntity>>(emptyList()) }
+
+    LaunchedEffect(anneeId) {
+        val cRes = api.getCyclesByAnnee(anneeId)
+        if (cRes.isSuccessful) cycles = cRes.body() ?: emptyList()
+        
+        val clRes = api.getClassesWithRoomStats(anneeId)
+        if (clRes.isSuccessful) classes = clRes.body() ?: emptyList()
+        
+        val sRes = api.getSallesByAnnee(anneeId)
+        if (sRes.isSuccessful) salles = sRes.body() ?: emptyList()
+
+        val pRes = api.getPeriodesByAnnee(anneeId)
+        if (pRes.isSuccessful) periodes = pRes.body() ?: emptyList()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -188,30 +241,112 @@ fun MainReportsScreen(onCardClick: (Int) -> Unit, onBack: () -> Unit) {
             )
         }
     ) { padding ->
-        val cards = listOf(
-            ReportCategoryData("CARD 1 : Paiements", "Reçus individuels (Inscription, Scolarité, Globaux)", Icons.Default.Receipt, 1),
-            ReportCategoryData("CARD 2 : Les Bilans", "Vue comptable & Chiffre d'affaires", Icons.Default.Summarize, 2),
-            ReportCategoryData("CARD 3 : Les Comparaisons", "Vue analytique & Pilotage stratégique", Icons.Default.CompareArrows, 3),
-            ReportCategoryData("CARD 4 : Liste des Élèves", "Démographie & Suivi des tranches", Icons.Default.People, 4),
-            ReportCategoryData("CARD 5 : Autres États", "Certificats & Documents officiels", Icons.Default.Description, 5)
-        )
+        Column(modifier = Modifier.padding(padding)) {
+            // Niveau 1 : Boutons Segmentés
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(24.dp)).padding(4.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                listOf("ALL" to "Tout", "CYCLE" to "Cycle", "CLASSE" to "Classe", "SALLE" to "Salle").forEach { (id, label) ->
+                    val selected = scope == id
+                    Surface(
+                        modifier = Modifier.weight(1f).clickable { onScopeChange(id) },
+                        color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text(
+                            label, 
+                            modifier = Modifier.padding(vertical = 10.dp), 
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
 
-        LazyColumn(
-            modifier = Modifier.padding(padding).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(cards) { card ->
-                Card(
-                    modifier = Modifier.fillMaxWidth().clickable { onCardClick(card.id) },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(card.icon, null, modifier = Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column {
-                            Text(card.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Text(card.description, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // Niveau 3 : Contexte Temporel
+            androidx.compose.foundation.lazy.LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item {
+                    FilterChip(
+                        selected = selectedPeriodeId == null,
+                        onClick = { onPeriodeIdChange(null) },
+                        label = { Text("Année Complète") }
+                    )
+                }
+                items(periodes) { p ->
+                    FilterChip(
+                        selected = selectedPeriodeId == p.idServeur,
+                        onClick = { onPeriodeIdChange(p.idServeur) },
+                        label = { Text(p.libellePeriodeFr) }
+                    )
+                }
+            }
+
+            // Niveau 2 : Chips Dynamiques
+            androidx.compose.foundation.lazy.LazyRow(
+                modifier = Modifier.padding(vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (scope == "CYCLE") {
+                    items(cycles) { c ->
+                        FilterChip(
+                            selected = selectedScopeId == c.idServeur,
+                            onClick = { onScopeIdChange(c.idServeur) },
+                            label = { Text(c.libelleCycleFr) }
+                        )
+                    }
+                } else if (scope == "CLASSE") {
+                    items(classes) { c ->
+                        FilterChip(
+                            selected = selectedScopeId == c.idClasse,
+                            onClick = { onScopeIdChange(c.idClasse) },
+                            label = { Text(c.libelleClasseFr) }
+                        )
+                    }
+                } else if (scope == "SALLE") {
+                    items(salles) { s ->
+                        FilterChip(
+                            selected = selectedScopeId == s.idServeur,
+                            onClick = { onScopeIdChange(s.idServeur) },
+                            label = { Text("${s.classeLabel ?: ""} ${s.nomSalle}") }
+                        )
+                    }
+                }
+            }
+
+            Divider()
+
+            val cards = listOf(
+                ReportCategoryData("CARD 1 : Paiements", "Reçus individuels (Inscription, Scolarité, Globaux)", Icons.Default.Receipt, 1),
+                ReportCategoryData("CARD 2 : Les Bilans", "Vue comptable & Chiffre d'affaires", Icons.Default.Summarize, 2),
+                ReportCategoryData("CARD 3 : Les Comparaisons", "Vue analytique & Pilotage stratégique", Icons.Default.CompareArrows, 3),
+                ReportCategoryData("CARD 4 : Liste des Élèves", "Démographie & Suivi des tranches", Icons.Default.People, 4),
+                ReportCategoryData("CARD 5 : Autres États", "Certificats & Documents officiels", Icons.Default.Description, 5)
+            )
+
+            LazyColumn(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(cards) { card ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable { onCardClick(card.id) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(card.icon, null, modifier = Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(card.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                Text(card.description, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
@@ -321,9 +456,17 @@ fun Card1PaiementsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Card2BilansScreen(anneeId: Long, api: ApiService, userRole: AcademicRole, onBack: () -> Unit, onGenerate: (String, Map<String, Any>) -> Unit) {
+fun Card2BilansScreen(
+    anneeId: Long, 
+    scope: String,
+    scopeId: Long?,
+    api: ApiService, 
+    userRole: AcademicRole, 
+    onBack: () -> Unit, 
+    onGenerate: (String, Map<String, Any>) -> Unit
+) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scopeEffect = rememberCoroutineScope()
     var selectedDate by remember { mutableStateOf(Calendar.getInstance()) }
 
     Scaffold(
@@ -335,32 +478,38 @@ fun Card2BilansScreen(anneeId: Long, api: ApiService, userRole: AcademicRole, on
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            val params = mutableMapOf<String, Any>()
+            if (scope != "ALL" && scopeId != null) {
+                params["scope"] = scope
+                params["scopeId"] = scopeId
+            }
+
             BilanCard("1. Bilan des Encaissements Journalier", "Activity heure par heure", Icons.Default.Today) {
-                scope.launch {
+                scopeEffect.launch {
                     val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(selectedDate.time)
                     val response = api.getBilanJournalier(anneeId, dateStr)
                     if (response.isSuccessful) {
-                        onGenerate("Bilan Journalier", mapOf("data" to response.body()!!))
+                        onGenerate("Bilan Journalier", params + mapOf("data" to response.body()!!))
                     } else {
                         Toast.makeText(context, "Erreur API", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
             BilanCard("2. Bilan des Encaissements Mensuel", "Chiffre d'affaires quotidien", Icons.Default.CalendarMonth) {
-                scope.launch {
+                scopeEffect.launch {
                     val response = api.getBilanMensuel(anneeId, selectedDate.get(Calendar.MONTH) + 1, selectedDate.get(Calendar.YEAR))
                     if (response.isSuccessful) {
-                        onGenerate("Bilan Mensuel", mapOf("data" to response.body()!!))
+                        onGenerate("Bilan Mensuel", params + mapOf("data" to response.body()!!))
                     }
                 }
             }
             
             if (userRole in listOf(AcademicRole.ADMINISTRATEUR, AcademicRole.FONDATEUR, AcademicRole.INTENDANT)) {
                 BilanCard("3. Bilan des Encaissements Annuel", "Ventilation sur 12 mois", Icons.Default.EventNote) {
-                    scope.launch {
+                    scopeEffect.launch {
                         val response = api.getBilanAnnuel(anneeId)
                         if (response.isSuccessful) {
-                            onGenerate("Bilan Annuel", mapOf("data" to response.body()!!))
+                            onGenerate("Bilan Annuel", params + mapOf("data" to response.body()!!))
                         }
                     }
                 }
@@ -451,8 +600,15 @@ fun Card3ComparaisonsScreen(anneeId: Long, api: ApiService, userRole: AcademicRo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Card4ListesScreen(anneeId: Long, api: ApiService, onBack: () -> Unit, onGenerate: (String, Map<String, Any>) -> Unit) {
-    val scope = rememberCoroutineScope()
+fun Card4ListesScreen(
+    anneeId: Long, 
+    scope: String,
+    scopeId: Long?,
+    api: ApiService, 
+    onBack: () -> Unit, 
+    onGenerate: (String, Map<String, Any>) -> Unit
+) {
+    val scopeEffect = rememberCoroutineScope()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -462,13 +618,19 @@ fun Card4ListesScreen(anneeId: Long, api: ApiService, onBack: () -> Unit, onGene
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            val params = mutableMapOf<String, Any>()
+            if (scope != "ALL" && scopeId != null) {
+                params["scope"] = scope
+                params["scopeId"] = scopeId
+            }
+
             Text("Suivi des Tranches", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             BilanCard("Élèves Insolvables", "Filtrer par tranche & périmètre", Icons.Default.FilterList) { 
-                scope.launch {
+                scopeEffect.launch {
                     // Pour le test, on prend la tranche 1
-                    val response = api.getInsolvablesList(anneeId, 1L) 
+                    val response = api.getInsolvablesList(anneeId, 1L, idSalle = if(scope == "SALLE") scopeId else null) 
                     if (response.isSuccessful) {
-                        onGenerate("Liste Insolvables", mapOf("data" to response.body()!!))
+                        onGenerate("Liste Insolvables", params + mapOf("data" to response.body()!!))
                     }
                 }
             }

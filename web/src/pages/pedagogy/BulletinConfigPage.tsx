@@ -96,13 +96,60 @@ const BulletinConfigPage: React.FC = () => {
 
     // Advanced
     allowIncompleteStudent: false,
-    allowIncompleteRoom: false
+    allowIncompleteRoom: false,
+
+    // Accordion E: Tableau d'Honneur
+    honors: {
+        threshold: 12.0,
+        design: 'MINIMAL' as 'MINIMAL' | 'CLASSIC' | 'PLAYFUL' | 'CORPORATE',
+        showStudentPhoto: true,
+        showSeal: true,
+        showSignatures: true,
+        showInstitutionalHeader: true
+    }
   });
+
+  const [showLivePreview, setShowLivePreview] = useState(true);
 
   const [classes, setClasses] = useState<any[]>([]);
   const [periods, setPeriods] = useState<any[]>([]);
   const [filteredSequences, setFilteredSequences] = useState<any[]>([]);
   const [schoolData, setSchoolData] = useState<any>(null);
+
+  const mockBulletinData = {
+    school: schoolData || { nomFr: "ÉCOLE MODÈLE INTERNATIONALE", abreviation: "EMI", logo: null },
+    student: { nomComplet: "NGAH NOAH Jean-Philippe", matricule: "24C001", sexe: "M", dateNaissance: "12/05/2012", lieuNaissance: "Douala", photo: null },
+    salle: { nomSalle: "6ème Alizé", effectif: 42 },
+    year: selectedYear || { libelle: "2024/2025" },
+    period: { label: config.periodType === 'SEQUENCE' ? "SÉQUENCE 1" : config.periodType === 'TRIMESTER' ? "TRIMESTRE 1" : "BILAN ANNUEL" },
+    performance: {
+        groups: [
+            {
+                name: "Sciences & Technologie",
+                subjects: [
+                    { name: "Mathématiques", teacher: "M. TCHAPTCHET", note1: 14, note2: 12.5, coef: 4, total: 13.25, rank: 3, appreciation: "Très bon travail", competencies: [{ libelle: "Résoudre des problèmes complexes", cote: "A" }] },
+                    { name: "SVT", teacher: "Mme NGONO", note1: 11, note2: 9.5, coef: 2, total: 10.25, rank: 12, appreciation: "Passable", competencies: [{ libelle: "Analyser l'environnement", cote: "B" }] }
+                ],
+                groupAverage: 12.25
+            },
+            {
+                name: "Langues & Littérature",
+                subjects: [
+                    { name: "Français", teacher: "Mme FOUDA", note1: 15.5, note2: 14, coef: 3, total: 14.75, rank: 2, appreciation: "Excellent", competencies: [{ libelle: "Expression écrite", cote: "A+" }] },
+                    { name: "Anglais", teacher: "Mr. SMITH", note1: 12, note2: 13.5, coef: 3, total: 12.75, rank: 8, appreciation: "Bien", competencies: [{ libelle: "Oral expression", cote: "B" }] }
+                ],
+                groupAverage: 13.75
+            }
+        ],
+        average: 12.85,
+        rank: 4,
+        totalPoints: 154.2,
+        totalCoef: 12,
+        appreciation: "Félicitations"
+    },
+    stats: { maxMoy: 17.5, minMoy: 6.2, avgMoy: 11.2, successRate: 68.5 },
+    discipline: { absencesJustified: 2, absencesUnjustified: 0, conductNotes: [] }
+  };
   const [showPerimeterSheet, setShowPerimeterSheet] = useState(false);
 
   useEffect(() => {
@@ -213,14 +260,37 @@ const BulletinConfigPage: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-            <button className="flex items-center space-x-3 px-6 py-4 bg-white border border-gray-100 rounded-full text-[10px] font-black uppercase tracking-widest text-gray-500 hover:shadow-lg transition-all">
-                <Save size={18} />
-                <span>Sauver Profil</span>
-            </button>
+            <div className="flex bg-white border border-gray-100 p-1.5 rounded-full shadow-sm">
+                <button
+                    disabled={!yearId || !config.selectedId || (config.periodType !== 'ANNUAL' && !config.selectedPeriodId)}
+                    onClick={() => {
+                        localStorage.setItem('bulletin_print_config', JSON.stringify({...config, printMode: 'PV'}));
+                        window.open('/app/pedagogy/bulletins/print', '_blank');
+                    }}
+                    className="px-4 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-black hover:bg-gray-50 transition-all disabled:opacity-30"
+                >PV de Classe</button>
+                <button
+                    disabled={!yearId || !config.selectedId || (config.periodType !== 'ANNUAL' && !config.selectedPeriodId)}
+                    onClick={() => {
+                        localStorage.setItem('bulletin_print_config', JSON.stringify({...config, printMode: 'LIST'}));
+                        window.open('/app/pedagogy/bulletins/print', '_blank');
+                    }}
+                    className="px-4 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-black hover:bg-gray-50 transition-all disabled:opacity-30"
+                >Résultats</button>
+                <button
+                    disabled={!yearId || !config.selectedId || (config.periodType !== 'ANNUAL' && !config.selectedPeriodId)}
+                    onClick={() => {
+                        localStorage.setItem('bulletin_print_config', JSON.stringify({...config, printMode: 'HONORS'}));
+                        window.open('/app/pedagogy/bulletins/print', '_blank');
+                    }}
+                    className="px-4 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-black hover:bg-gray-50 transition-all disabled:opacity-30"
+                >Honneurs</button>
+            </div>
+
             <button
                 disabled={!yearId || !config.selectedId || (config.periodType !== 'ANNUAL' && !config.selectedPeriodId)}
                 onClick={() => {
-                    localStorage.setItem('bulletin_print_config', JSON.stringify(config));
+                    localStorage.setItem('bulletin_print_config', JSON.stringify({...config, printMode: 'BULLETIN'}));
                     window.open('/app/pedagogy/bulletins/print', '_blank');
                 }}
                 className={clsx(
@@ -243,7 +313,7 @@ const BulletinConfigPage: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* Main Config Area */}
-          <div className="lg:col-span-8 space-y-6">
+          <div className="lg:col-span-7 space-y-6">
             <div className="bg-white rounded-[40px] shadow-sm border border-gray-50 overflow-hidden">
               {/* Accordion A: Périmètre */}
               <AccordionHeader
@@ -588,11 +658,102 @@ const BulletinConfigPage: React.FC = () => {
                     )}
                 </div>
               )}
+
+              {/* Accordion E: Tableau d'Honneur */}
+              <AccordionHeader
+                id="E"
+                title="Tableau d'Honneur & Certificats"
+                icon={ImageIcon}
+                isOpen={openAccordions.includes('E')}
+                onClick={() => toggleAccordion('E')}
+              />
+              {openAccordions.includes('E') && (
+                <div className="p-8 space-y-8 bg-gray-50/30">
+                    <div className="bg-white p-6 rounded-[24px] border border-gray-100 shadow-sm flex justify-between items-center">
+                        <div>
+                            <span className="text-[10px] font-black uppercase text-gray-400 block">Moyenne Minimale d'Excellence</span>
+                            <p className="text-[8px] text-gray-400 mt-1 uppercase font-bold">Seuil pour figurer au tableau d'honneur</p>
+                        </div>
+                        <input
+                            type="number" step="0.5"
+                            className="w-16 text-right font-black text-sm outline-none bg-gray-50 p-2 rounded-lg"
+                            value={config.honors.threshold}
+                            onChange={(e) => setConfig({...config, honors: {...config.honors, threshold: parseFloat(e.target.value)}})}
+                        />
+                    </div>
+
+                    <div className="space-y-4">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Design du Certificat</label>
+                        <div className="grid grid-cols-2 gap-4">
+                            {[
+                                { id: 'MINIMAL', name: 'Minimaliste & Fluide', desc: 'Moderne, formes courbes (Doodle)' },
+                                { id: 'CLASSIC', name: 'Classique Académique', desc: 'Traditionnel, bordures royales' },
+                                { id: 'PLAYFUL', name: 'Maternelle / Ludique', desc: 'Coloré, idéal pour les petits' },
+                                { id: 'CORPORATE', name: 'Prestige Corporate', desc: 'Luxe, marine et or brillant' }
+                            ].map((d) => (
+                                <button
+                                    key={d.id}
+                                    onClick={() => setConfig({...config, honors: {...config.honors, design: d.id as any}})}
+                                    className={clsx(
+                                        "p-6 rounded-[24px] border-2 text-left transition-all",
+                                        config.honors.design === d.id ? "border-black bg-black text-white" : "border-gray-100 bg-white hover:border-gray-300"
+                                    )}
+                                >
+                                    <p className="text-[10px] font-black uppercase tracking-tight">{d.name}</p>
+                                    <p className={clsx("text-[8px] mt-1 font-medium", config.honors.design === d.id ? "text-white/50" : "text-gray-400")}>{d.desc}</p>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm space-y-4">
+                        <ConfigSwitch label="Afficher Photo de l'Élève" checked={config.honors.showStudentPhoto} onChange={(v) => setConfig({...config, honors: {...config.honors, showStudentPhoto: v}})} />
+                        <ConfigSwitch label="Afficher En-tête Institutionnel" checked={config.honors.showInstitutionalHeader} onChange={(v) => setConfig({...config, honors: {...config.honors, showInstitutionalHeader: v}})} />
+                        <ConfigSwitch label="Afficher Sceau d'Authenticité" checked={config.honors.showSeal} onChange={(v) => setConfig({...config, honors: {...config.honors, showSeal: v}})} />
+                        <ConfigSwitch label="Afficher Blocs de Signature" checked={config.honors.showSignatures} onChange={(v) => setConfig({...config, honors: {...config.honors, showSignatures: v}})} />
+                    </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Templates & Shortcuts */}
-          <div className="lg:col-span-4 space-y-8">
+          <div className="lg:col-span-5 space-y-8">
+            {/* Live Preview Section */}
+            <div className="bg-white p-8 rounded-[40px] shadow-xl border border-accent/10 sticky top-8">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xs font-black uppercase tracking-widest flex items-center">
+                        <Eye size={16} className="mr-3 text-accent" />
+                        Aperçu en Direct
+                    </h3>
+                    <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Live</span>
+                    </div>
+                </div>
+
+                <div className="bg-gray-100 p-6 rounded-[32px] border border-gray-100 flex justify-center items-start overflow-hidden min-h-[500px]">
+                    <div className="w-full transform transition-all duration-500 hover:scale-[1.02]">
+                        <LiveBulletinPreview data={mockBulletinData} config={config} />
+                    </div>
+                </div>
+
+                <div className="mt-6 p-4 bg-accent/5 rounded-2xl border border-accent/10">
+                    <p className="text-[9px] font-bold text-accent uppercase leading-relaxed text-center">
+                        Ceci est un aperçu simulé basé sur vos réglages actuels. Les couleurs, marges et blocs s'adaptent dynamiquement.
+                    </p>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-gray-50 flex gap-4">
+                    <button className="flex-1 py-4 bg-black text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-accent transition-all">
+                        Sauvegarder Modèle
+                    </button>
+                    <button className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:text-black transition-all">
+                        <Trash2 size={16} />
+                    </button>
+                </div>
+            </div>
+
             <div className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-50">
                 <h3 className="text-xs font-black uppercase tracking-widest mb-6 flex items-center">
                     <Copy size={16} className="mr-3 text-accent" />
@@ -745,6 +906,131 @@ const ConfigSwitch: React.FC<{ label: string, checked: boolean, onChange: (v: bo
         </div>
     </button>
 );
+
+// --- Live Preview Component ---
+const LiveBulletinPreview: React.FC<{ data: any, config: any }> = ({ data, config }) => {
+    return (
+        <div className="bg-white shadow-2xl rounded-sm p-4 w-full aspect-[1/1.41] flex flex-col overflow-hidden text-[6px] origin-top scale-[1.0] transition-all">
+            {/* Header */}
+            <header className="flex justify-between items-start border-b border-black pb-1 mb-2">
+                <div className="w-[30%] space-y-0.5">
+                    {config.showMinisterialHeader && config.schoolInfo.logoPosition !== 'LEFT' && (
+                        <>
+                            <p className="font-black">REPUBLIQUE DU CAMEROUN</p>
+                            <p className="italic">Paix - Travail - Patrie</p>
+                        </>
+                    )}
+                    {config.schoolInfo.logo && config.schoolInfo.logoPosition === 'LEFT' && (
+                        <div className="w-8 h-8 bg-gray-100 rounded-lg" />
+                    )}
+                </div>
+                <div className="flex-1 text-center flex flex-col items-center">
+                    {config.schoolInfo.logo && config.schoolInfo.logoPosition === 'CENTER_WATERMARK' && (
+                        <div className="w-6 h-6 bg-gray-100 rounded-full mb-0.5" />
+                    )}
+                    {config.schoolInfo.name && <h2 className="font-black uppercase text-[7px] leading-tight">{data.school.nomFr}</h2>}
+                    {config.schoolInfo.sigle && <p className="font-black text-accent">{data.school.abreviation}</p>}
+                    {config.schoolInfo.contacts && <p className="text-gray-400">BP: {data.school.numBP} {data.school.ville}</p>}
+                </div>
+                <div className="w-[30%] text-right space-y-0.5">
+                    {config.showMinisterialHeader && config.schoolInfo.logoPosition !== 'RIGHT' && (
+                        <>
+                            <p className="font-black">REPUBLIC OF CAMEROON</p>
+                            <p className="italic">Peace - Work - Fatherland</p>
+                        </>
+                    )}
+                    {config.schoolInfo.logo && config.schoolInfo.logoPosition === 'RIGHT' && (
+                        <div className="w-8 h-8 bg-gray-100 rounded-lg ml-auto" />
+                    )}
+                </div>
+            </header>
+
+            <div className="text-center mb-1">
+                <div className="inline-block border border-black px-2 py-0.5 rounded-md bg-gray-50">
+                    <p className="font-black uppercase tracking-widest text-[7px]">Bulletin de Notes — {data.period.label}</p>
+                </div>
+            </div>
+
+            {/* Student Info */}
+            <div className="bg-gray-50 p-1.5 rounded-lg mb-2 flex gap-2 items-center">
+                {config.body.showStudentPhoto && <div className="w-6 h-6 bg-white rounded-md border border-gray-100" />}
+                <div className="flex-1 grid grid-cols-2 gap-x-2">
+                    <div>
+                        <p className="text-gray-400 uppercase text-[4px] font-black">Élève</p>
+                        <p className="font-black uppercase">{data.student.nomComplet}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-gray-400 uppercase text-[4px] font-black">Matricule</p>
+                        <p className="font-black">{data.student.matricule}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Table */}
+            <table className="w-full border-collapse border border-black mb-2">
+                <thead>
+                    <tr className="bg-black text-white">
+                        <th className="border border-black p-0.5 text-left">Matières</th>
+                        <th className="border border-black p-0.5 text-center">Moy</th>
+                        <th className="border border-black p-0.5 text-center">Coef</th>
+                        <th className="border border-black p-0.5 text-center">Pts</th>
+                        {config.stats.showRank && <th className="border border-black p-0.5 text-center">Rang</th>}
+                    </tr>
+                </thead>
+                <tbody>
+                    {data.performance.groups.map((g: any, i: number) => (
+                        <React.Fragment key={i}>
+                            <tr className="bg-gray-100 font-black">
+                                <td colSpan={config.stats.showRank ? 5 : 4} className="p-0.5 text-[5px]">{g.name}</td>
+                            </tr>
+                            {g.subjects.map((s: any, j: number) => (
+                                <tr key={j}>
+                                    <td className="border border-black p-0.5 font-bold">{s.name}</td>
+                                    <td className="border border-black p-0.5 text-center font-black" style={{ color: s.total < config.body.passingGrade ? config.body.failColor : 'inherit' }}>
+                                        {config.calcMode === 'LETTER' ? (s.total >= 15 ? 'A' : s.total >= 12 ? 'B' : 'C') :
+                                         config.calcMode === 'COLOR' ? <div className="w-2 h-2 rounded-full mx-auto" style={{ backgroundColor: s.total < 10 ? 'red' : 'green' }} /> :
+                                         s.total}
+                                    </td>
+                                    <td className="border border-black p-0.5 text-center">{s.coef}</td>
+                                    <td className="border border-black p-0.5 text-center">{(s.total * s.coef).toFixed(1)}</td>
+                                    {config.stats.showRank && <td className="border border-black p-0.5 text-center">{s.rank}</td>}
+                                </tr>
+                            ))}
+                        </React.Fragment>
+                    ))}
+                </tbody>
+                <tfoot>
+                    <tr className="bg-gray-100 font-black">
+                        <td className="border border-black p-0.5 text-right">TOTAL</td>
+                        <td className="border border-black p-0.5 text-center">{data.performance.average.toFixed(2)}</td>
+                        <td className="border border-black p-0.5 text-center">{data.performance.totalCoef}</td>
+                        <td className="border border-black p-0.5 text-center">{data.performance.totalPoints.toFixed(1)}</td>
+                        {config.stats.showRank && <td className="border border-black p-0.5 text-center">{data.performance.rank}</td>}
+                    </tr>
+                </tfoot>
+            </table>
+
+            {/* Stats & Footer */}
+            <div className="grid grid-cols-2 gap-2 mt-auto">
+                <div className="border border-black p-1 rounded-md">
+                    <p className="font-black uppercase mb-1 underline">Statistiques Classe</p>
+                    <div className="space-y-0.5">
+                        <p>Moy. Max : <strong>{data.stats.maxMoy}</strong></p>
+                        <p>Moy. Min : <strong>{data.stats.minMoy}</strong></p>
+                        <p>Moy. Classe : <strong>{data.stats.avgMoy}</strong></p>
+                    </div>
+                </div>
+                <div className="border border-black p-1 rounded-md flex flex-col justify-between">
+                    <p className="font-black uppercase mb-1 underline text-center">Signatures</p>
+                    <div className="flex justify-between mt-auto">
+                        <div className="w-6 h-6 border border-dashed border-gray-200" />
+                        <div className="w-6 h-6 border border-dashed border-gray-200" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const ColorPicker: React.FC<{ label: string, color: string, onChange: (c: string) => void }> = ({ label, color, onChange }) => (
     <div className="space-y-2">

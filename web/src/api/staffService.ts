@@ -13,10 +13,14 @@ export interface PersonnelEntity {
     utilisateur?: {
         nom: string;
         email: string;
-        telephone1: number;
+        telephone1?: number;
+        telephone?: number;
+        diplomes?: string;
     };
     nom?: string; // From InscriptionPersonnel
     prenom?: string;
+    email?: string;
+    telephone1?: number;
 }
 
 export interface DemandeInscription {
@@ -44,6 +48,10 @@ export const staffService = {
         idAnneeScolaire: number,
         matricule?: string,
         role?: string,
+        dateNaissance?: string,
+        lieuNaissance?: string,
+        sexe?: string,
+        diplomes?: string,
         permissionsAjoutees?: string[],
         permissionsRetirees?: string[]
     }) =>
@@ -56,5 +64,8 @@ export const staffService = {
         api.post(`/personnel/bloquer`, { idUtilisateur, idEtablissement, bloque }),
 
     updatePermissions: (idInscriptionPersonnel: number, permissionsAjoutees: string[], permissionsRetirees: string[]) =>
-        api.post(`/personnel/update-permissions`, { idInscriptionPersonnel, permissionsAjoutees, permissionsRetirees })
+        api.post(`/personnel/update-permissions`, { idInscriptionPersonnel, permissionsAjoutees, permissionsRetirees }),
+
+    updateStaffProfile: (idUtilisateur: number, data: { nom: string, prenom: string, diplomes: string, email: string, telephone: string }) =>
+        api.put(`/personnel/profile/${idUtilisateur}`, data)
 };

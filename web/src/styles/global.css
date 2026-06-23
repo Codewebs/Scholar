@@ -2,18 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global Dynamic Scaling */
+:root {
+  --global-scale: 1.0;
+  --sidebar-scale: 1.0;
+  --card-scale: 1.0;
+  --text-scale: 1.0;
+}
+
 @layer base {
+  html {
+    font-size: calc(16px * var(--global-scale));
+  }
   body {
     @apply bg-background text-[#1A1A1A] antialiased selection:bg-accent selection:text-white;
     font-family: 'DIN Next LT Pro', 'Inter', 'Poppins', sans-serif;
-    font-weight: 500; /* Medium */
-    letter-spacing: 0; /* Neutre */
+    font-weight: 500;
   }
+}
 
-  h1, h2, h3, h4, h5, h6 {
-    @apply text-[#121212];
-    font-weight: 600; /* Semi-Bold pour les titres */
-  }
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
 }
 
 @layer components {
@@ -53,4 +63,9 @@
 @media print {
   .no-print { display: none !important; }
   body { background: white; }
+}
+
+/* Global Dynamic Scaling */
+.is-compact-mode {
+  font-size: calc(16px * var(--global-scale));
 }

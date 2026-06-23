@@ -183,6 +183,13 @@ const SettingsPage: React.FC = () => {
             onClick={() => navigate('/app/pedagogy/apc')}
           />
           <SettingsItem
+            icon={Users}
+            iconColor="bg-violet-600"
+            title="Équipe Pédagogique"
+            subtitle="Répartition des enseignants dans les salles"
+            onClick={() => navigate('/app/pedagogy/teachers-repartition')}
+          />
+          <SettingsItem
             icon={Layers}
             iconColor="bg-orange-500"
             title="Groupes de Matières"

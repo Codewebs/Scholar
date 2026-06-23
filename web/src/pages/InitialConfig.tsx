@@ -348,49 +348,102 @@ const InitialConfig: React.FC = () => {
         return (
           <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
             <AuthInput
-              label="Nom de l'établissement"
+              label="Rechercher mon établissement"
               placeholder="Ex: Lycée Classique..."
               onChange={(e) => handleSearchSchools(e.target.value)}
             />
 
-            <div className="space-y-3 pt-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">
-                {schools.length > 0 ? "Résultats de recherche" : "Écoles suggérées"}
-              </p>
-              {schools.map((school, index) => {
-                const sId = school.idServeur || school.idEtablissement;
-                const assoc = associations.find(a => (a.school.idServeur || a.school.idEtablissement) === sId);
-                const selectedSId = selectedSchool?.idServeur || selectedSchool?.idEtablissement;
-                return (
-                  <div
-                    key={`${sId}-${index}`}
-                    onClick={() => handleSelectSchool(school)}
-                    className={clsx(
-                      "p-5 border-2 rounded-soft cursor-pointer transition-all flex items-center justify-between",
-                      selectedSId === sId ? "border-black bg-gray-50" : "border-gray-100 hover:border-gray-200"
-                    )}
-                  >
-                    <div>
-                      <h4 className="font-black uppercase text-xs tracking-tight">{school.nomFr}</h4>
-                      <div className="flex items-center space-x-2">
-                        <p className="text-[9px] text-[#9E9E9E] font-black uppercase tracking-widest">{school.ville || 'Ville non définie'}</p>
-                        {assoc && (
-                          <span className={clsx(
-                            "text-[8px] px-2 py-0.5 rounded-full font-black uppercase",
-                            assoc.etat === 'VALIDE' ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
-                          )}>
-                            {assoc.etat}
-                          </span>
+            <div className="space-y-6 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
+              {/* 1. Show existing associations (Recrutements ou demandes) */}
+              {associations.length > 0 && schools.length === 0 && (
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-accent ml-1 flex items-center gap-2">
+                    <ShieldCheck size={12} /> Mes établissements
+                  </p>
+                  {associations.map((assoc, index) => {
+                    const school = assoc.school;
+                    const sId = school.idServeur || school.idEtablissement;
+                    const selectedSId = selectedSchool?.idServeur || selectedSchool?.idEtablissement;
+                    return (
+                      <div
+                        key={`assoc-${sId}-${index}`}
+                        onClick={() => handleSelectSchool(school)}
+                        className={clsx(
+                          "p-5 border-2 rounded-soft cursor-pointer transition-all flex items-center justify-between",
+                          selectedSId === sId ? "border-black bg-gray-50 shadow-md" : "border-gray-100 hover:border-gray-200 bg-white"
                         )}
+                      >
+                        <div>
+                          <h4 className="font-black uppercase text-xs tracking-tight">{school.nomFr}</h4>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <p className="text-[9px] text-[#9E9E9E] font-black uppercase tracking-widest">{school.ville}</p>
+                            <span className={clsx(
+                              "text-[8px] px-2 py-0.5 rounded-full font-black uppercase",
+                              assoc.etat === 'VALIDE' ? "bg-green-100 text-green-700" :
+                              assoc.etat === 'EN_ATTENTE' ? "bg-orange-100 text-orange-700" : "bg-red-100 text-red-700"
+                            )}>
+                              {assoc.etat.replace('_', ' ')}
+                            </span>
+                          </div>
+                        </div>
+                        {selectedSId === sId && <CheckCircle2 size={18} className="text-black" />}
                       </div>
-                    </div>
-                    {selectedSId === sId && <CheckCircle2 size={18} className="text-black" />}
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                  <div className="h-px bg-gray-100 my-4" />
+                </div>
+              )}
+
+              {/* 2. Show search results */}
+              {schools.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">
+                    Résultats de la recherche
+                  </p>
+                  {schools.map((school, index) => {
+                    const sId = school.idServeur || school.idEtablissement;
+                    const assoc = associations.find(a => (a.school.idServeur || a.school.idEtablissement) === sId);
+                    const selectedSId = selectedSchool?.idServeur || selectedSchool?.idEtablissement;
+
+                    return (
+                      <div
+                        key={`search-${sId}-${index}`}
+                        onClick={() => handleSelectSchool(school)}
+                        className={clsx(
+                          "p-5 border-2 rounded-soft cursor-pointer transition-all flex items-center justify-between",
+                          selectedSId === sId ? "border-black bg-gray-50 shadow-md" : "border-gray-100 hover:border-gray-200 bg-white"
+                        )}
+                      >
+                        <div>
+                          <h4 className="font-black uppercase text-xs tracking-tight">{school.nomFr}</h4>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <p className="text-[9px] text-[#9E9E9E] font-black uppercase tracking-widest">{school.ville}</p>
+                            {assoc && (
+                              <span className={clsx(
+                                "text-[8px] px-2 py-0.5 rounded-full font-black uppercase",
+                                assoc.etat === 'VALIDE' ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+                              )}>
+                                {assoc.etat.replace('_', ' ')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {selectedSId === sId && <CheckCircle2 size={18} className="text-black" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {schools.length === 0 && associations.length === 0 && (
+                <div className="text-center py-10 opacity-40">
+                  <Search size={40} className="mx-auto mb-4" />
+                  <p className="text-[10px] font-black uppercase tracking-widest">Recherchez une école pour commencer</p>
+                </div>
+              )}
             </div>
 
-            {selectedSchool && !isCreatingSchool && !isAlreadyValidated && (
+            {selectedSchool && !isCreatingSchool && !isAlreadyValidated && currentAssoc?.etat !== 'EN_ATTENTE' && (
               <div className="pt-4 animate-in fade-in duration-300">
                  <AuthInput
                    label={selectedProfile === 'ELEVE' ? "Code d'inscription" : "Code de recrutement"}
@@ -404,9 +457,11 @@ const InitialConfig: React.FC = () => {
             <div className="pt-8">
               <AuthButton
                 onClick={handleValidateSchool}
-                disabled={!selectedSchool || loading}
+                disabled={!selectedSchool || loading || currentAssoc?.etat === 'EN_ATTENTE'}
               >
-                {loading ? "Vérification..." : isAlreadyValidated ? "Continuer" : "Confirmer l'Établissement"}
+                {loading ? "Vérification..." :
+                 currentAssoc?.etat === 'EN_ATTENTE' ? "Demande en attente" :
+                 isAlreadyValidated ? "Continuer" : "Confirmer l'Établissement"}
               </AuthButton>
             </div>
           </div>

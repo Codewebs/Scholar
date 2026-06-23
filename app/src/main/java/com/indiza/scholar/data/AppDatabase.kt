@@ -19,7 +19,7 @@ import com.indiza.scholar.model.*
         PeriodeEntity::class,
         SousPeriodeEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

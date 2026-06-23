@@ -56,8 +56,8 @@ export const financeService = {
   payerFraisPeriscolaires: (payload: any) =>
     api.post('/finance/paiements/periscolaires', payload),
 
-  getRegistrationReceiptData: (idEleve: number, idAnneeScolaire: number) =>
-    api.get(`/finance/receipt/registration/${idEleve}/${idAnneeScolaire}`),
+  getRegistrationReceiptData: (idEleve: number, idAnneeScolaire: number, docType?: string) =>
+    api.get(`/finance/receipt/registration/${idEleve}/${idAnneeScolaire}`, { params: { docType } }),
 
   getRegistrationReceiptSimple: (idEleve: number, idAnneeScolaire: number) =>
     api.get(`/finance/receipt/registration-simple/${idEleve}/${idAnneeScolaire}`),

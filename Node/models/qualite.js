@@ -15,8 +15,7 @@ const Qualite = sequelize.define("Qualite", {
   },
   libelleQualite: {
     type: DataTypes.STRING(60),
-    allowNull: false,
-    unique: true
+    allowNull: false
   },
   supprimer: {
     type: DataTypes.BOOLEAN,
@@ -24,7 +23,14 @@ const Qualite = sequelize.define("Qualite", {
   }
 }, {
   tableName: "qualite",
-  timestamps: false
+  timestamps: false,
+  indexes: [
+    {
+      unique: true,
+      fields: ['libelleQualite'],
+      name: 'unique_libelle_qualite'
+    }
+  ]
 });
 
 module.exports = Qualite;

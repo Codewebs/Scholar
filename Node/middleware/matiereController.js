@@ -1,4 +1,4 @@
-const { Matiere, RepartitionMatiere, Classe, Salle, AffectationPersonnelSalle, GroupeMatiere, RepartitionCompetence, Competence, sequelize } = require("../models");
+const { Matiere, RepartitionMatiere, Classe, Salle, RepartitionEnseignant, GroupeMatiere, RepartitionCompetence, Competence, sequelize } = require("../models");
 const { Op } = require("sequelize");
 
 // 1. CRUD MATIERE (Bibliothèque Globale)
@@ -181,12 +181,13 @@ exports.getMatiereKPIs = async (req, res) => {
         const avgCoef = avgCoefResult ? parseFloat(avgCoefResult.avgCoef || 0) : 0;
 
         const totalAllocations = await RepartitionMatiere.count({ where: { idAnneeScolaire, supprimer: false } });
-        const assignedAllocations = await AffectationPersonnelSalle.count({
+        const assignedAllocations = await RepartitionEnseignant.count({
             include: [{
                 model: Salle,
                 where: { idAnneeScolaire },
                 required: true
-            }]
+            }],
+            where: { supprimer: false }
         });
 
         res.json({
@@ -251,12 +252,12 @@ exports.getRepartitionByAnnee = async (req, res) => {
         });
 
         if (ins) {
-            let affWhere = { idInscriptionPersonnel: ins.idInscriptionPersonnel };
+            let affWhere = { idInscriptionPersonnel: ins.idInscriptionPersonnel, supprimer: false };
             if (idSalle) affWhere.idSalle = idSalle;
 
-            const affs = await AffectationPersonnelSalle.findAll({ where: affWhere });
-            const assignedMatiereIds = affs.map(a => a.idMatiere);
-            where.idMatiere = assignedMatiereIds;
+            const affs = await RepartitionEnseignant.findAll({ where: affWhere });
+            const assignedMatiereIds = affs.map(a => a.idRepartitionMatiere).filter(Boolean);
+            where.idRepartitionMatiere = { [Op.in]: assignedMatiereIds };
         } else {
             console.log("   ⚠️ Enseignant sans inscription active.");
             return res.json([]);

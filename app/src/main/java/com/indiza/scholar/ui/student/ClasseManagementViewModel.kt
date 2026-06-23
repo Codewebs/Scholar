@@ -251,6 +251,7 @@ class ClasseManagementViewModel(private val api: ApiService) : ViewModel() {
                     _sequences.value = response.body()?.map {
                         it.detailsSousPeriode ?: com.indiza.scholar.model.SousPeriodeEntity(
                             libelleSousPeriodeFr = "SEQ ${it.idSousPeriode}",
+                            abrevLibelleFr = "SEQ ${it.idSousPeriode}",
                             dateDebut = "",
                             dateFin = ""
                         )
