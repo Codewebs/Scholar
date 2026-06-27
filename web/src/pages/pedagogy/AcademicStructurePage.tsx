@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSchoolYear } from '../../context/SchoolYearContext';
-import { pedagogyService, EducationProfile, PredefinedProfil } from '../../api/pedagogyService';
+import { pedagogyService, EducationProfile } from '../../api/pedagogyService';
 import { ArrowLeft, Save, Plus, X, Globe, CheckCircle2, Edit2, ChevronRight, Building2, Layers, BookOpen, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import AuthButton from '../../components/ui/AuthButton';
-import { useNavigate } from 'react-router-dom';
-
 interface Enseignement {
     idEnseignement: number;
     enseignementFr: string;
@@ -14,7 +12,6 @@ interface Enseignement {
 }
 
 const AcademicStructurePage: React.FC = () => {
-  const navigate = useNavigate();
   const { selectedYear } = useSchoolYear();
   const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 

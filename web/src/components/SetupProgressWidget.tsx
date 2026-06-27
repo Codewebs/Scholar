@@ -7,7 +7,6 @@ import {
   X,
   CheckCircle2,
   Circle,
-  AlertCircle,
   ChevronRight
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -16,20 +15,16 @@ const SetupProgressWidget: React.FC = () => {
   const { selectedYear } = useSchoolYear();
   const [isOpen, setIsProgressOpen] = useState(false);
   const [progress, setProgress] = useState<SetupProgress | null>(null);
-  const [loading, setLoading] = useState(false);
 
   const currentSchoolId = Number(localStorage.getItem('school_id') || 0);
 
   const fetchProgress = async () => {
     if (!currentSchoolId) return;
-    setLoading(true);
     try {
       const res = await dashboardService.getSetupProgress(currentSchoolId, selectedYear?.idServeur);
       setProgress(res.data);
     } catch (error) {
       console.error(error);
-    } finally {
-      setLoading(false);
     }
   };
 

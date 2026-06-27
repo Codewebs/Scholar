@@ -8,16 +8,14 @@ import {
   ArrowLeft,
   User,
   Users,
-  MapPin,
   GraduationCap,
   Save,
   CheckCircle2,
-  CalendarDays,
-  Search,
   History,
   Info,
   AlertCircle,
-  X
+  X,
+  CreditCard
 } from 'lucide-react';
 import { clsx } from 'clsx';
 

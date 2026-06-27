@@ -10,7 +10,6 @@ import {
     Check,
     Save,
     AlertCircle,
-    LayoutGrid,
     Search
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -30,7 +29,6 @@ const PeriscolaireDistributionPage: React.FC = () => {
     const [amount, setAmount] = useState<string>('');
     const [allYearPeriscolaires, setAllYearPeriscolaires] = useState<any[]>([]);
 
-    const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -43,7 +41,6 @@ const PeriscolaireDistributionPage: React.FC = () => {
     }, [yearId]);
 
     const loadData = async () => {
-        setLoading(true);
         try {
             const [roomsRes, activitiesRes, allTarifsRes] = await Promise.all([
                 studentService.getRooms(yearId!),
@@ -65,8 +62,6 @@ const PeriscolaireDistributionPage: React.FC = () => {
             setAllYearPeriscolaires(allTarifsRes.data.periscolaires || []);
         } catch (err) {
             console.error("❌ Error loading distribution data:", err);
-        } finally {
-            setLoading(false);
         }
     };
 

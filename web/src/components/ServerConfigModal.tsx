@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { X, Globe, CheckCircle2, LayoutGrid, Maximize, Minimize, RotateCcw } from 'lucide-react';
+import { X, Globe, CheckCircle2, RotateCcw } from 'lucide-react';
 import AuthInput from './ui/AuthInput';
 import AuthButton from './ui/AuthButton';
 import { useUI } from '../context/UIContext';
-import { clsx } from 'clsx';
 
 interface ServerConfigModalProps {
   isOpen: boolean;

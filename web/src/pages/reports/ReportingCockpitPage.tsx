@@ -55,8 +55,8 @@ const ReportingCockpitPage: React.FC = () => {
   const [selectedPeriodeId, setSelectedPeriodeId] = useState<string>('');
 
   // Autres Filtres
-  const [selectedFraisId, setSelectedFraisId] = useState<string>('');
-  const [libraryFees, setLibraryFees] = useState<any[]>([]);
+  const [selectedFraisId] = useState<string>('');
+  // const [libraryFees, setLibraryFees] = useState<any[]>([]);
 
   useEffect(() => {
     if (yearId) {
@@ -72,17 +72,15 @@ const ReportingCockpitPage: React.FC = () => {
 
   const loadInitialData = async () => {
       try {
-          const [roomsRes, cyclesRes, classesRes, feesRes, periodesRes] = await Promise.all([
+          const [roomsRes, cyclesRes, classesRes, periodesRes] = await Promise.all([
               studentService.getRooms(yearId!),
               studentService.getCycles(yearId!),
               studentService.getClasses(yearId!),
-              financeService.getExigibles(),
               pedagogyService.getPeriodes(yearId!)
           ]);
           setRooms(roomsRes.data);
           setCycles(cyclesRes.data);
           setClasses(classesRes.data);
-          setLibraryFees(feesRes.data);
           setPeriodes(periodesRes.data);
       } catch (err) {
           console.error("Error loading filter data", err);

@@ -16,19 +16,13 @@ import {
   ShieldCheck,
   CheckCircle2,
   X,
-  Save,
   Trash2,
   Edit2,
-  Copy,
-  ArrowRightLeft,
   Search,
   PlusCircle,
-  Settings2,
   AlertCircle
 } from 'lucide-react';
 import { clsx } from 'clsx';
-import AuthInput from '../../components/ui/AuthInput';
-import AuthButton from '../../components/ui/AuthButton';
 import {
     MatiereEntity,
     GroupeMatiereEntity,
@@ -55,7 +49,6 @@ const ApcConfigurationPage: React.FC = () => {
   const [selectedMatiere, setSelectedMatiere] = useState<RepartitionMatiereEntity | null>(null);
   const [activeCompetenceId, setActiveCompetenceId] = useState<number | null>(null);
   const [selectedCompetenceIds, setSelectedCompetenceIds] = useState<number[]>([]);
-  const [selectedSequenceId, setSelectedSequenceId] = useState<number | null>(null);
   const [selectedSousPeriodes, setSelectedSousPeriodes] = useState<number[]>([]);
 
   // Filtered States
@@ -106,11 +99,9 @@ const ApcConfigurationPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [showCompetenceModal, setShowCompetenceModal] = useState(false);
-  const [showTransferModal, setShowTransferModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [showGroupLibraryModal, setShowGroupLibraryModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState<GroupeMatiereEntity | null>(null);
-  const [transferType, setTransferType] = useState<'SUBJECT' | 'GROUP'>('SUBJECT');
 
   // Search/Filters in Modals
   const [subjectSearch, setSubjectSearch] = useState('');
@@ -373,20 +364,6 @@ const ApcConfigurationPage: React.FC = () => {
     );
   };
 
-  const handleCloneGroups = async () => {
-    setLoading(true);
-    try {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        await matiereService.cloneTemplateGroups(user.idEtablissement);
-        const groupsRes = await matiereService.getGroups(user.idEtablissement);
-        setGroups(groupsRes.data);
-    } catch (error) {
-        alert("Erreur lors de l'importation des groupes modèles");
-    } finally {
-        setLoading(false);
-    }
-  };
-
   const handleAddMatieres = async () => {
       if (!yearId || !selectedClassId || selectedMatieresToAssign.length === 0) return;
       setLoading(true);
@@ -487,10 +464,6 @@ const ApcConfigurationPage: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-4 relative z-10">
-            <button className="bg-gray-50 text-black py-4 px-8 rounded-sharp flex items-center space-x-3 hover:bg-gray-100 transition-all font-black uppercase text-[10px] tracking-widest">
-                <Copy size={16} />
-                <span>Cloner Année Précédente</span>
-            </button>
             <div className="bg-accent text-white px-6 py-4 rounded-sharp border border-accent/20 flex items-center space-x-3 shadow-xl shadow-accent/20">
                 <ShieldCheck size={20} />
                 <span className="text-[10px] font-black uppercase tracking-widest">Mode Expert APC</span>
@@ -615,21 +588,6 @@ const ApcConfigurationPage: React.FC = () => {
                     </div>
                     <button onClick={() => setShowSubjectModal(true)} className="p-2 bg-violet-600 text-white rounded-full hover:scale-110 active:scale-95 transition-all shadow-md">
                         <Plus size={20}/>
-                    </button>
-                </div>
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => { setTransferType('SUBJECT'); setShowTransferModal(true); }}
-                        className="flex-1 py-3 bg-gray-50 text-black border border-gray-100 rounded-[15px] font-black uppercase text-[8px] tracking-[0.2em] flex items-center justify-center space-x-2 hover:bg-gray-100 transition-all"
-                    >
-                        <ArrowRightLeft size={12}/>
-                        <span>Transférer</span>
-                    </button>
-                    <button
-                        onClick={() => { setTransferType('GROUP'); setShowTransferModal(true); }}
-                        className="p-3 bg-gray-50 text-black border border-gray-100 rounded-[15px] hover:bg-gray-100 transition-all"
-                    >
-                        <Settings2 size={16}/>
                     </button>
                 </div>
             </div>

@@ -64,10 +64,6 @@ const Register: React.FC = () => {
     setLoading(true);
 
     try {
-      // Décomposition du nom complet pour correspondre à votre backend
-      const [nom, ...rest] = fullName.split(' ');
-      const prenom = rest.join(' ');
-
       // On génère un identifiant par défaut basé sur le nom
       const identifiant = fullName.toLowerCase().replace(/\s+/g, '.');
 
@@ -90,15 +86,6 @@ const Register: React.FC = () => {
       setLoading(false);
     }
   };
-
-  const isFormValid =
-    fullName.trim() !== '' &&
-    email.trim() !== '' &&
-    password.trim() !== '' &&
-    confirmPassword.trim() !== '' &&
-    !emailError &&
-    !passwordError &&
-    !confirmPasswordError;
 
   return (
     <div className="min-h-screen bg-[#9E9E9E] flex items-center justify-center p-4 font-sans">

@@ -823,8 +823,7 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
         (overrides.showRank ? 1 : 0) +
         1;
 
-    const leftColSpan = Math.floor(totalCols * 0.45);
-    const rightColSpan = totalCols - leftColSpan;
+    // const leftColSpan = Math.floor(totalCols * 0.45);
 
     return (
         <div
@@ -1027,7 +1026,7 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                                         </td>
                                     </tr>
                                 )}
-                                {group.subjects.map((sub, sIdx) => (
+                                {group.subjects.map((sub: any, sIdx: number) => (
                                     <React.Fragment key={sIdx}>
                                         <tr className="hover:bg-gray-50/50">
                                             <td className="p-0.5 font-bold uppercase text-black" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
@@ -1087,7 +1086,7 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                                                         overrides.compLayout === 'GRID' ? "grid grid-cols-2 p-0.5 gap-0.5" :
                                                         overrides.compLayout === 'HORIZONTAL' ? "flex flex-row flex-wrap p-0.5 gap-0.5" : "flex flex-col"
                                                     )}>
-                                                        {sub.competencies.map((comp, cIdx) => (
+                                                        {sub.competencies.map((comp: any, cIdx: number) => (
                                                             <div key={cIdx} className={clsx(
                                                                 "flex items-center px-0.5 py-0",
                                                                 (overrides.compLayout === 'GRID' || overrides.compLayout === 'HORIZONTAL') ? "bg-white/60 rounded-lg border border-gray-100" : "border-t border-gray-100 first:border-t-0",
@@ -1588,7 +1587,7 @@ const PVPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ bulletin
                                         return (
                                             <td key={i} className={clsx(
                                                 "border border-black p-1 text-center font-bold",
-                                                note !== null && note < 10 ? "bg-red-50 text-red-600" : ""
+                                                note !== null && note !== undefined && note < 10 ? "bg-red-50 text-red-600" : ""
                                             )}>
                                                 {note?.toFixed(2) || '--'}
                                             </td>
@@ -1680,11 +1679,10 @@ const PVPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ bulletin
 };
 
 const ResultsListPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ bulletins, config }) => {
-    const lang = config?.language || 'FR';
-    const t = bulletinTranslations[lang] || bulletinTranslations.FR;
-
     if (bulletins.length === 0) return null;
     const first = bulletins[0];
+    const lang = config?.language || 'FR';
+    const t = bulletinTranslations[lang] || bulletinTranslations.FR;
 
     return (
         <div className="w-[210mm] min-h-[297mm] bg-white p-10 print:p-5 shadow-2xl flex flex-col">
@@ -1733,11 +1731,10 @@ const ResultsListPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({
 };
 
 const HonorsListPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ bulletins, config }) => {
-    const lang = config?.language || 'FR';
-    const t = bulletinTranslations[lang] || bulletinTranslations.FR;
-
     if (bulletins.length === 0) return null;
-    const first = bulletins[0];
+    const lang = config?.language || 'FR';
+    // const t = bulletinTranslations[lang] || bulletinTranslations.FR;
+
     const threshold = config?.honors?.threshold || 12.0;
     const honors = bulletins.filter(b => b.performance.average >= threshold).sort((a,b) => b.performance.average - a.performance.average);
 
@@ -1974,110 +1971,55 @@ const PlayfulHonors: React.FC<{ data: BulletinData, config: any }> = ({ data, co
     </div>
 );
 
-const CorporateHonors: React.FC<{ data: BulletinData, config: any }> = ({ data, config }) => (
+const CorporateHonors: React.FC<{ data: BulletinData, config: any }> = ({ data }) => (
     <div className="landscape-page w-[297mm] h-[210mm] bg-white relative overflow-hidden shadow-2xl print:shadow-none flex flex-col">
-        {config.honors.showInstitutionalHeader && (
-            <div className="absolute top-4 left-1/3 right-0 px-16 z-20">
-                 <InstitutionalHeader school={data.school} customHeader={data.institutionalHeader} />
-            </div>
-        )}
-
-        {/* Dark Sidebar Header */}
-        <div className="absolute top-0 left-0 w-1/3 h-full bg-[#0F172A] flex flex-col p-16 justify-between text-white">
-            <div className="space-y-4">
-                <div className="w-16 h-1 bg-[#D4AF37]" />
-                <h2 className="text-xl font-black uppercase tracking-[0.3em] opacity-50">{data.school.abreviation || 'SCHOOL'}</h2>
-            </div>
-
-            <div className="space-y-8">
-                <div className="space-y-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#D4AF37]">Palmarès d'Excellence</p>
-                    <h1 className="text-5xl font-black uppercase tracking-tighter leading-none">Distinction Académique</h1>
-                </div>
-                <div className="h-px w-full bg-white/10" />
-                <div className="space-y-4">
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                        <span className="opacity-40">Moyenne</span>
-                        <span className="text-xl text-[#D4AF37]">{data.performance.average.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                        <span className="opacity-40">Rang</span>
-                        <span className="text-xl">#{data.performance.rank}</span>
-                    </div>
-                </div>
-            </div>
-
-            <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-30">Session {data.year.libelle}</p>
-        </div>
-
-        {/* Golden Waves */}
-        <div className="absolute top-0 left-1/3 w-20 h-full overflow-hidden">
-            <div className="h-full w-full bg-gradient-to-r from-[#0F172A] to-transparent" />
-            <div className="absolute top-0 left-0 w-1 h-full bg-[#D4AF37]/50" />
-        </div>
-
-        <div className="ml-[33.33%] h-full p-24 flex flex-col justify-center items-start space-y-12">
-            <div className="space-y-2">
-                <p className="text-[12px] font-black uppercase tracking-widest text-gray-400">Le Comité Pédagogique certifie que l'élève</p>
-                <h2 className="text-7xl font-black text-[#0F172A] tracking-tighter uppercase">{data.student.nomComplet}</h2>
-            </div>
-
-            <div className="space-y-4 max-w-xl">
-                <p className="text-xl font-medium text-gray-500 leading-relaxed">
-                    A figuré au <span className="font-black text-black">Tableau d'Honneur</span> pour ses performances remarquables
-                    durant le <span className="font-black text-black">{data.period.label}</span>.
-                </p>
-                <div className="inline-flex items-center gap-4 bg-[#F8FAFC] p-4 rounded-2xl border border-gray-100">
-                    <div className="w-10 h-10 bg-[#0F172A] text-[#D4AF37] rounded-xl flex items-center justify-center">
-                        <BarChart3 size={20} />
-                    </div>
+        <div className="absolute top-0 left-0 w-full h-4 bg-slate-900" />
+        <div className="p-16 flex flex-col h-full">
+            <header className="flex justify-between items-start mb-12">
+                <div className="flex gap-6 items-center text-left">
+                    {data.school.logo && (
+                        <img src={data.school.logo} alt="Logo" className="w-20 h-20 object-contain" />
+                    )}
                     <div>
-                        <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Discipline Majeure</p>
-                        <p className="text-xs font-black uppercase text-black">Excellence Pédagogique</p>
+                        <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">{data.school.nomFr}</h2>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{data.school.sloganFr}</p>
                     </div>
+                </div>
+                <div className="text-right">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Année Académique</p>
+                    <p className="text-sm font-black text-slate-900">{data.year.libelle}</p>
+                </div>
+            </header>
+
+            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8">
+                <div className="space-y-2">
+                    <p className="text-sm font-black text-slate-400 uppercase tracking-[0.4em]">Certificat d'Excellence</p>
+                    <h1 className="text-6xl font-black text-slate-900 uppercase tracking-tighter">Tableau d'Honneur</h1>
+                </div>
+
+                <div className="w-32 h-1 bg-slate-900" />
+
+                <div className="space-y-4">
+                    <p className="text-xl font-medium text-slate-600 italic">Décerné à</p>
+                    <h2 className="text-5xl font-black text-slate-900 uppercase tracking-tight">{data.student.nomComplet}</h2>
+                    <p className="text-lg font-bold text-slate-600 uppercase tracking-widest">Classe de {data.salle.nomSalle}</p>
                 </div>
             </div>
 
-            <div className="w-full pt-16 grid grid-cols-2 gap-20">
-                <div className="space-y-4">
-                    <div className="h-px w-full bg-[#0F172A]/10" />
-                    <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Le Principal</span>
-                        <div className="w-12 h-1 bg-[#D4AF37]" />
+            <footer className="mt-auto flex justify-between items-end border-t border-slate-100 pt-12">
+                <div className="space-y-1 text-left">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Performance Global</p>
+                    <p className="text-2xl font-black text-slate-900">Moyenne: {data.performance.average.toFixed(2)}</p>
+                </div>
+                <div className="flex gap-20">
+                    <div className="text-center">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-10">Le Chef d'Établissement</p>
+                        <div className="w-48 h-px bg-slate-200" />
                     </div>
                 </div>
-                <div className="space-y-4">
-                    <div className="h-px w-full bg-[#0F172A]/10" />
-                    <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Le Titulaire</span>
-                        <div className="w-12 h-1 bg-[#D4AF37]" />
-                    </div>
-                </div>
-            </div>
+            </footer>
         </div>
-
-        {config.honors.showSeal && (
-            <div className="absolute bottom-16 right-16 w-32 h-32 flex items-center justify-center">
-                <div className="absolute inset-0 bg-[#D4AF37]/10 rounded-full animate-pulse" />
-                <div className="w-24 h-24 bg-gradient-to-br from-[#D4AF37] to-[#B8860B] rounded-full shadow-2xl flex flex-col items-center justify-center text-white border-4 border-white">
-                    <span className="text-[14px] font-black">2026</span>
-                    <span className="text-[8px] font-black uppercase tracking-widest">Excellence</span>
-                </div>
-            </div>
-        )}
-    </div>
-);
-
-const StatRow: React.FC<{ label: string, value?: string | null, children?: React.ReactNode }> = ({ label, value, children }) => (
-    <div className="flex justify-between items-center text-[8px] border-b border-gray-100 pb-1">
-        <span className="font-bold text-gray-500 uppercase">{label}</span>
-        {children ? children : <span className="font-black text-black">{value}</span>}
-    </div>
-);
-
-const SignatureBlock: React.FC<{ title: string }> = ({ title }) => (
-    <div className="border border-black rounded-xl p-1.5 min-h-[60px] flex flex-col items-center">
-        <p className="text-[7.5px] font-black uppercase underline mb-0.5 text-black">{title}</p>
+        <div className="absolute bottom-0 right-0 w-64 h-64 bg-slate-50 rounded-full -mr-32 -mb-32 z-0" />
     </div>
 );
 

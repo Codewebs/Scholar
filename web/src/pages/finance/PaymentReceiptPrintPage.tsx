@@ -1,15 +1,126 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import api from '../../api/axios';
 import { financeService } from '../../api/financeService';
 import {
     Printer,
     ArrowLeft,
-    Loader2,
-    X,
-    CheckCircle2
+    Loader2
 } from 'lucide-react';
 import { clsx } from 'clsx';
+
+const receiptTranslations: any = {
+    FR: {
+        schoolYear: "Année Scolaire",
+        receiptNo: "N°",
+        fullName: "Noms et Prénoms",
+        matricule: "Matricule",
+        birthInfo: "Date et Lieu de naissance",
+        at: "à",
+        sex: "Sexe",
+        class: "Classe",
+        repeater: "Redoublant",
+        motif: "Motif",
+        sumOf: "La somme de",
+        penalties: "Pénalités",
+        paymentDate: "Date du paiement",
+        operationDate: "Date opération",
+        breakdownTitle: "Répartition du montant reçu",
+        fraisTitle: "Frais scolaire",
+        amountAllocated: "Montant alloué",
+        total: "Total",
+        statusTitle: "Etat actuel des frais de scolarité",
+        transportStatusTitle: "Détail du versement transport",
+        order: "Ordre",
+        amount: "Montant",
+        aug: "Aug.",
+        red: "Réd.",
+        alreadyPaid: "Déjà payé",
+        remaining: "Reste à payé",
+        totalPaid: "Total déjà payé",
+        totalRemaining: "Total reste à payer",
+        totalPaidMonths: "Total payé (sur ces mois)",
+        totalRemainingMonths: "Reste à payer (sur ces mois)",
+        signature: "Signature et cachet",
+        note: "NB : Ce document n'est valable qu'avec le cachet et la signature de l'administration.",
+        printedBy: "Imprimé par",
+        parentReceipt: "Reçu parent",
+        schoolReceipt: "Reçu établissement"
+    },
+    EN: {
+        schoolYear: "Academic Year",
+        receiptNo: "No",
+        fullName: "Full Name",
+        matricule: "Student ID",
+        birthInfo: "Date and Place of Birth",
+        at: "at",
+        sex: "Gender",
+        class: "Class",
+        repeater: "Repeater",
+        motif: "Purpose",
+        sumOf: "The sum of",
+        penalties: "Penalties",
+        paymentDate: "Payment Date",
+        operationDate: "Operation Date",
+        breakdownTitle: "Breakdown of amount received",
+        fraisTitle: "School Fees",
+        amountAllocated: "Amount Allocated",
+        total: "Total",
+        statusTitle: "Current status of school fees",
+        transportStatusTitle: "Transport payment details",
+        order: "Order",
+        amount: "Amount",
+        aug: "Inc.",
+        red: "Red.",
+        alreadyPaid: "Already Paid",
+        remaining: "Balance",
+        totalPaid: "Total already paid",
+        totalRemaining: "Total remaining",
+        totalPaidMonths: "Total paid (for these months)",
+        totalRemainingMonths: "Balance (for these months)",
+        signature: "Signature and Stamp",
+        note: "NB: This document is only valid with the school stamp and signature.",
+        printedBy: "Printed by",
+        parentReceipt: "Parent Receipt",
+        schoolReceipt: "School Receipt"
+    },
+    ES: {
+        schoolYear: "Año Escolar",
+        receiptNo: "N°",
+        fullName: "Nombres y Apellidos",
+        matricule: "Matrícula",
+        birthInfo: "Fecha y Lugar de nacimiento",
+        at: "en",
+        sex: "Sexo",
+        class: "Clase",
+        repeater: "Repetidor",
+        motif: "Motivo",
+        sumOf: "La suma de",
+        penalties: "Penalidades",
+        paymentDate: "Fecha de pago",
+        operationDate: "Fecha de operación",
+        breakdownTitle: "Desglose del monto recibido",
+        fraisTitle: "Gastos escolares",
+        amountAllocated: "Monto asignado",
+        total: "Total",
+        statusTitle: "Estado actual de los gastos escolares",
+        transportStatusTitle: "Detalle del pago de transporte",
+        order: "Orden",
+        amount: "Monto",
+        aug: "Aum.",
+        red: "Red.",
+        alreadyPaid: "Ya pagado",
+        remaining: "Restante",
+        totalPaid: "Total ya pagado",
+        totalRemaining: "Total restante",
+        totalPaidMonths: "Total pagado (meses seleccionados)",
+        totalRemainingMonths: "Restante (meses seleccionados)",
+        signature: "Firma y Sello",
+        note: "NB: Este documento solo es válido con el sello y la firma de la administración.",
+        printedBy: "Impreso por",
+        parentReceipt: "Recibo del Padre",
+        schoolReceipt: "Recibo de la Escuela"
+    }
+};
 
 const PaymentReceiptPrintPage: React.FC = () => {
     const [searchParams] = useSearchParams();
@@ -19,6 +130,9 @@ const PaymentReceiptPrintPage: React.FC = () => {
     const idEleve = searchParams.get('idEleve');
     const idAnneeScolaire = searchParams.get('idAnneeScolaire');
     const docType = searchParams.get('docType');
+    const lang = searchParams.get('lang') || localStorage.getItem('app_language') || 'FR';
+
+    const t = receiptTranslations[lang] || receiptTranslations.FR;
 
     useEffect(() => {
         const loadData = async () => {
@@ -57,7 +171,7 @@ const PaymentReceiptPrintPage: React.FC = () => {
         );
     }
 
-    const ReceiptContent = ({ mention }: { mention: string }) => {
+    const ReceiptContent = ({ mentionKey }: { mentionKey: 'parentReceipt' | 'schoolReceipt' }) => {
         const isTransport = docType === 'TRANSPORT_RECEIPT';
         const isPeriscolaire = docType === 'PERISCOLAIRE_RECEIPT';
 
@@ -78,7 +192,7 @@ const PaymentReceiptPrintPage: React.FC = () => {
             <div className="relative p-8 bg-white h-[148.5mm] border-b border-dashed border-gray-400 last:border-0 flex flex-col">
                 {/* Mention verticale */}
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 rotate-90 origin-right text-[8px] font-black uppercase tracking-widest text-gray-400">
-                    {mention}
+                    {t[mentionKey]}
                 </div>
 
                 {/* 1. Header */}
@@ -103,7 +217,7 @@ const PaymentReceiptPrintPage: React.FC = () => {
 
                     <div className="text-right">
                         <p className="text-[10px] font-black uppercase whitespace-nowrap">
-                            Année Scolaire : <span className="underline">{data.receiptInfo.schoolYear}</span>
+                            {t.schoolYear} : <span className="underline">{data.receiptInfo.schoolYear}</span>
                         </p>
                     </div>
                 </header>
@@ -112,7 +226,7 @@ const PaymentReceiptPrintPage: React.FC = () => {
                 <div className="flex justify-center mb-4">
                     <div className="px-10 py-1.5 bg-gray-100 border border-black rounded-full shadow-sm">
                         <h2 className="text-xs font-black uppercase tracking-widest">
-                            {data.receiptInfo.title} N° : <span className="text-red-600">{data.receiptInfo.receiptNo}</span>
+                            {data.receiptInfo.title} {t.receiptNo} : <span className="text-red-600">{data.receiptInfo.receiptNo}</span>
                         </h2>
                     </div>
                 </div>
@@ -120,40 +234,40 @@ const PaymentReceiptPrintPage: React.FC = () => {
                 {/* 3. Infos Elève & Opération */}
                 <div className="grid grid-cols-12 gap-y-2 gap-x-4 mb-4 text-[9px]">
                     <div className="col-span-8">
-                        <span className="font-black underline">Noms et Prénoms :</span> <span className="font-bold uppercase">{data.studentInfo.fullName}</span>
+                        <span className="font-black underline">{t.fullName} :</span> <span className="font-bold uppercase">{data.studentInfo.fullName}</span>
                     </div>
                     <div className="col-span-4">
-                        <span className="font-black underline">Matricule :</span> <span className="font-bold">{data.studentInfo.matricule}</span>
+                        <span className="font-black underline">{t.matricule} :</span> <span className="font-bold">{data.studentInfo.matricule}</span>
                     </div>
 
                     <div className="col-span-6">
-                        <span className="font-black underline">Date et Lieu de naissance :</span> <span className="font-bold">{data.studentInfo.dateNaissance} à {data.studentInfo.lieuNaissance}</span>
+                        <span className="font-black underline">{t.birthInfo} :</span> <span className="font-bold">{data.studentInfo.dateNaissance} {t.at} {data.studentInfo.lieuNaissance}</span>
                     </div>
                     <div className="col-span-2 text-center">
-                        <span className="font-black underline">Sexe :</span> <span className="font-bold">{data.studentInfo.sexe}</span>
+                        <span className="font-black underline">{t.sex} :</span> <span className="font-bold">{data.studentInfo.sexe}</span>
                     </div>
                     <div className="col-span-2 text-center">
-                        <span className="font-black underline">Classe :</span> <span className="font-bold">{data.studentInfo.classLabel}</span>
+                        <span className="font-black underline">{t.class} :</span> <span className="font-bold">{data.studentInfo.classLabel}</span>
                     </div>
                     <div className="col-span-2 text-center">
-                        <span className="font-black underline">Redoublant :</span> <span className="font-bold">{data.studentInfo.redoublant}</span>
+                        <span className="font-black underline">{t.repeater} :</span> <span className="font-bold">{data.studentInfo.redoublant}</span>
                     </div>
 
                     <div className="col-span-5">
-                        <span className="font-black underline">Motif :</span> <span className="font-bold">{data.financialDetail.nature}</span>
+                        <span className="font-black underline">{t.motif} :</span> <span className="font-bold">{data.financialDetail.nature}</span>
                     </div>
                     <div className="col-span-4">
-                        <span className="font-black underline">La somme de :</span> <span className="font-black text-red-600">{data.financialDetail.amountDigits.toLocaleString()}</span> <span className="font-black">FCFA</span>
+                        <span className="font-black underline">{t.sumOf} :</span> <span className="font-black text-red-600">{data.financialDetail.amountDigits.toLocaleString()}</span> <span className="font-black">FCFA</span>
                     </div>
                     <div className="col-span-3 text-right">
-                        <span className="font-black underline">Pénalités :</span> <span className="font-bold">{data.financialDetail.penalties.toLocaleString()} FCFA</span>
+                        <span className="font-black underline">{t.penalties} :</span> <span className="font-bold">{data.financialDetail.penalties.toLocaleString()} FCFA</span>
                     </div>
 
                     <div className="col-span-6">
-                        <span className="font-black underline">Date du paiement :</span> <span className="font-bold">{new Date(data.receiptInfo.dateTime).toLocaleDateString('fr-FR')}</span>
+                        <span className="font-black underline">{t.paymentDate} :</span> <span className="font-bold">{new Date(data.receiptInfo.dateTime).toLocaleDateString(lang === 'FR' ? 'fr-FR' : lang === 'ES' ? 'es-ES' : 'en-US')}</span>
                     </div>
                     <div className="col-span-6 text-right">
-                        <span className="font-black underline">Date opération :</span> <span className="font-bold">{new Date(data.receiptInfo.operationTime).toLocaleString('fr-FR')}</span>
+                        <span className="font-black underline">{t.operationDate} :</span> <span className="font-bold">{new Date(data.receiptInfo.operationTime).toLocaleString(lang === 'FR' ? 'fr-FR' : lang === 'ES' ? 'es-ES' : 'en-US')}</span>
                     </div>
                 </div>
 
@@ -162,12 +276,12 @@ const PaymentReceiptPrintPage: React.FC = () => {
                     {/* Tableau A */}
                     {!isTransport && (
                         <div className="w-[35%]">
-                            <h3 className="text-[8px] font-black uppercase bg-gray-600 text-white p-1 text-center">Répartition du montant reçu</h3>
+                            <h3 className="text-[8px] font-black uppercase bg-gray-600 text-white p-1 text-center">{t.breakdownTitle}</h3>
                             <table className="w-full border-collapse border border-black text-[8px]">
                                 <thead>
                                     <tr className="bg-gray-50 font-black">
-                                        <th className="border border-black p-1 text-left">Frais scolaire</th>
-                                        <th className="border border-black p-1 text-center">Montant alloué</th>
+                                        <th className="border border-black p-1 text-left">{t.fraisTitle}</th>
+                                        <th className="border border-black p-1 text-center">{t.amountAllocated}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -187,7 +301,7 @@ const PaymentReceiptPrintPage: React.FC = () => {
                                 </tbody>
                                 <tfoot>
                                     <tr className="bg-lime-400 font-black">
-                                        <td className="border border-black p-1 text-right">Total</td>
+                                        <td className="border border-black p-1 text-right">{t.total}</td>
                                         <td className="border border-black p-1 text-center">{data.financialDetail.amountDigits.toLocaleString()}</td>
                                     </tr>
                                 </tfoot>
@@ -198,18 +312,18 @@ const PaymentReceiptPrintPage: React.FC = () => {
                     {/* Tableau B */}
                     <div className={clsx(isTransport ? "w-full" : "flex-1")}>
                         <h3 className="text-[8px] font-black uppercase bg-gray-600 text-white p-1 text-center">
-                            {isTransport ? "Détail du versement transport" : "Etat actuel des frais de scolarité"}
+                            {isTransport ? t.transportStatusTitle : t.statusTitle}
                         </h3>
                         <table className="w-full border-collapse border border-black text-[7.5px]">
                             <thead>
                                 <tr className="bg-gray-50 font-black">
-                                    <th className="border border-black p-0.5">Ordre</th>
-                                    <th className="border border-black p-0.5 text-left">Frais scolaire</th>
-                                    <th className="border border-black p-0.5">Montant</th>
-                                    <th className="border border-black p-0.5">Aug.</th>
-                                    <th className="border border-black p-0.5">Réd.</th>
-                                    <th className="border border-black p-0.5">Déjà payé</th>
-                                    <th className="border border-black p-0.5">Reste à payé</th>
+                                    <th className="border border-black p-0.5">{t.order}</th>
+                                    <th className="border border-black p-0.5 text-left">{t.fraisTitle}</th>
+                                    <th className="border border-black p-0.5">{t.amount}</th>
+                                    <th className="border border-black p-0.5">{t.aug}</th>
+                                    <th className="border border-black p-0.5">{t.red}</th>
+                                    <th className="border border-black p-0.5">{t.alreadyPaid}</th>
+                                    <th className="border border-black p-0.5">{t.remaining}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -235,7 +349,7 @@ const PaymentReceiptPrintPage: React.FC = () => {
                             </tbody>
                             <tfoot>
                                 <tr className="font-black">
-                                    <td colSpan={2} className="border border-black p-0.5 text-right uppercase">Total</td>
+                                    <td colSpan={2} className="border border-black p-0.5 text-right uppercase">{t.total}</td>
                                     <td className="border border-black p-0.5 text-center">{filteredHistory.reduce((s: number, h: any) => s + h.montantTotal, 0).toLocaleString()}</td>
                                     <td className="border border-black p-0.5 text-center">0</td>
                                     <td className="border border-black p-0.5 text-center">0</td>
@@ -252,7 +366,7 @@ const PaymentReceiptPrintPage: React.FC = () => {
                     <div className="flex items-center space-x-6">
                         <div className="flex items-center space-x-2">
                             <span className="text-[10px] font-black uppercase">
-                                {isTransport ? "Total payé (sur ces mois) :" : "Total déjà payé :"}
+                                {isTransport ? t.totalPaidMonths : t.totalPaid} :
                             </span>
                             <div className="bg-lime-400 px-4 py-1 rounded-md border border-black font-black text-xs">
                                 {filteredHistory.reduce((s: number, h: any) => s + h.dejaPaye, 0).toLocaleString()}
@@ -260,7 +374,7 @@ const PaymentReceiptPrintPage: React.FC = () => {
                         </div>
                         <div className="flex items-center space-x-2">
                             <span className="text-[10px] font-black uppercase">
-                                {isTransport ? "Reste à payer (sur ces mois) :" : "Total reste à payer :"}
+                                {isTransport ? t.totalRemainingMonths : t.totalRemaining} :
                             </span>
                             <div className="bg-gray-300 px-4 py-1 rounded-md border border-black font-black text-xs">
                                 {filteredHistory.reduce((s: number, h: any) => s + h.reste, 0).toLocaleString()}
@@ -269,15 +383,15 @@ const PaymentReceiptPrintPage: React.FC = () => {
                     </div>
 
                     <div className="w-48 h-16 border-2 border-dashed border-black rounded-lg flex flex-col items-center justify-start p-1">
-                        <span className="text-[8px] font-black italic">Signature et cachet</span>
+                        <span className="text-[8px] font-black italic">{t.signature}</span>
                     </div>
                 </div>
 
                 {/* 6. Métadonnées */}
                 <div className="mt-auto flex justify-between items-end text-[7px] font-bold text-gray-500 italic border-t border-gray-100 pt-1">
-                    <p>{new Date().toLocaleString('fr-FR')}</p>
-                    <p>NB : Ce document n'est valable qu'avec le cachet et la signature de l'administration.</p>
-                    <p>Imprimé par : {data.financialDetail.printedBy}</p>
+                    <p>{new Date().toLocaleString(lang === 'FR' ? 'fr-FR' : lang === 'ES' ? 'es-ES' : 'en-US')}</p>
+                    <p>{t.note}</p>
+                    <p>{t.printedBy} : {data.financialDetail.printedBy}</p>
                 </div>
             </div>
         );
@@ -306,8 +420,8 @@ const PaymentReceiptPrintPage: React.FC = () => {
             <div className="flex flex-col items-center">
                 <div className="bg-white w-[210mm] h-[297mm] shadow-2xl relative flex flex-col overflow-hidden print:shadow-none print:w-[210mm]">
                     <div className="flex-1 flex flex-col print:m-0 print:h-[297mm]">
-                        <ReceiptContent mention="Reçu parent" />
-                        <ReceiptContent mention="Reçu établissement" />
+                        <ReceiptContent mentionKey="parentReceipt" />
+                        <ReceiptContent mentionKey="schoolReceipt" />
                     </div>
                 </div>
             </div>

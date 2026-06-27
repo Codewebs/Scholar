@@ -10,19 +10,16 @@ import {
     Trash2,
     Printer,
     ChevronRight,
-    GraduationCap,
-    ArrowRightLeft,
     Plus,
     AlertCircle
 } from 'lucide-react';
 import { clsx } from 'clsx';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 const TeacherRepartitionPage: React.FC = () => {
   const { selectedYear } = useSchoolYear();
   const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
-  const [loading, setLoading] = useState(false);
   const [rooms, setRooms] = useState<any[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
 
@@ -66,14 +63,11 @@ const TeacherRepartitionPage: React.FC = () => {
   };
 
   const loadRoomAssignments = async () => {
-    setLoading(true);
     try {
       const res = await repartitionEnseignantService.getRoomAssignments(selectedRoomId!, yearId!);
       setRoomData(res.data);
     } catch (err) {
       console.error("Error loading room assignments", err);
-    } finally {
-      setLoading(false);
     }
   };
 

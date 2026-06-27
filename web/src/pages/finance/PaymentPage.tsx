@@ -19,11 +19,9 @@ import {
   Receipt,
   Search,
   ChevronRight,
-  MoreVertical,
   Settings,
   Plus,
   CircleDollarSign,
-  Pending,
   X,
   CreditCard as CardIcon,
   RefreshCw,
@@ -66,6 +64,8 @@ const PaymentPage: React.FC = () => {
   const [subscribing, setSubscribing] = useState(false);
   const [showTransportConfirm, setShowTransportConfirm] = useState(false);
   const [pendingTarifId, setPendingTarifId] = useState<number | null>(null);
+  const [showPrintLangModal, setShowPrintLangModal] = useState(false);
+  const [printConfig, setPrintConfig] = useState<{ docType: string; baseUrl: string } | null>(null);
 
   useEffect(() => {
     if (showSubscriptionModal && yearId) {
@@ -325,8 +325,16 @@ const PaymentPage: React.FC = () => {
       }
       if (isPeriscolaire) docType = 'PERISCOLAIRE_RECEIPT';
 
-      const url = `${baseUrl}?idEleve=${selectedStudent.idEleve}&idAnneeScolaire=${yearId}&docType=${docType}`;
-      window.open(url, '_blank');
+      const forceDocLanguage = localStorage.getItem('force_doc_language') === 'true';
+      const appLanguage = localStorage.getItem('app_language') || 'FR';
+
+      if (forceDocLanguage) {
+          const url = `${baseUrl}?idEleve=${selectedStudent.idEleve}&idAnneeScolaire=${yearId}&docType=${docType}&lang=${appLanguage}`;
+          window.open(url, '_blank');
+      } else {
+          setPrintConfig({ docType, baseUrl });
+          setShowPrintLangModal(true);
+      }
   };
 
   const handlePrintReceipt = () => {
@@ -340,8 +348,23 @@ const PaymentPage: React.FC = () => {
       }
       if (isPeriscolaire) docType = 'PERISCOLAIRE_RECEIPT';
 
-      const url = `${baseUrl}?idEleve=${selectedStudent.idEleve}&idAnneeScolaire=${yearId}&docType=${docType}`;
-      window.open(url, '_blank');
+      const forceDocLanguage = localStorage.getItem('force_doc_language') === 'true';
+      const appLanguage = localStorage.getItem('app_language') || 'FR';
+
+      if (forceDocLanguage) {
+          const url = `${baseUrl}?idEleve=${selectedStudent.idEleve}&idAnneeScolaire=${yearId}&docType=${docType}&lang=${appLanguage}`;
+          window.open(url, '_blank');
+      } else {
+          setPrintConfig({ docType, baseUrl });
+          setShowPrintLangModal(true);
+      }
+  };
+
+  const executePrint = (lang: string) => {
+    if (!selectedStudent || !printConfig) return;
+    const url = `${printConfig.baseUrl}?idEleve=${selectedStudent.idEleve}&idAnneeScolaire=${yearId}&docType=${printConfig.docType}&lang=${lang}`;
+    window.open(url, '_blank');
+    setShowPrintLangModal(false);
   };
 
   const handleCancelPayment = async (id: number) => {
@@ -373,7 +396,7 @@ const PaymentPage: React.FC = () => {
       }
   };
 
-  const canCancel = user?.permissions?.includes('CANCEL_PAYMENT');
+  const canCancel = user?.permissions?.includes('CANCEL_PAYMENT' as any);
   const validTransactions = transactions.filter(tx => !tx.annule);
 
   return (
@@ -662,7 +685,7 @@ const PaymentPage: React.FC = () => {
                                         highlightActive ? "bg-accent/5 border-2 border-accent/20" : "bg-gray-50/50 border-2 border-transparent"
                                     )}
                                 >
-                                    {transactions.map((tx, index) => {
+                                    {transactions.map((tx) => {
                                         const isMostRecentValid = !tx.annule && tx.idPaiementFraisGlobal === validTransactions[0]?.idPaiementFraisGlobal;
 
                                         return (
@@ -991,6 +1014,42 @@ const PaymentPage: React.FC = () => {
                         className="py-4 font-black uppercase text-[10px] tracking-widest text-secondary hover:text-red-500 transition-all"
                       >Annuler</button>
                   </div>
+              </div>
+          </div>
+      )}
+
+      {showPrintLangModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-[110] p-6 animate-in zoom-in-95 duration-300">
+              <div className="bg-white rounded-[56px] p-12 max-w-xl w-full shadow-2xl relative border border-gray-100">
+                  <div className="mb-10 text-center">
+                      <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                          <Printer size={40} />
+                      </div>
+                      <h3 className="text-3xl font-black uppercase tracking-tighter text-black">Langue d'impression</h3>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-secondary mt-2">Choisissez la langue pour ce document</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                      {[
+                          { code: 'FR', label: 'Français' },
+                          { code: 'EN', label: 'English' },
+                          { code: 'ES', label: 'Español' }
+                      ].map(lang => (
+                          <button
+                            key={lang.code}
+                            onClick={() => executePrint(lang.code)}
+                            className="p-6 border-2 border-gray-100 rounded-[28px] hover:border-black transition-all flex items-center justify-between group"
+                          >
+                              <span className="font-black uppercase tracking-tight">{lang.label}</span>
+                              <ChevronRight size={20} className="text-gray-300 group-hover:text-black transition-colors" />
+                          </button>
+                      ))}
+                  </div>
+
+                  <button
+                    onClick={() => setShowPrintLangModal(false)}
+                    className="w-full mt-10 py-4 font-black uppercase text-[10px] tracking-widest text-secondary hover:text-black transition-all"
+                  >Annuler</button>
               </div>
           </div>
       )}

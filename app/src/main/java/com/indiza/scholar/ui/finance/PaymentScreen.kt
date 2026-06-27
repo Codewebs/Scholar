@@ -37,7 +37,7 @@ fun PaymentScreen(
     idAnneeScolaire: Long,
     financeViewModel: FinanceViewModel,
     onBack: () -> Unit,
-    onShowReceipt: (Long, Long) -> Unit
+    onShowReceipt: (Long, Long, String) -> Unit
 ) {
     val context = LocalContext.current
     val apiService = remember { 
@@ -57,7 +57,8 @@ fun PaymentScreen(
     var showPaymentSheet by remember { mutableStateOf(false) }
     var showPeriscolaireSheet by remember { mutableStateOf(false) }
     var showReceiptDialog by remember { mutableStateOf<Long?>(null) } // idPaiement
-    
+    var showLangSelector by remember { mutableStateOf<Pair<Long, Long>?>(null) } // idEleve, idAnnee
+
     // Config states
     var hasExigiblesConfigured by remember { mutableStateOf(true) }
     var hasPeriscolairesConfigured by remember { mutableStateOf(true) }
@@ -195,7 +196,12 @@ fun PaymentScreen(
                 ExtendedFloatingActionButton(
                     onClick = {
                         selectedEleve?.let {
-                            onShowReceipt(it.idEleve, idAnneeScolaire)
+                            val forceDocLanguage = com.indiza.scholar.model.SyncConfig.forceDocLanguage
+                            if (forceDocLanguage) {
+                                onShowReceipt(it.idEleve, idAnneeScolaire, com.indiza.scholar.model.SyncConfig.appLanguage)
+                            } else {
+                                showLangSelector = it.idEleve to idAnneeScolaire
+                            }
                         }
                     },
                     icon = { Icon(Icons.Default.Print, null) },
@@ -307,12 +313,46 @@ fun PaymentScreen(
             text = { Text("Le versement a été enregistré avec succès. Souhaitez-vous afficher le reçu ?") },
             confirmButton = {
                 Button(onClick = {
-                    selectedEleve?.let { onShowReceipt(it.idEleve, idAnneeScolaire) }
+                    selectedEleve?.let { 
+                        val forceDocLanguage = com.indiza.scholar.model.SyncConfig.forceDocLanguage
+                        if (forceDocLanguage) {
+                            onShowReceipt(it.idEleve, idAnneeScolaire, com.indiza.scholar.model.SyncConfig.appLanguage)
+                        } else {
+                            showLangSelector = it.idEleve to idAnneeScolaire
+                        }
+                    }
                     showReceiptDialog = null
                 }) { Text("Afficher le reçu") }
             },
             dismissButton = {
                 TextButton(onClick = { showReceiptDialog = null }) { Text("Plus tard") }
+            }
+        )
+    }
+
+    if (showLangSelector != null) {
+        AlertDialog(
+            onDismissRequest = { showLangSelector = null },
+            title = { Text("Choisir la langue d'impression") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("FR" to "Français", "EN" to "English", "ES" to "Español").forEach { (code, label) ->
+                        Button(
+                            onClick = {
+                                onShowReceipt(showLangSelector!!.first, showLangSelector!!.second, code)
+                                showLangSelector = null
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2C3E50))
+                        ) {
+                            Text(label, color = Color.White)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showLangSelector = null }) { Text("Annuler") }
             }
         )
     }

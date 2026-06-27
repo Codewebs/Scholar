@@ -44,17 +44,17 @@ class PaymentActivity : ComponentActivity() {
             ScholarTheme {
                 PaymentScreen(idAnnee, financeViewModel, 
                     onBack = { finish() },
-                    onShowReceipt = { idEleve, idAnneeScolaire ->
-                        generateAndShowReceipt(idEleve, idAnneeScolaire)
+                    onShowReceipt = { idEleve, idAnneeScolaire, lang ->
+                        generateAndShowReceipt(idEleve, idAnneeScolaire, lang)
                     }
                 )
             }
         }
     }
 
-    private fun generateAndShowReceipt(idEleve: Long, idAnneeScolaire: Long) {
+    private fun generateAndShowReceipt(idEleve: Long, idAnneeScolaire: Long, lang: String = "FR") {
         lifecycleScope.launch {
-            android.util.Log.d("PaymentActivity", "📡 [Receipt] Requesting data for Student:$idEleve Year:$idAnneeScolaire")
+            android.util.Log.d("PaymentActivity", "📡 [Receipt] Requesting data for Student:$idEleve Year:$idAnneeScolaire Lang:$lang")
             try {
                 val receiptResp = api.getRegistrationReceiptData(idEleve, idAnneeScolaire)
                 val detailsResp = api.getStudentPaymentDetails(idEleve, idAnneeScolaire)
@@ -80,7 +80,7 @@ class PaymentActivity : ComponentActivity() {
                         val targetUri = resolver.insert(MediaStore.Files.getContentUri("external"), contentValues)
                         targetUri?.let {
                             resolver.openOutputStream(it)?.use { os ->
-                                FinancialReportGenerator.generate(os, "Reçu Frais de Scolarité", params, school)
+                                FinancialReportGenerator.generate(os, "Reçu Frais de Scolarité", params, school, lang)
                             }
                             it
                         }

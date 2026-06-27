@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthButton from '../components/ui/AuthButton';
 import { useAuth } from '../context/AuthContext';
-import { Settings, Globe } from 'lucide-react';
+import { Globe } from 'lucide-react';
 import ServerConfigModal from '../components/ServerConfigModal';
 
 const Welcome: React.FC = () => {

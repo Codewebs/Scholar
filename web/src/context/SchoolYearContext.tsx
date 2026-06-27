@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { SchoolYear } from '../types/models';
 import { dashboardService } from '../api/dashboardService';
 import { useAuth } from './AuthContext';
@@ -19,7 +19,7 @@ interface SchoolYearContextType {
 const SchoolYearContext = createContext<SchoolYearContextType | undefined>(undefined);
 
 export const SchoolYearProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { user, hasPermission } = useAuth();
+    const { hasPermission } = useAuth();
     const [years, setYears] = useState<SchoolYear[]>([]);
     const [selectedYear, setSelectedYear] = useState<SchoolYear | null>(null);
     const [loading, setLoading] = useState(false);

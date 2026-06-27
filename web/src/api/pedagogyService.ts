@@ -76,7 +76,7 @@ export const pedagogyService = {
     api.delete(`/academic-structure/classes/${id}`),
 
   // Reports
-  getReportData: (reportId: string, params: { idClasse: number, idAnneeScolaire: number }) => {
+  getReportData: (reportId: string, params: { idClasse: number, idAnneeScolaire: number, [key: string]: any }) => {
     let endpoint = '';
     switch (reportId) {
       case 'alpha_global': endpoint = '/pedagogy/reports/alphabetical'; break;

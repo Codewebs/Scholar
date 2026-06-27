@@ -27,7 +27,6 @@ const SequenceRepartitionPage: React.FC = () => {
     const [selectedClasses, setSelectedClasses] = useState<number[]>([]);
     const [selectedSequences, setSelectedSequences] = useState<number[]>([]);
 
-    const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -39,7 +38,6 @@ const SequenceRepartitionPage: React.FC = () => {
     }, [yearId]);
 
     const loadData = async () => {
-        setLoading(true);
         try {
             const [roomsRes, periodsRes, repartitionRes] = await Promise.all([
                 studentService.getRooms(yearId!),
@@ -86,8 +84,6 @@ const SequenceRepartitionPage: React.FC = () => {
             setRepartition(repartitionRes.data);
         } catch (err) {
             console.error("❌ Error loading data:", err);
-        } finally {
-            setLoading(false);
         }
     };
 

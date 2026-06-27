@@ -3,7 +3,6 @@ import { useSchoolYear } from '../../context/SchoolYearContext';
 import { staffService, PersonnelEntity, DemandeInscription } from '../../api/staffService';
 import { AcademicPermission } from '../../types/permissions';
 import {
-    Users,
     ArrowLeft,
     Check,
     X,
@@ -12,14 +11,11 @@ import {
     Phone,
     MoreVertical,
     Search,
-    UserCheck,
-    UserX,
     Clock,
     Zap,
     Lock,
     Unlock,
     Shield,
-    Calendar,
     BadgeCheck
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -344,7 +340,7 @@ const StaffManagementPage: React.FC = () => {
   const openEditModal = (member: PersonnelEntity) => {
     setEditForm({
         idUtilisateur: member.idUtilisateur,
-        nom: member.nom,
+        nom: member.nom || '',
         prenom: member.prenom || '',
         diplomes: member.utilisateur?.diplomes || '',
         email: member.email || member.utilisateur?.email || '',
@@ -462,7 +458,7 @@ const StaffManagementPage: React.FC = () => {
 
         {activeTab === 'staff' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {displayStaff.map((member, idx) => (
+                {displayStaff.map((member) => (
                     <div key={member.idInscriptionPersonnel} className="bg-white border border-gray-100 rounded-[32px] p-6 hover:border-black group transition-all shadow-sm hover:shadow-xl relative overflow-hidden flex flex-col justify-between">
                         <div className={clsx(
                             "absolute left-0 top-0 w-full h-1 transition-all group-hover:h-2",

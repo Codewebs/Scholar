@@ -4,14 +4,10 @@ import { studentService } from '../../../../api/studentService';
 import { pedagogyService } from '../../../../api/pedagogyService';
 import { matiereService } from '../../../../api/matiereService';
 import { gradeService } from '../../../../api/gradeService';
-import { NoteUiModel } from '../../../../types/grades';
 import { SousPeriodeEntity } from '../../../../types/pedagogy';
 import GradeSequentialEntry from '../components/GradeSequentialEntry';
 import {
     Save,
-    Search,
-    User,
-    Hash,
     FileEdit,
     AlertCircle,
     CheckCircle2,
@@ -169,8 +165,8 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
           // Calculate missing competencies for the "chips" display
           const missing = comps.length === 0
               ? (studentNotes.some(n => !n.idCompetence && (n.note !== null || n.nonClasse)) ? [] : [{ label: 'GÉN' }])
-              : comps.filter(c => !studentNotes.some(n => Number(n.idCompetence) === Number(c.idCompetence) && (n.note !== null || n.nonClasse)))
-                     .map(c => ({ label: c.Competence?.abreviation || c.Competence?.libelle?.substring(0, 3) }));
+              : comps.filter((c: any) => !studentNotes.some((n: any) => Number(n.idCompetence) === Number(c.idCompetence) && (n.note !== null || n.nonClasse)))
+                     .map((c: any) => ({ label: c.Competence?.abreviation || c.Competence?.libelle?.substring(0, 3) }));
 
           if (comps.length === 0) {
               // Standard mode
@@ -189,7 +185,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
               });
           } else {
               // APC mode: Match by idRepartitionCompetence
-              comps.forEach(c => {
+              comps.forEach((c: any) => {
                   const note = studentNotes.find((n: any) =>
                       Number(n.idRepartitionCompetence) === Number(c.id)
                   );
@@ -270,7 +266,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
         modeSaisie: 'NUMERIC'
       };
 
-      const response = await gradeService.saveNotes(payload as any);
+      await gradeService.saveNotes(payload as any);
       setSuccess("Notes enregistrées !");
       setTimeout(() => setSuccess(null), 3000);
       handleLoadNotes();
@@ -306,7 +302,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
         modeSaisie: mode === 'DECIMAL' ? 'NUMERIC' : 'ALPHABETIC'
     };
 
-    const res = await gradeService.saveNotes(payload as any);
+    await gradeService.saveNotes(payload as any);
   };
 
   const filteredSequences = React.useMemo(() => {
@@ -473,7 +469,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
                                                     <span className="font-black text-sm uppercase tracking-tight text-black">{n.nomComplet}</span>
                                                     <div className="flex flex-wrap items-center gap-1.5 mt-1">
                                                         <span className="text-[9px] font-bold text-gray-300 uppercase">{n.matricule}</span>
-                                                        {n.missingCompetencies?.map((mc, i) => (
+                                                        {n.missingCompetencies?.map((mc: any, i: number) => (
                                                             <span key={i} className="text-[7px] font-black bg-red-50 text-red-500 px-1.5 py-0.5 rounded uppercase">
                                                                 {mc.label}
                                                             </span>

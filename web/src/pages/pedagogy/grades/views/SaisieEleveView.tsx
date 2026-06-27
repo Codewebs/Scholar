@@ -4,22 +4,18 @@ import { studentService } from '../../../../api/studentService';
 import { pedagogyService } from '../../../../api/pedagogyService';
 import { matiereService } from '../../../../api/matiereService';
 import { gradeService } from '../../../../api/gradeService';
-import { StudentNoteUiModel } from '../../../../types/grades';
 import { SousPeriodeEntity } from '../../../../types/pedagogy';
 import GradeSequentialEntry from '../components/GradeSequentialEntry';
 import {
     Save,
-    Search,
     User,
     Book,
-    Calculator,
     AlertCircle,
     CheckCircle2,
     Building2,
     Calendar,
     ChevronRight,
     SearchX,
-    Users,
     Zap
 } from 'lucide-react';
 import AuthButton from '../../../../components/ui/AuthButton';
@@ -68,7 +64,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
   const [showSequential, setShowSequential] = useState(false);
   const [sequentialIndex, setSequentialIndex] = useState(0);
 
-  const [matiereCompetences, setMatiereCompetences] = useState<{[key: number]: any[]}>({});
+  const [, setMatiereCompetences] = useState<{[key: number]: any[]}>({});
 
   useEffect(() => {
     if (yearId) {
@@ -248,7 +244,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
         modeSaisie: 'NUMERIC'
       };
 
-      const response = await gradeService.saveStudentNotes(payload as any);
+      await gradeService.saveStudentNotes(payload as any);
       setSuccess("Notes enregistrées !");
       setTimeout(() => setSuccess(null), 3000);
       handleLoadNotes();

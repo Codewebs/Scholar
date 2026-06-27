@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Check, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 import { permissionGroups } from '../../pages/admin/StaffManagementPage';
 

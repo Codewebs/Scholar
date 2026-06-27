@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { pedagogyService } from '../../api/pedagogyService';
 import { schoolService } from '../../api/schoolService';
@@ -8,10 +7,7 @@ import {
     Printer,
     ArrowLeft,
     Loader2,
-    Download,
-    Users,
-    DoorOpen,
-    CheckCircle2
+    Users
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -452,7 +448,7 @@ const ReportPrintPage: React.FC = () => {
                         <div className="mt-auto pt-10 border-t border-gray-100">
                             <div className="flex justify-between items-end">
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-black uppercase text-black">Imprimé par : {user?.nom || user?.identifiant || "Administrateur"}</p>
+                                    <p className="text-[10px] font-black uppercase text-black">Imprimé par : {user?.nom || user?.email || "Administrateur"}</p>
                                     <p className="text-[8px] text-gray-400 italic">
                                         Extrait le {new Date().toLocaleString()} - Logiciel Scholar v3.1
                                     </p>

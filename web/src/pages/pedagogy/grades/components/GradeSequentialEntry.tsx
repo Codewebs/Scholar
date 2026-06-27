@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { NoteUiModel } from '../../../../types/grades';
 import {
     X,
     ChevronLeft,

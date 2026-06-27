@@ -91,4 +91,7 @@ export const financeService = {
   subscribeStudentToTransport: (data: any) => api.post('/finance/transport/subscribe', data),
   getStudentTransportSubscription: (idEleve: number, idAnneeScolaire: number) => api.get(`/finance/transport/subscription/${idEleve}/${idAnneeScolaire}`),
   payerTransport: (payload: any) => api.post('/finance/paiements/transport', payload),
+
+  searchStudents: (q: string, idAnneeScolaire: number) =>
+    api.get<any[]>(`/students/search/${idAnneeScolaire}`, { params: { q } }),
 };

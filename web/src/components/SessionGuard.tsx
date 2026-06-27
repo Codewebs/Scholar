@@ -4,18 +4,14 @@ import { useSchoolYear } from '../context/SchoolYearContext';
 import { setupService, UserAssociation } from '../api/setupService';
 import { School, SchoolYear } from '../types/models';
 import {
-    School as SchoolIcon,
     Calendar,
     CheckCircle2,
     LogOut,
-    Loader2,
     ShieldAlert,
     Building2,
     ChevronRight,
     Zap
 } from 'lucide-react';
-import { clsx } from 'clsx';
-import AuthButton from './ui/AuthButton';
 
 const SessionGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user, isAuthenticated, isInitialized, logout, updateUser } = useAuth();

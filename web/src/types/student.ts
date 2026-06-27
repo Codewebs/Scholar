@@ -18,4 +18,11 @@ export interface EleveUiModel {
     isSolded: boolean;
     hasAnyPayment: boolean;
     hasGrades: boolean;
+    nomPere?: string;
+    telephonePere?: number;
+    nomMere?: string;
+    telephoneMere?: number;
+    nomTuteur?: string;
+    telephoneTuteur?: number;
+    ancienEtablissement?: string;
 }

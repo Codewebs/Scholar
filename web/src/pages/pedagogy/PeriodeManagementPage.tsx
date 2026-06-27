@@ -3,7 +3,6 @@ import { useSchoolYear } from '../../context/SchoolYearContext';
 import { pedagogyService } from '../../api/pedagogyService';
 import { PeriodeEntity, SousPeriodeEntity } from '../../types/pedagogy';
 import { ArrowLeft, Plus, Edit2, Trash2, Calendar, CornerDownRight, X, Save } from 'lucide-react';
-import { clsx } from 'clsx';
 import AuthInput from '../../components/ui/AuthInput';
 import AuthButton from '../../components/ui/AuthButton';
 

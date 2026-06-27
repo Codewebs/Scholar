@@ -18,7 +18,7 @@ const SearchStudent: React.FC<SearchStudentProps> = ({ yearId, onSelect }) => {
       if (query.length > 2) {
         setLoading(true);
         financeService.searchStudents(query, yearId)
-          .then(res => setResults(res.data))
+          .then((res: any) => setResults(res.data))
           .finally(() => setLoading(false));
       } else {
         setResults([]);

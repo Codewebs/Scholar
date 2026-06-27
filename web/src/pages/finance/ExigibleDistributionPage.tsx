@@ -11,14 +11,11 @@ import {
     Save,
     AlertCircle,
     Trash2,
-    Calendar,
-    ArrowUpDown,
     Info,
     Check
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import AuthButton from '../../components/ui/AuthButton';
-import AuthInput from '../../components/ui/AuthInput';
 import api from '../../api/axios';
 
 interface TarifRow {
@@ -41,7 +38,6 @@ const ExigibleDistributionPage: React.FC = () => {
     const [tarifs, setTarifs] = useState<TarifRow[]>([]);
     const [allYearTarifs, setAllYearTarifs] = useState<any[]>([]);
 
-    const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -59,7 +55,6 @@ const ExigibleDistributionPage: React.FC = () => {
     }, [selectedClassId, yearId]);
 
     const loadInitialData = async () => {
-        setLoading(true);
         try {
             const [roomsRes, libRes, allTarifsRes] = await Promise.all([
                 studentService.getRooms(yearId!),
@@ -84,13 +79,10 @@ const ExigibleDistributionPage: React.FC = () => {
             }
         } catch (err) {
             console.error(err);
-        } finally {
-            setLoading(false);
         }
     };
 
     const loadClassTarifs = async (classId: number) => {
-        setLoading(true);
         try {
             const res = await api.get(`/finance/tarifs/classe/${classId}/${yearId}`);
 
@@ -112,8 +104,6 @@ const ExigibleDistributionPage: React.FC = () => {
         } catch (err) {
             console.error(err);
             setTarifs([]);
-        } finally {
-            setLoading(false);
         }
     };
 

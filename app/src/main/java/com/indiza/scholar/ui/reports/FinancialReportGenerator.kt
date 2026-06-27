@@ -19,15 +19,82 @@ import java.util.*
 
 object FinancialReportGenerator {
 
-    fun generate(outputStream: OutputStream, type: String, params: Map<String, Any>, school: EtablissementEntity) {
+    private val translations = mapOf(
+        "FR" to mapOf(
+            "schoolYear" to "Année Scolaire",
+            "matricule" to "Matricule",
+            "fullName" to "Nom & Prénom",
+            "classRoom" to "Classe / Salle",
+            "nature" to "Nature du Paiement",
+            "amountRec" to "Montant Perçu",
+            "totalExigible" to "Total Exigible",
+            "totalPaid" to "Total Versé",
+            "remaining" to "Reste à Payer",
+            "detailTitle" to "DÉTAIL PAR FRAIS",
+            "label" to "Libellé",
+            "paid" to "Versé",
+            "balance" to "Reste",
+            "natureFrais" to "Nature du Frais",
+            "status" to "Statut",
+            "solded" to "SOLDÉ",
+            "notSolded" to "NON SOLDÉ",
+            "doneAt" to "Fait à Yaoundé, le",
+            "intendant" to "L'Intendant / Caissier"
+        ),
+        "EN" to mapOf(
+            "schoolYear" to "Academic Year",
+            "matricule" to "Student ID",
+            "fullName" to "Full Name",
+            "classRoom" to "Class / Room",
+            "nature" to "Payment Purpose",
+            "amountRec" to "Amount Received",
+            "totalExigible" to "Total Due",
+            "totalPaid" to "Total Paid",
+            "remaining" to "Balance",
+            "detailTitle" to "DETAIL PER FEE",
+            "label" to "Label",
+            "paid" to "Paid",
+            "balance" to "Balance",
+            "natureFrais" to "Fee Type",
+            "status" to "Status",
+            "solded" to "CLEARED",
+            "notSolded" to "PENDING",
+            "doneAt" to "Done at Yaoundé, on",
+            "intendant" to "The Bursar / Cashier"
+        ),
+        "ES" to mapOf(
+            "schoolYear" to "Año Escolar",
+            "matricule" to "Matrícula",
+            "fullName" to "Nombre y Apellido",
+            "classRoom" to "Clase / Aula",
+            "nature" to "Motivo del Pago",
+            "amountRec" to "Monto Recibido",
+            "totalExigible" to "Total Adeudado",
+            "totalPaid" to "Total Pagado",
+            "remaining" to "Restante",
+            "detailTitle" to "DETALLE POR GASTO",
+            "label" to "Etiqueta",
+            "paid" to "Pagado",
+            "balance" to "Resto",
+            "natureFrais" to "Tipo de Gasto",
+            "status" to "Estado",
+            "solded" to "LIQUIDADO",
+            "notSolded" to "PENDIENTE",
+            "doneAt" to "Hecho en Yaoundé, el",
+            "intendant" to "El Intendente / Cajero"
+        )
+    )
+
+    fun generate(outputStream: OutputStream, type: String, params: Map<String, Any>, school: EtablissementEntity, lang: String = "FR") {
         val writer = PdfWriter(outputStream)
         val pdf = PdfDocument(writer)
         val document = Document(pdf)
+        val t = translations[lang] ?: translations["FR"]!!
 
         ReportPdfHelper.addStandardHeader(document, school)
 
         when {
-            type.startsWith("Reçu") -> generateDetailedReceipt(document, type, params)
+            type.startsWith("Reçu") -> generateDetailedReceipt(document, type, params, t)
             type.startsWith("Bilan") -> generateAccountingBilan(document, type, params)
             type.startsWith("Comp") || type.startsWith("Tableau Rp") -> generateComparisonAnalytics(document, type, params)
             type.startsWith("Liste") -> generateOperationalList(document, type, params)
@@ -40,7 +107,7 @@ object FinancialReportGenerator {
         document.close()
     }
 
-    private fun generateDetailedReceipt(document: Document, type: String, params: Map<String, Any>) {
+    private fun generateDetailedReceipt(document: Document, type: String, params: Map<String, Any>, t: Map<String, String>) {
         val student = params["student"] as? EleveUiModel
         val receiptData = params["receiptData"] as? com.indiza.scholar.model.ReceiptData
         val paymentDetails = params["paymentDetails"] as? com.indiza.scholar.model.StudentPaymentDetails
@@ -56,15 +123,15 @@ object FinancialReportGenerator {
         val classe = student?.classeLabel ?: receiptData?.studentInfo?.classLabel ?: "---"
 
         document.add(Paragraph(type.uppercase()).setBold().setFontSize(14f).setTextAlignment(TextAlignment.CENTER))
-        document.add(Paragraph("Année Scolaire : ${receiptData?.receiptInfo?.schoolYear ?: "2024 - 2025"}").setTextAlignment(TextAlignment.CENTER).setFontSize(10f))
+        document.add(Paragraph("${t["schoolYear"]} : ${receiptData?.receiptInfo?.schoolYear ?: "2024 - 2025"}").setTextAlignment(TextAlignment.CENTER).setFontSize(10f))
         document.add(Paragraph("\n"))
         
         val studentTable = Table(UnitValue.createPercentArray(floatArrayOf(30f, 70f))).useAllAvailableWidth()
-        studentTable.addCell(createNoBorderCell("Matricule :", true))
+        studentTable.addCell(createNoBorderCell("${t["matricule"]} :", true))
         studentTable.addCell(createNoBorderCell(matricule))
-        studentTable.addCell(createNoBorderCell("Nom & Prénom :", true))
+        studentTable.addCell(createNoBorderCell("${t["fullName"]} :", true))
         studentTable.addCell(createNoBorderCell(nomComplet))
-        studentTable.addCell(createNoBorderCell("Classe / Salle :", true))
+        studentTable.addCell(createNoBorderCell("${t["classRoom"]} :", true))
         studentTable.addCell(createNoBorderCell(classe))
         document.add(studentTable)
         
@@ -73,27 +140,27 @@ object FinancialReportGenerator {
         when(type) {
             "Reçu d'Inscription" -> {
                 val table = Table(UnitValue.createPercentArray(floatArrayOf(60f, 40f))).useAllAvailableWidth()
-                table.addHeaderCell(createHeaderCell("Nature du Paiement"))
-                table.addHeaderCell(createHeaderCell("Montant Perçu"))
-                table.addCell(Cell().add(Paragraph(receiptData?.financialDetail?.nature ?: "Frais d'Inscription")))
+                table.addHeaderCell(createHeaderCell(t["nature"]!!))
+                table.addHeaderCell(createHeaderCell(t["amountRec"]!!))
+                table.addCell(Cell().add(Paragraph(receiptData?.financialDetail?.nature ?: t["nature"]!!)))
                 table.addCell(Cell().add(Paragraph("%,d F".format(receiptData?.financialDetail?.amountDigits ?: 0))).setTextAlignment(TextAlignment.RIGHT))
                 document.add(table)
             }
             "Reçu Frais de Scolarité" -> {
                 val table = Table(UnitValue.createPercentArray(floatArrayOf(40f, 30f, 30f))).useAllAvailableWidth()
-                table.addHeaderCell(createHeaderCell("Total Exigible"))
-                table.addHeaderCell(createHeaderCell("Total Versé"))
-                table.addHeaderCell(createHeaderCell("Reste à Payer"))
+                table.addHeaderCell(createHeaderCell(t["totalExigible"]!!))
+                table.addHeaderCell(createHeaderCell(t["totalPaid"]!!))
+                table.addHeaderCell(createHeaderCell(t["remaining"]!!))
                 table.addCell(Cell().add(Paragraph("%,d F".format(paymentDetails?.totalTotalDu ?: 0))))
                 table.addCell(Cell().add(Paragraph("%,d F".format(paymentDetails?.totalDejaVerse ?: 0))))
                 table.addCell(Cell().add(Paragraph("%,d F".format(paymentDetails?.resteGlobal ?: 0))).setFontColor(DeviceRgb(200, 0, 0)))
                 document.add(table)
                 
-                document.add(Paragraph("\nDÉTAIL PAR FRAIS").setBold().setFontSize(9f))
+                document.add(Paragraph("\n${t["detailTitle"]}").setBold().setFontSize(9f))
                 val detailTable = Table(UnitValue.createPercentArray(floatArrayOf(50f, 25f, 25f))).useAllAvailableWidth()
-                detailTable.addHeaderCell(createHeaderCell("Libellé"))
-                detailTable.addHeaderCell(createHeaderCell("Versé"))
-                detailTable.addHeaderCell(createHeaderCell("Reste"))
+                detailTable.addHeaderCell(createHeaderCell(t["label"]!!))
+                detailTable.addHeaderCell(createHeaderCell(t["paid"]!!))
+                detailTable.addHeaderCell(createHeaderCell(t["balance"]!!))
                 paymentDetails?.frais?.forEach { f ->
                     detailTable.addCell(Cell().add(Paragraph(f.libelle)))
                     detailTable.addCell(Cell().add(Paragraph("%,d F".format(f.montantPaye))))
@@ -103,13 +170,13 @@ object FinancialReportGenerator {
             }
             "Reçu Global Annuel" -> {
                 val table = Table(UnitValue.createPercentArray(floatArrayOf(50f, 25f, 25f))).useAllAvailableWidth()
-                table.addHeaderCell(createHeaderCell("Nature du Frais"))
-                table.addHeaderCell(createHeaderCell("Total Versé"))
-                table.addHeaderCell(createHeaderCell("Statut"))
+                table.addHeaderCell(createHeaderCell(t["natureFrais"]!!))
+                table.addHeaderCell(createHeaderCell(t["totalPaid"]!!))
+                table.addHeaderCell(createHeaderCell(t["status"]!!))
                 paymentDetails?.frais?.forEach { f ->
                     table.addCell(Cell().add(Paragraph(f.libelle)))
                     table.addCell(Cell().add(Paragraph("%,d F".format(f.montantPaye))))
-                    table.addCell(Cell().add(Paragraph(if (f.isComplet) "SOLDÉ" else "NON SOLDÉ")))
+                    table.addCell(Cell().add(Paragraph(if (f.isComplet) t["solded"]!! else t["notSolded"]!!)))
                 }
                 document.add(table)
             }
@@ -123,16 +190,16 @@ object FinancialReportGenerator {
             }
             "Reçu Frais Périscolaires" -> {
                 val table = Table(UnitValue.createPercentArray(floatArrayOf(70f, 30f))).useAllAvailableWidth()
-                table.addHeaderCell(createHeaderCell("Libellé Périscolaire"))
-                table.addHeaderCell(createHeaderCell("Montant"))
+                table.addHeaderCell(createHeaderCell(t["label"]!!))
+                table.addHeaderCell(createHeaderCell(t["amountRec"]!!))
                 table.addCell(Cell().add(Paragraph("Achat Uniforme (Tenue)")))
                 table.addCell(Cell().add(Paragraph("12 000 F")))
                 document.add(table)
             }
         }
 
-        document.add(Paragraph("\nFait à Yaoundé, le ${SimpleDateFormat("dd/MM/yyyy HH:mm").format(Date())}").setTextAlignment(TextAlignment.RIGHT).setFontSize(9f))
-        document.add(Paragraph("L'Intendant / Caissier").setBold().setTextAlignment(TextAlignment.RIGHT).setMarginRight(30f))
+        document.add(Paragraph("\n${t["doneAt"]} ${SimpleDateFormat("dd/MM/yyyy HH:mm").format(Date())}").setTextAlignment(TextAlignment.RIGHT).setFontSize(9f))
+        document.add(Paragraph(t["intendant"]!!).setBold().setTextAlignment(TextAlignment.RIGHT).setMarginRight(30f))
         document.add(Paragraph("\n[QR CODE VALIDATION]").setFontSize(8f).setTextAlignment(TextAlignment.LEFT))
     }
 

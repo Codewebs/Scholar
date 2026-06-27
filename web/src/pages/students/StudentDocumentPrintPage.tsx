@@ -1,16 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import api from '../../api/axios';
 import { studentService } from '../../api/studentService';
 import {
     Printer,
     ArrowLeft,
-    Loader2,
-    FileText,
-    Users,
-    CheckCircle2
+    Loader2
 } from 'lucide-react';
-import { clsx } from 'clsx';
 
 const StudentDocumentPrintPage: React.FC = () => {
     const [searchParams] = useSearchParams();

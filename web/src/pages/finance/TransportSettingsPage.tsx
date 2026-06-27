@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { financeService } from '../../api/financeService';
 import { useSchoolYear } from '../../context/SchoolYearContext';
-import { Bus, Plus, Trash2, MapPin, Search, Wallet, Save, ChevronRight, X } from 'lucide-react';
-import { clsx } from 'clsx';
+import { Bus, Plus, MapPin, Wallet, X } from 'lucide-react';
 import AuthInput from '../../components/ui/AuthInput';
 import AuthButton from '../../components/ui/AuthButton';
 

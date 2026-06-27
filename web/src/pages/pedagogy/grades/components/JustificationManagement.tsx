@@ -7,10 +7,8 @@ import {
     Check,
     X,
     AlertCircle,
-    Clock,
-    FileText
+    Clock
 } from 'lucide-react';
-import { clsx } from 'clsx';
 
 const JustificationManagement: React.FC = () => {
     const [justifications, setJustifications] = useState<any[]>([]);

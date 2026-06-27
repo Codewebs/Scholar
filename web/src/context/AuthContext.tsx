@@ -65,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         if (!token) return;
 
-        let timer: NodeJS.Timeout;
+        let timer: any;
 
         const resetTimer = () => {
             clearTimeout(timer);

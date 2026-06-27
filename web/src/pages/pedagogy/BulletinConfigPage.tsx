@@ -3,8 +3,6 @@ import { useSchoolYear } from '../../context/SchoolYearContext';
 import api from '../../api/axios';
 import {
     Printer,
-    ArrowLeft,
-    Settings2,
     Layout,
     Type,
     BarChart3,
@@ -13,7 +11,6 @@ import {
     ChevronUp,
     CheckCircle2,
     Eye,
-    Save,
     Trash2,
     AlertCircle,
     Copy,
@@ -44,7 +41,7 @@ const BulletinConfigPage: React.FC = () => {
     showPeriodSummary: true, // Show Trimester/Annual total column
 
     // Notation Systems
-    calcMode: 'HYBRID' as 'NUMERIC' | 'LETTER' | 'COLOR' | 'HYBRID_NUM_COLOR' | 'HYBRID_NUM_LETTER' | 'HYBRID_LETTER_COLOR' | 'ALPHA',
+    calcMode: 'HYBRID' as 'NUMERIC' | 'LETTER' | 'COLOR' | 'HYBRID_NUM_COLOR' | 'HYBRID_NUM_LETTER' | 'HYBRID_LETTER_COLOR' | 'ALPHA' | 'HYBRID',
     hybridConfig: {
         showNumeric: true,
         showLetter: true,
@@ -110,8 +107,6 @@ const BulletinConfigPage: React.FC = () => {
         showInstitutionalHeader: true
     }
   });
-
-  const [showLivePreview, setShowLivePreview] = useState(true);
 
   const [classes, setClasses] = useState<any[]>([]);
   const [periods, setPeriods] = useState<any[]>([]);
@@ -900,7 +895,7 @@ const BulletinConfigPage: React.FC = () => {
   );
 };
 
-const AccordionHeader: React.FC<{ id: string, title: string, icon: any, onClick: () => void, isOpen: boolean }> = ({ id, title, icon: Icon, onClick, isOpen }) => (
+const AccordionHeader: React.FC<{ id: string, title: string, icon: any, onClick: () => void, isOpen: boolean }> = ({ title, icon: Icon, onClick, isOpen }) => (
     <div
         onClick={onClick}
         className="p-8 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-all border-b border-gray-50"

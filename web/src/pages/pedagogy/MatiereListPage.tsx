@@ -8,8 +8,6 @@ import {
   Plus,
   Edit2,
   Trash2,
-  CheckCircle2,
-  AlertCircle,
   TrendingUp,
   LayoutGrid,
   X,

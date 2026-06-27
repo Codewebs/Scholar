@@ -4,24 +4,15 @@ import { studentService } from '../../api/studentService';
 import {
   FileText,
   Search,
-  Printer,
   ChevronRight,
   GraduationCap,
-  BadgeCheck,
   UserCheck,
   History,
-  Info,
   ArrowLeft,
-  Mail,
-  MoreVertical,
-  X,
   Building2,
-  Calendar,
-  LayoutGrid
+  MoreVertical
 } from 'lucide-react';
 import { clsx } from 'clsx';
-import AuthInput from '../../components/ui/AuthInput';
-import AuthButton from '../../components/ui/AuthButton';
 
 const StudentDocumentsPage: React.FC = () => {
     const { selectedYear } = useSchoolYear();
@@ -29,7 +20,6 @@ const StudentDocumentsPage: React.FC = () => {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [students, setStudents] = useState<any[]>([]);
-    const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [activeMenu, setActiveMenu] = useState<number | null>(null);
 

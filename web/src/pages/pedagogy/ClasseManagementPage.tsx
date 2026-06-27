@@ -4,7 +4,6 @@ import { pedagogyService } from '../../api/pedagogyService';
 import { studentService } from '../../api/studentService';
 import api from '../../api/axios';
 import {
-  Building2,
   Users,
   Plus,
   ChevronRight,
@@ -24,7 +23,6 @@ import {
   FileDown,
   Search,
   CheckCircle2,
-  AlertCircle
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import AuthInput from '../../components/ui/AuthInput';
@@ -121,7 +119,7 @@ const ClasseManagementPage: React.FC = () => {
   });
 
   // Report States
-  const [activeReportMenu, setActiveReportMenu] = useState<number | null>(null);
+
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [previewSearch, setPreviewSearch] = useState("");
@@ -317,7 +315,6 @@ const ClasseManagementPage: React.FC = () => {
         setSelectedReport({ ...report, classeId });
         setPreviewData(res.data);
         setIsPreviewModalOpen(true);
-        setActiveReportMenu(null);
     } catch (error) {
         console.error("Erreur lors de la récupération du rapport:", error);
         alert("Impossible de charger les données du rapport");

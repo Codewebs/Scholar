@@ -6,15 +6,12 @@ import { gradeService } from '../../../../api/gradeService';
 import { SousPeriodeEntity } from '../../../../types/pedagogy';
 import {
     Save,
-    Search,
     Clock,
-    ShieldAlert,
     AlertCircle,
     CheckCircle2,
     Building2,
     Calendar,
     ChevronRight,
-    SearchX,
     UserX
 } from 'lucide-react';
 import AuthButton from '../../../../components/ui/AuthButton';

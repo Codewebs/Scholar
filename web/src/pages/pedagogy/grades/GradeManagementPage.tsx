@@ -11,8 +11,6 @@ import {
     User,
     Clock,
     FileText,
-    ChevronRight,
-    LayoutGrid,
     GraduationCap,
     ArrowLeft,
     Zap,
@@ -72,7 +70,6 @@ type SortOrder = 'ASC' | 'DESC';
 type SalleSortField = 'NAME' | 'COUNT';
 
 type ViewType = 'matiere' | 'eleve' | 'absences' | 'pv' | 'config';
-type GradeEntryMode = 'DECIMAL' | 'ALPHABETIC';
 
 const GradeManagementPage: React.FC = () => {
     const { user } = useAuth();
@@ -126,7 +123,7 @@ const GradeManagementPage: React.FC = () => {
     // When sequence changes, load its matieres
     useEffect(() => {
         if (selectedSalle && selectedSequence && yearId) {
-            loadMatieresForSalle(selectedSalle, selectedSequence);
+            loadMatieresForSalle(selectedSalle);
         }
     }, [selectedSequence, selectedSalle, yearId]);
 
@@ -189,7 +186,7 @@ const GradeManagementPage: React.FC = () => {
         }
     };
 
-    const loadMatieresForSalle = async (salle: Salle, sequence: Sequence) => {
+    const loadMatieresForSalle = async (salle: Salle) => {
         setLoading(true);
         try {
             const params: any = { idClasse: salle.idClasse };
@@ -308,8 +305,8 @@ const GradeManagementPage: React.FC = () => {
                     } else {
                         // APC mode: check each competence using idRepartitionCompetence
                         missing = currentComps
-                            .filter(c => !studentGrades.some(g => Number(g.idRepartitionCompetence) === Number(c.id) && (g.note !== null || g.nonClasse)))
-                            .map(c => ({ idCompetence: c.idCompetence, label: c.Competence?.abreviation || c.Competence?.libelle?.substring(0, 3) }));
+                            .filter((c: any) => !studentGrades.some((g: any) => Number(g.idRepartitionCompetence) === Number(c.id) && (g.note !== null || g.nonClasse)))
+                            .map((c: any) => ({ idCompetence: c.idCompetence, label: c.Competence?.abreviation || c.Competence?.libelle?.substring(0, 3) }));
                     }
 
                     const isComplete = missing.length === 0;
@@ -745,7 +742,7 @@ const GradeManagementPage: React.FC = () => {
                                         >
                                             <div className="font-black text-[9px] uppercase tracking-tight">{eleve.nomEleve}</div>
                                             <div className="flex flex-wrap gap-1 mt-1">
-                                                {eleve.missingCompetencies?.map((c, i) => (
+                                                {eleve.missingCompetencies?.map((c: any, i: number) => (
                                                     <span key={i} className="text-[7px] font-black bg-red-50 text-red-500 px-1.5 py-0.5 rounded uppercase">
                                                         {c.label}
                                                     </span>
@@ -816,6 +813,13 @@ const GradeManagementPage: React.FC = () => {
                 mode="BY_MATIERE"
                 noteSur={selectedMatiere?.noteSur || 20}
             />
+
+            {loading && (
+                <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-[100] flex flex-col items-center justify-center space-y-4">
+                    <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
+                    <p className="font-black uppercase text-[10px] tracking-widest text-black">Chargement...</p>
+                </div>
+            )}
         </div>
     );
 };

@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { useSchoolYear } from '../context/SchoolYearContext';
 import { setupService, UserAssociation, DemandeInscriptionPayload } from '../api/setupService';
 import { School, SchoolYear } from '../types/models';
-import { MatiereEntity } from '../types/pedagogy';
 import AuthButton from '../components/ui/AuthButton';
 import AuthInput from '../components/ui/AuthInput';
 import {
@@ -20,7 +19,6 @@ import {
   Check,
   Calendar,
   User as UserIcon,
-  Camera,
   X
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -43,9 +41,8 @@ const InitialConfig: React.FC = () => {
   const [schools, setSchools] = useState<School[]>([]);
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
+  const [selectedMatieres] = useState<string[]>([]);
   const [availableProfiles, setAvailableProfiles] = useState<string[]>([]);
-  const [matieres, setMatieres] = useState<MatiereEntity[]>([]);
-  const [selectedMatieres, setSelectedMatieres] = useState<number[]>([]);
   const [tempSelectedYear, setTempSelectedYear] = useState<SchoolYear | null>(null);
 
   const [recruitmentCode, setRecruitmentCode] = useState('');
@@ -84,10 +81,6 @@ const InitialConfig: React.FC = () => {
     }
   };
 
-  const nextStep = () => {
-    setError(null);
-    setStep(prev => prev + 1);
-  };
   const prevStep = () => {
     setError(null);
     setStep(prev => prev - 1);
@@ -152,14 +145,14 @@ const InitialConfig: React.FC = () => {
           setStep(SetupStep.SELECT_PROFILE);
         } else {
           setSelectedProfile(assoc.roles[0]);
-          await fetchYears(schoolId);
+          if (schoolId) await fetchYears(schoolId as number);
           setStep(SetupStep.SELECT_YEAR);
         }
       } else if (assoc?.etat === 'EN_ATTENTE') {
         setError("Votre demande est déjà en cours d'étude.");
       } else if (isCreatingSchool) {
         setSelectedProfile('ADMINISTRATEUR');
-        await fetchYears(schoolId);
+        if (schoolId) await fetchYears(schoolId as number);
         setStep(SetupStep.SELECT_YEAR);
       } else {
         // Code verification

@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import { useSchoolYear } from '../../context/SchoolYearContext';
 import { repartitionEnseignantService } from '../../api/repartitionEnseignantService';
 import { Loader2, User, Crown } from 'lucide-react';
-import { clsx } from 'clsx';
 
 const TeacherTeamPrintPage: React.FC = () => {
     const [searchParams] = useSearchParams();

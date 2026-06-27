@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useSchoolYear } from '../context/SchoolYearContext';
 import api from '../api/axios';
 import {
   Megaphone,
@@ -29,7 +28,6 @@ interface Annonce {
 
 const NewsFeedPage: React.FC = () => {
   const { user } = useAuth();
-  const { selectedYear } = useSchoolYear();
   const [selectedTab, setSelectedTab] = useState<'community' | 'public'>('community');
   const [annonces, setAnnonces] = useState<Annonce[]>([]);
   const [loading, setLoading] = useState(false);

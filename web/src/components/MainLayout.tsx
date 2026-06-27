@@ -3,7 +3,7 @@ import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSchoolYear } from '../context/SchoolYearContext';
 import { menuGroups } from '../utils/menuStructure';
-import { LogOut, Menu, X, ChevronRight, ShieldCheck, Zap } from 'lucide-react';
+import { LogOut, Menu, X, ChevronRight, Zap } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import SetupProgressWidget from './SetupProgressWidget';

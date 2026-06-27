@@ -4,7 +4,7 @@ import { studentService } from '../../../../api/studentService';
 import { pedagogyService } from '../../../../api/pedagogyService';
 import { gradeService } from '../../../../api/gradeService';
 import { PeriodeEntity, SousPeriodeEntity } from '../../../../types/pedagogy';
-import { FileText, Download, Printer, Filter, Layers, Zap } from 'lucide-react';
+import { FileText, Download, Printer, Filter, Layers, Zap, CheckCircle2 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface PVViewProps {
