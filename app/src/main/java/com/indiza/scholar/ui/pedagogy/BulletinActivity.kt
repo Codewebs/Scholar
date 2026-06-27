@@ -28,8 +28,10 @@ import com.indiza.scholar.ui.theme.ScholarTheme
 
 enum class BulletinPerimeter { SALLE, CLASSE, CYCLE }
 enum class NotationSystem { NUMERIC, LETTER, COLOR, HYBRID }
+enum class BulletinLanguage { FR, EN, ES }
 
 data class BulletinConfigState(
+    var language: BulletinLanguage = BulletinLanguage.FR,
     var allowIncompleteStudent: Boolean = false,
     var allowIncompleteRoom: Boolean = false,
     var selectedPerimeter: BulletinPerimeter = BulletinPerimeter.SALLE,
@@ -99,6 +101,31 @@ fun BulletinConfigScreen(
             modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Section 0: Langue
+            item {
+                ConfigSectionTitle("Langue du Bulletin", Icons.Default.Language)
+                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF2C3E50))) {
+                    Row(
+                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        BulletinLanguage.values().forEach { lang ->
+                            OutlinedButton(
+                                onClick = { onConfigChange(config.copy(language = lang)) },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = if (config.language == lang) Color(0xFF1ABC9C).copy(alpha = 0.1f) else Color.Transparent,
+                                    contentColor = if (config.language == lang) Color(0xFF1ABC9C) else Color.Gray
+                                ),
+                                border = BorderStroke(1.dp, if (config.language == lang) Color(0xFF1ABC9C) else Color.Gray.copy(alpha = 0.3f))
+                            ) {
+                                Text(lang.name, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                            }
+                        }
+                    }
+                }
+            }
+
             // Section A: Autorisations & Périmètre
             item {
                 ConfigSectionTitle("Autorisations & Périmètre", Icons.Default.GpsFixed)

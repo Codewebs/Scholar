@@ -15,4 +15,8 @@ object SyncConfig {
 
     // 🔹 Paramètres pédagogiques
     var useCompetences by mutableStateOf(false)
+
+    // 🔹 Paramètres de langue
+    var appLanguage by mutableStateOf("FR")
+    var forceDocLanguage by mutableStateOf(false)
 }

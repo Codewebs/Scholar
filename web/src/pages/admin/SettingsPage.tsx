@@ -23,7 +23,9 @@ import {
   ShieldCheck,
   Zap,
   CheckCircle2,
-  Layers
+  Layers,
+  Globe,
+  Languages
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import ServerConfigModal from '../../components/ServerConfigModal';
@@ -37,6 +39,9 @@ const SettingsPage: React.FC = () => {
   const [doubleReceipts, setDoubleReceipts] = useState(localStorage.getItem('double_receipts') === 'true');
   const [useCompetences, setUseCompetences] = useState(localStorage.getItem('use_competences') === 'true');
   const [nbTelephones, setNbTelephones] = useState(Number(localStorage.getItem('nb_telephones')) || 2);
+  const [appLanguage, setAppLanguage] = useState(localStorage.getItem('app_language') || 'FR');
+  const [forceDocLanguage, setForceDocLanguage] = useState(localStorage.getItem('force_doc_language') === 'true');
+  const [isLangModalOpen, setIsLangModalOpen] = useState(false);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isYearModalOpen, setIsYearModalOpen] = useState(false);
   const serverIp = localStorage.getItem('server_ip') || '192.168.0.50';
@@ -57,6 +62,14 @@ const SettingsPage: React.FC = () => {
     localStorage.setItem('nb_telephones', nbTelephones.toString());
   }, [nbTelephones]);
 
+  useEffect(() => {
+    localStorage.setItem('app_language', appLanguage);
+  }, [appLanguage]);
+
+  useEffect(() => {
+    localStorage.setItem('force_doc_language', forceDocLanguage.toString());
+  }, [forceDocLanguage]);
+
   const handleLogout = () => {
     if (window.confirm("Êtes-vous sûr de vouloir vous déconnecter ?")) {
       logout();
@@ -66,20 +79,39 @@ const SettingsPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto space-y-12 animate-in fade-in duration-500 pb-20 p-4">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white p-10 rounded-[40px] shadow-xl border border-gray-100 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-        <div className="relative z-10">
-            <div className="flex items-center space-x-3 text-accent mb-3">
-                <ShieldCheck size={24} />
-                <span className="text-[11px] font-black uppercase tracking-[0.4em]">Administration Centrale</span>
+      {/* ... header ... */}
+
+      {/* 0. Section Langue & Régional */}
+      <SettingsSection title="Langue & Régional">
+        <SettingsItem
+          icon={Globe}
+          iconColor="bg-blue-500"
+          title="Langue de l'application"
+          subtitle={appLanguage === 'EN' ? 'English' : appLanguage === 'ES' ? 'Español' : 'Français'}
+          onClick={() => setIsLangModalOpen(true)}
+        />
+        <SettingsItem
+          icon={Languages}
+          iconColor="bg-emerald-500"
+          title="Forcer la langue des documents"
+          subtitle="Utiliser la langue de l'app pour tous les reçus"
+          action={
+            <div
+              onClick={() => setForceDocLanguage(!forceDocLanguage)}
+              className={clsx(
+                "w-16 h-8 rounded-full transition-all cursor-pointer relative p-1 shadow-inner",
+                forceDocLanguage ? "bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]" : "bg-gray-200"
+              )}
+            >
+              <div className={clsx(
+                "w-6 h-6 bg-white rounded-full transition-all shadow-md",
+                forceDocLanguage ? "translate-x-8" : "translate-x-0"
+              )} />
             </div>
-            <h1 className="text-5xl font-black uppercase tracking-tighter text-black">Paramètres</h1>
-        </div>
-        <div className="bg-red-50 text-red-600 px-8 py-4 rounded-sharp border border-red-100 flex items-center space-x-3 shadow-sm hover:scale-105 transition-transform relative z-10">
-            <Zap size={20} className="animate-pulse" />
-            <span className="text-[11px] font-black uppercase tracking-widest">Master Admin Mode</span>
-        </div>
-      </div>
+          }
+          showDivider={false}
+        />
+      </SettingsSection>
 
       {/* 1. Section Synchronisation */}
       <SettingsSection title="Synchronisation">
@@ -303,6 +335,52 @@ const SettingsPage: React.FC = () => {
       </SettingsSection>
 
       <ServerConfigModal isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
+
+      {/* Language Selection Modal */}
+      {isLangModalOpen && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-xl flex items-center justify-center z-50 p-6">
+              <div className="bg-white rounded-[56px] p-16 max-w-xl w-full shadow-2xl animate-in zoom-in-95 border border-gray-100">
+                  <div className="flex items-center space-x-4 text-emerald-600 mb-3">
+                      <Globe size={32} />
+                      <span className="text-[11px] font-black uppercase tracking-[0.5em]">Localisation</span>
+                  </div>
+                  <h2 className="text-5xl font-black uppercase tracking-tighter mb-10 text-black">Langue</h2>
+
+                  <div className="grid grid-cols-1 gap-4">
+                      {[
+                        { code: 'FR', label: 'Français' },
+                        { code: 'EN', label: 'English' },
+                        { code: 'ES', label: 'Español' }
+                      ].map((lang) => (
+                        <div
+                            key={lang.code}
+                            onClick={() => { setAppLanguage(lang.code); setIsLangModalOpen(false); }}
+                            className={clsx(
+                                "p-8 border-3 rounded-[32px] cursor-pointer transition-all flex items-center justify-between group",
+                                appLanguage === lang.code ? "border-emerald-600 bg-emerald-50 shadow-xl" : "border-gray-100 hover:border-gray-300 bg-white"
+                            )}
+                        >
+                            <div className="flex items-center space-x-6">
+                                <div className={clsx(
+                                    "w-4 h-4 rounded-full transition-all",
+                                    appLanguage === lang.code ? "bg-emerald-600 scale-150 ring- ring-emerald-100" : "bg-gray-200 group-hover:bg-gray-400"
+                                )} />
+                                <span className={clsx(
+                                    "font-black text-xl uppercase tracking-tighter",
+                                    appLanguage === lang.code ? "text-emerald-700" : "text-black"
+                                )}>{lang.label}</span>
+                            </div>
+                            {appLanguage === lang.code && <CheckCircle2 size={28} className="text-emerald-600 animate-in zoom-in" />}
+                        </div>
+                      ))}
+                  </div>
+                  <button
+                    onClick={() => setIsLangModalOpen(false)}
+                    className="w-full mt-12 py-6 font-black uppercase text-xs tracking-[0.4em] bg-gray-50 text-black rounded-sharp hover:bg-black hover:text-white transition-all shadow-sm"
+                  >RETOUR AUX RÉGLAGES</button>
+              </div>
+          </div>
+      )}
 
       {/* Year Selection Modal */}
       {isYearModalOpen && (

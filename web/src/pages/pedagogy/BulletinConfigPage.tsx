@@ -17,6 +17,7 @@ import {
     Trash2,
     AlertCircle,
     Copy,
+    Users,
     Image as ImageIcon
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -34,6 +35,7 @@ const BulletinConfigPage: React.FC = () => {
   const [openAccordions, setOpenAccordions] = useState<string[]>(['A']);
   const [config, setConfig] = useState({
     // Accordion A: Périmètre
+    language: 'FR' as 'FR' | 'EN' | 'ES',
     selectedPerimeter: 'SALLE' as 'SALLE' | 'CLASSE' | 'CYCLE',
     selectedId: null as number | null,
     periodType: 'SEQUENCE' as 'SEQUENCE' | 'TRIMESTER' | 'ANNUAL',
@@ -117,11 +119,17 @@ const BulletinConfigPage: React.FC = () => {
   const [schoolData, setSchoolData] = useState<any>(null);
 
   const mockBulletinData = {
-    school: schoolData || { nomFr: "ÉCOLE MODÈLE INTERNATIONALE", abreviation: "EMI", logo: null },
+    school: schoolData || { nomFr: "ÉCOLE MODÈLE INTERNATIONALE", abreviation: "EMI", logo: null, numBP: "1234", ville: "Douala", tel1: "677000000", devise: "Savoir - Discipline - Succès" },
     student: { nomComplet: "NGAH NOAH Jean-Philippe", matricule: "24C001", sexe: "M", dateNaissance: "12/05/2012", lieuNaissance: "Douala", photo: null },
     salle: { nomSalle: "6ème Alizé", effectif: 42 },
     year: selectedYear || { libelle: "2024/2025" },
-    period: { label: config.periodType === 'SEQUENCE' ? "SÉQUENCE 1" : config.periodType === 'TRIMESTER' ? "TRIMESTRE 1" : "BILAN ANNUEL" },
+    period: {
+        label: config.periodType === 'SEQUENCE' ? "SÉQUENCE 1" : config.periodType === 'TRIMESTER' ? "TRIMESTRE 1" : "BILAN ANNUEL",
+        subPeriods: [
+            { id: 1, label: "EVAL 1", abrev: "E1" },
+            { id: 2, label: "EVAL 2", abrev: "E2" }
+        ]
+    },
     performance: {
         groups: [
             {
@@ -148,7 +156,12 @@ const BulletinConfigPage: React.FC = () => {
         appreciation: "Félicitations"
     },
     stats: { maxMoy: 17.5, minMoy: 6.2, avgMoy: 11.2, successRate: 68.5 },
-    discipline: { absencesJustified: 2, absencesUnjustified: 0, conductNotes: [] }
+    discipline: { absencesJustified: 2, absencesUnjustified: 0, conductNotes: [] },
+    chartData: [
+        { name: 'Sciences', élève: 12.25, classe: 10.5 },
+        { name: 'Langues', élève: 13.75, classe: 11.2 },
+        { name: 'Arts', élève: 15, classe: 13 }
+    ]
   };
   const [showPerimeterSheet, setShowPerimeterSheet] = useState(false);
 
@@ -327,7 +340,23 @@ const BulletinConfigPage: React.FC = () => {
                 <div className="p-8 space-y-6 bg-gray-50/30 animate-in fade-in duration-500">
                   {/* Validation Overrides */}
                   <div className="bg-white p-5 rounded-[24px] border border-gray-100 shadow-sm space-y-4 mb-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Autorisations d'impression</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Langue du Bulletin & Autorisations</p>
+
+                    <div className="flex gap-2 mb-4">
+                        {['FR', 'EN', 'ES'].map((lang) => (
+                            <button
+                                key={lang}
+                                onClick={() => setConfig({...config, language: lang as any})}
+                                className={clsx(
+                                    "flex-1 py-3 rounded-xl border-2 text-[10px] font-black transition-all",
+                                    config.language === lang ? "border-black bg-black text-white" : "border-gray-100 bg-white text-gray-400"
+                                )}
+                            >
+                                {lang === 'FR' ? 'FRANÇAIS' : lang === 'EN' ? 'ENGLISH' : 'ESPAÑOL'}
+                            </button>
+                        ))}
+                    </div>
+
                     <ConfigSwitch
                         label="Imprimer même si notes incomplètes (Élève)"
                         checked={config.allowIncompleteStudent}
@@ -909,125 +938,323 @@ const ConfigSwitch: React.FC<{ label: string, checked: boolean, onChange: (v: bo
 
 // --- Live Preview Component ---
 const LiveBulletinPreview: React.FC<{ data: any, config: any }> = ({ data, config }) => {
+    const lang = config.language || 'FR';
+
+    const translations: any = {
+        FR: {
+            bulletin: "B U L L E T I N  D E  N O T E S",
+            student: "Élève",
+            class: "Classe / Salle",
+            matricule: "Matricule",
+            subjects: "Matières",
+            moy: "Moy",
+            coef: "Coef",
+            pts: "Pts",
+            rank: "Rang",
+            appreciation: "Appréciation",
+            totals: "T O T A U X",
+            stats: "Statistiques de Classe",
+            discipline: "Discipline",
+            absJust: "Abs. Just",
+            absUnjust: "Abs. N.J",
+            parent: "Parent",
+            direction: "Direction",
+            diagnostic: "Diagnostic de Performance",
+            poles: "Bilan des Pôles d'Apprentissage"
+        },
+        EN: {
+            bulletin: "R E P O R T  C A R D",
+            student: "Student",
+            class: "Class / Room",
+            matricule: "ID Number",
+            subjects: "Subjects",
+            moy: "Avg",
+            coef: "Coef",
+            pts: "Pts",
+            rank: "Rank",
+            appreciation: "Remarks",
+            totals: "T O T A L S",
+            stats: "Class Statistics",
+            discipline: "Discipline",
+            absJust: "Exc. Abs",
+            absUnjust: "Unexc. Abs",
+            parent: "Parent",
+            direction: "Principal",
+            diagnostic: "Performance Diagnostic",
+            poles: "Learning Areas Overview"
+        },
+        ES: {
+            bulletin: "B O L E T Í N  D E  N O T A S",
+            student: "Estudiante",
+            class: "Clase / Aula",
+            matricule: "Matrícula",
+            subjects: "Materias",
+            moy: "Prom",
+            coef: "Coef",
+            pts: "Pts",
+            rank: "Puesto",
+            appreciation: "Apreciación",
+            totals: "T O T A L E S",
+            stats: "Estadísticas de Clase",
+            discipline: "Disciplina",
+            absJust: "Aus. Just",
+            absUnjust: "Aus. N.J",
+            parent: "Padre",
+            direction: "Dirección",
+            diagnostic: "Diagnóstico de Rendimiento",
+            poles: "Resumen de Áreas"
+        }
+    };
+
+    const t = translations[lang];
+    const showSub = config.showSubPeriods;
+    const isTrim = config.periodType === 'TRIMESTER';
+    const isAnnual = config.periodType === 'ANNUAL';
+
+    const renderGrade = (note: number | null) => {
+        if (note === null) return '--';
+        const isFail = note < config.body.passingGrade;
+        const color = isFail ? config.body.failColor : 'inherit';
+
+        if (config.calcMode === 'LETTER') return <span style={{ color }}>{note >= 16 ? 'A+' : note >= 14 ? 'A' : note >= 12 ? 'B' : note >= 10 ? 'C' : 'D'}</span>;
+        if (config.calcMode === 'COLOR') return <div className="w-1.5 h-1.5 rounded-full mx-auto" style={{ backgroundColor: isFail ? 'red' : 'green' }} />;
+        if (config.calcMode === 'NUMERIC') return <span style={{ color }}>{note.toFixed(2)}</span>;
+        if (config.calcMode.startsWith('HYBRID')) {
+            return (
+                <div className="flex flex-col items-center">
+                    <span style={{ color }}>{note.toFixed(1)}</span>
+                    <span className="text-[4px] opacity-50">{note >= 14 ? 'TB' : note >= 12 ? 'B' : 'P'}</span>
+                </div>
+            );
+        }
+        return <span style={{ color }}>{note.toFixed(2)}</span>;
+    };
+
     return (
-        <div className="bg-white shadow-2xl rounded-sm p-4 w-full aspect-[1/1.41] flex flex-col overflow-hidden text-[6px] origin-top scale-[1.0] transition-all">
-            {/* Header */}
-            <header className="flex justify-between items-start border-b border-black pb-1 mb-2">
-                <div className="w-[30%] space-y-0.5">
-                    {config.showMinisterialHeader && config.schoolInfo.logoPosition !== 'LEFT' && (
-                        <>
-                            <p className="font-black">REPUBLIQUE DU CAMEROUN</p>
-                            <p className="italic">Paix - Travail - Patrie</p>
-                        </>
-                    )}
-                    {config.schoolInfo.logo && config.schoolInfo.logoPosition === 'LEFT' && (
-                        <div className="w-8 h-8 bg-gray-100 rounded-lg" />
-                    )}
-                </div>
-                <div className="flex-1 text-center flex flex-col items-center">
-                    {config.schoolInfo.logo && config.schoolInfo.logoPosition === 'CENTER_WATERMARK' && (
-                        <div className="w-6 h-6 bg-gray-100 rounded-full mb-0.5" />
-                    )}
-                    {config.schoolInfo.name && <h2 className="font-black uppercase text-[7px] leading-tight">{data.school.nomFr}</h2>}
-                    {config.schoolInfo.sigle && <p className="font-black text-accent">{data.school.abreviation}</p>}
-                    {config.schoolInfo.contacts && <p className="text-gray-400">BP: {data.school.numBP} {data.school.ville}</p>}
-                </div>
-                <div className="w-[30%] text-right space-y-0.5">
-                    {config.showMinisterialHeader && config.schoolInfo.logoPosition !== 'RIGHT' && (
-                        <>
-                            <p className="font-black">REPUBLIC OF CAMEROON</p>
-                            <p className="italic">Peace - Work - Fatherland</p>
-                        </>
-                    )}
-                    {config.schoolInfo.logo && config.schoolInfo.logoPosition === 'RIGHT' && (
-                        <div className="w-8 h-8 bg-gray-100 rounded-lg ml-auto" />
-                    )}
-                </div>
-            </header>
-
-            <div className="text-center mb-1">
-                <div className="inline-block border border-black px-2 py-0.5 rounded-md bg-gray-50">
-                    <p className="font-black uppercase tracking-widest text-[7px]">Bulletin de Notes — {data.period.label}</p>
-                </div>
-            </div>
-
-            {/* Student Info */}
-            <div className="bg-gray-50 p-1.5 rounded-lg mb-2 flex gap-2 items-center">
-                {config.body.showStudentPhoto && <div className="w-6 h-6 bg-white rounded-md border border-gray-100" />}
-                <div className="flex-1 grid grid-cols-2 gap-x-2">
-                    <div>
-                        <p className="text-gray-400 uppercase text-[4px] font-black">Élève</p>
-                        <p className="font-black uppercase">{data.student.nomComplet}</p>
+        <div className="flex flex-col gap-4">
+            <div
+                className="bg-white shadow-2xl rounded-sm w-full aspect-[1/1.41] flex flex-col overflow-hidden text-[6px] origin-top transition-all border border-gray-200 relative"
+                style={{
+                    paddingTop: `${config.margins.top / 2}mm`,
+                    paddingBottom: `${config.margins.bottom / 2}mm`,
+                    paddingLeft: '5mm',
+                    paddingRight: '5mm'
+                }}
+            >
+                {config.schoolInfo.logo && config.schoolInfo.logoPosition === 'CENTER_WATERMARK' && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] rotate-[-30deg]">
+                        <div className="w-24 h-24 bg-gray-200 rounded-full" />
                     </div>
-                    <div className="text-right">
-                        <p className="text-gray-400 uppercase text-[4px] font-black">Matricule</p>
-                        <p className="font-black">{data.student.matricule}</p>
+                )}
+
+                {/* Header */}
+                <header className="flex justify-between items-start border-b border-black pb-1 mb-2 relative z-10">
+                    <div className="w-[30%] space-y-0.5">
+                        {config.showMinisterialHeader && config.schoolInfo.logoPosition !== 'LEFT' && (
+                            <div className="uppercase font-black leading-tight text-gray-700">
+                                <p>REPUBLIQUE DU CAMEROUN</p>
+                                <p className="italic font-bold opacity-50">Paix - Travail - Patrie</p>
+                            </div>
+                        )}
+                        {config.schoolInfo.logo && config.schoolInfo.logoPosition === 'LEFT' && (
+                            <div className="w-10 h-10 bg-gray-100 rounded-lg border border-gray-200" />
+                        )}
+                    </div>
+
+                    <div className="flex-1 text-center flex flex-col items-center px-2">
+                        {config.schoolInfo.name && <h2 className="font-black uppercase text-[8px] leading-tight text-black">{data.school.nomFr}</h2>}
+                        {config.schoolInfo.sigle && <p className="font-black text-accent text-[7px]">{data.school.abreviation}</p>}
+                        {config.schoolInfo.devise && <p className="italic opacity-70">"{data.school.devise}"</p>}
+                        {config.schoolInfo.contacts && <p className="text-gray-400 font-bold">BP: {data.school.numBP} {data.school.ville} | Tel: {data.school.tel1}</p>}
+                    </div>
+
+                    <div className="w-[30%] text-right space-y-0.5">
+                        {config.showMinisterialHeader && config.schoolInfo.logoPosition !== 'RIGHT' && (
+                            <div className="uppercase font-black leading-tight text-gray-700">
+                                <p>REPUBLIC OF CAMEROON</p>
+                                <p className="italic font-bold opacity-50">Peace - Work - Fatherland</p>
+                            </div>
+                        )}
+                        {config.schoolInfo.logo && config.schoolInfo.logoPosition === 'RIGHT' && (
+                            <div className="w-10 h-10 bg-gray-100 rounded-lg ml-auto border border-gray-200" />
+                        )}
+                    </div>
+                </header>
+
+                <div className="text-center mb-1 relative z-10">
+                    <div className="inline-block border-2 border-black px-4 py-0.5 rounded-lg bg-white shadow-sm">
+                        <p className="font-black uppercase tracking-[0.2em] text-[8px]">
+                            {t.bulletin}
+                        </p>
+                        <p className="text-[5px] font-black opacity-50">{data.period.label} — {data.year.libelle}</p>
                     </div>
                 </div>
-            </div>
 
-            {/* Table */}
-            <table className="w-full border-collapse border border-black mb-2">
-                <thead>
-                    <tr className="bg-black text-white">
-                        <th className="border border-black p-0.5 text-left">Matières</th>
-                        <th className="border border-black p-0.5 text-center">Moy</th>
-                        <th className="border border-black p-0.5 text-center">Coef</th>
-                        <th className="border border-black p-0.5 text-center">Pts</th>
-                        {config.stats.showRank && <th className="border border-black p-0.5 text-center">Rang</th>}
-                    </tr>
-                </thead>
-                <tbody>
-                    {data.performance.groups.map((g: any, i: number) => (
-                        <React.Fragment key={i}>
-                            <tr className="bg-gray-100 font-black">
-                                <td colSpan={config.stats.showRank ? 5 : 4} className="p-0.5 text-[5px]">{g.name}</td>
-                            </tr>
-                            {g.subjects.map((s: any, j: number) => (
-                                <tr key={j}>
-                                    <td className="border border-black p-0.5 font-bold">{s.name}</td>
-                                    <td className="border border-black p-0.5 text-center font-black" style={{ color: s.total < config.body.passingGrade ? config.body.failColor : 'inherit' }}>
-                                        {config.calcMode === 'LETTER' ? (s.total >= 15 ? 'A' : s.total >= 12 ? 'B' : 'C') :
-                                         config.calcMode === 'COLOR' ? <div className="w-2 h-2 rounded-full mx-auto" style={{ backgroundColor: s.total < 10 ? 'red' : 'green' }} /> :
-                                         s.total}
-                                    </td>
-                                    <td className="border border-black p-0.5 text-center">{s.coef}</td>
-                                    <td className="border border-black p-0.5 text-center">{(s.total * s.coef).toFixed(1)}</td>
-                                    {config.stats.showRank && <td className="border border-black p-0.5 text-center">{s.rank}</td>}
+                {/* Student Info */}
+                <div className="bg-gray-50 p-2 rounded-xl mb-2 flex gap-3 items-center border border-gray-100 relative z-10">
+                    {config.body.showStudentPhoto && <div className="w-8 h-8 bg-white rounded-lg border-2 border-white shadow-sm flex items-center justify-center text-gray-200"><Users size={14} /></div>}
+                    <div className="flex-1 grid grid-cols-3 gap-x-4 items-center">
+                        <div className="col-span-1">
+                            <p className="text-gray-400 uppercase text-[4px] font-black tracking-widest">{t.student}</p>
+                            <p className="font-black uppercase text-[7px] truncate">{data.student.nomComplet}</p>
+                        </div>
+                        <div>
+                            <p className="text-gray-400 uppercase text-[4px] font-black tracking-widest">{t.class}</p>
+                            <p className="font-black text-[7px]">{data.salle.nomSalle}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-gray-400 uppercase text-[4px] font-black tracking-widest">{t.matricule}</p>
+                            <p className="font-black text-[7px]">{data.student.matricule}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Table */}
+                <table className="w-full border-collapse border-2 border-black mb-2 relative z-10" style={{ borderColor: config.body.tableBorderColor }}>
+                    <thead>
+                        <tr className="bg-black text-white" style={{ backgroundColor: config.body.tableBorderColor }}>
+                            <th className="border border-black p-0.5 text-left uppercase tracking-widest" style={{ borderColor: config.body.tableBorderColor }}>{t.subjects}</th>
+                            {isTrim && showSub && (
+                                <>
+                                    <th className="border border-black p-0.5 text-center text-[4px] uppercase" style={{ borderColor: config.body.tableBorderColor }}>{data.period.subPeriods[0].abrev}</th>
+                                    <th className="border border-black p-0.5 text-center text-[4px] uppercase" style={{ borderColor: config.body.tableBorderColor }}>{data.period.subPeriods[1].abrev}</th>
+                                </>
+                            )}
+                            {isAnnual && showSub && <th className="border border-black p-0.5 text-center text-[4px] uppercase" style={{ borderColor: config.body.tableBorderColor }}>Détails</th>}
+                            <th className="border border-black p-0.5 text-center uppercase" style={{ borderColor: config.body.tableBorderColor }}>{t.moy}</th>
+                            <th className="border border-black p-0.5 text-center uppercase" style={{ borderColor: config.body.tableBorderColor }}>{t.coef}</th>
+                            <th className="border border-black p-0.5 text-center uppercase" style={{ borderColor: config.body.tableBorderColor }}>{t.pts}</th>
+                            {config.stats.showRank && <th className="border border-black p-0.5 text-center uppercase" style={{ borderColor: config.body.tableBorderColor }}>{t.rank}</th>}
+                            <th className="border border-black p-0.5 text-left uppercase" style={{ borderColor: config.body.tableBorderColor }}>{t.appreciation}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {data.performance.groups.map((g: any, i: number) => (
+                            <React.Fragment key={i}>
+                                <tr className="bg-gray-100 font-black" style={{ backgroundColor: `${config.body.tableBorderColor}10` }}>
+                                    <td colSpan={config.stats.showRank ? (isTrim && showSub ? 8 : isAnnual && showSub ? 7 : 6) : (isTrim && showSub ? 7 : isAnnual && showSub ? 6 : 5)} className="p-0.5 text-[5px] uppercase tracking-widest border border-black" style={{ borderColor: config.body.tableBorderColor }}>{g.name}</td>
                                 </tr>
-                            ))}
-                        </React.Fragment>
-                    ))}
-                </tbody>
-                <tfoot>
-                    <tr className="bg-gray-100 font-black">
-                        <td className="border border-black p-0.5 text-right">TOTAL</td>
-                        <td className="border border-black p-0.5 text-center">{data.performance.average.toFixed(2)}</td>
-                        <td className="border border-black p-0.5 text-center">{data.performance.totalCoef}</td>
-                        <td className="border border-black p-0.5 text-center">{data.performance.totalPoints.toFixed(1)}</td>
-                        {config.stats.showRank && <td className="border border-black p-0.5 text-center">{data.performance.rank}</td>}
-                    </tr>
-                </tfoot>
-            </table>
+                                {g.subjects.map((s: any, j: number) => (
+                                    <tr key={j}>
+                                        <td className="border border-black p-0.5 font-bold uppercase" style={{ borderColor: config.body.tableBorderColor }}>
+                                            {s.name}
+                                            {config.body.showSubjectTeachers && <p className="text-[4px] text-gray-400 normal-case font-medium">{s.teacher}</p>}
+                                        </td>
+                                        {isTrim && showSub && (
+                                            <>
+                                                <td className="border border-black p-0.5 text-center" style={{ borderColor: config.body.tableBorderColor }}>{renderGrade(s.note1)}</td>
+                                                <td className="border border-black p-0.5 text-center" style={{ borderColor: config.body.tableBorderColor }}>{renderGrade(s.note2)}</td>
+                                            </>
+                                        )}
+                                        {isAnnual && showSub && <td className="border border-black p-0.5 text-center text-[4px]" style={{ borderColor: config.body.tableBorderColor }}>Synthèse</td>}
+                                        <td className="border border-black p-0.5 text-center font-black" style={{ borderColor: config.body.tableBorderColor }}>{renderGrade(s.total)}</td>
+                                        <td className="border border-black p-0.5 text-center font-bold" style={{ borderColor: config.body.tableBorderColor }}>{s.coef}</td>
+                                        <td className="border border-black p-0.5 text-center" style={{ borderColor: config.body.tableBorderColor }}>{(s.total * s.coef).toFixed(1)}</td>
+                                        {config.stats.showRank && <td className="border border-black p-0.5 text-center font-bold" style={{ borderColor: config.body.tableBorderColor }}>{s.rank}</td>}
+                                        <td className="border border-black p-0.5 italic text-[5px]" style={{ borderColor: config.body.tableBorderColor }}>{s.appreciation}</td>
+                                    </tr>
+                                ))}
+                            </React.Fragment>
+                        ))}
+                    </tbody>
+                    <tfoot>
+                        <tr className="bg-gray-100 font-black" style={{ backgroundColor: `${config.body.tableBorderColor}20` }}>
+                            <td colSpan={isTrim && showSub ? 3 : isAnnual && showSub ? 2 : 1} className="border border-black p-1 text-right uppercase tracking-widest" style={{ borderColor: config.body.tableBorderColor }}>{t.totals}</td>
+                            <td className="border border-black p-0.5 text-center font-black" style={{ borderColor: config.body.tableBorderColor }}>{renderGrade(data.performance.average)}</td>
+                            <td className="border border-black p-0.5 text-center" style={{ borderColor: config.body.tableBorderColor }}>{data.performance.totalCoef}</td>
+                            <td className="border border-black p-0.5 text-center" style={{ borderColor: config.body.tableBorderColor }}>{data.performance.totalPoints.toFixed(1)}</td>
+                            {config.stats.showRank && <td className="border border-black p-0.5 text-center" style={{ borderColor: config.body.tableBorderColor }}>{data.performance.rank}</td>}
+                            <td className="border border-black p-0.5 text-center uppercase tracking-widest text-[5px] text-accent" style={{ borderColor: config.body.tableBorderColor }}>{data.performance.appreciation}</td>
+                        </tr>
+                    </tfoot>
+                </table>
 
-            {/* Stats & Footer */}
-            <div className="grid grid-cols-2 gap-2 mt-auto">
-                <div className="border border-black p-1 rounded-md">
-                    <p className="font-black uppercase mb-1 underline">Statistiques Classe</p>
-                    <div className="space-y-0.5">
-                        <p>Moy. Max : <strong>{data.stats.maxMoy}</strong></p>
-                        <p>Moy. Min : <strong>{data.stats.minMoy}</strong></p>
-                        <p>Moy. Classe : <strong>{data.stats.avgMoy}</strong></p>
+                {/* Stats & Decisions */}
+                <div className="grid grid-cols-12 gap-1 relative z-10">
+                    <div className="col-span-4 border-2 border-black p-1 rounded-lg" style={{ borderColor: config.body.tableBorderColor }}>
+                        <p className="font-black uppercase mb-1 underline text-[5px]">{t.stats}</p>
+                        <div className="space-y-0.5 font-bold">
+                            {config.stats.showMaxMin && <div className="flex justify-between"><span>Max :</span> <span>{data.stats.maxMoy}</span></div>}
+                            {config.stats.showMaxMin && <div className="flex justify-between"><span>Min :</span> <span>{data.stats.minMoy}</span></div>}
+                            {config.stats.showClassAverage && <div className="flex justify-between border-t border-gray-100 pt-0.5"><span>Moy. :</span> <span>{data.stats.avgMoy}</span></div>}
+                            {config.stats.showSuccessRate && <div className="flex justify-between"><span>Taux :</span> <span>{data.stats.successRate}%</span></div>}
+                        </div>
+                    </div>
+
+                    <div className="col-span-3 border-2 border-black p-1 rounded-lg flex flex-col items-center justify-center text-center" style={{ borderColor: config.body.tableBorderColor }}>
+                        <p className="font-black uppercase mb-1 underline text-[5px]">{t.discipline}</p>
+                        <div className="text-[5px] space-y-0.5">
+                            <p>{t.absJust}: <strong>{data.discipline.absencesJustified}h</strong></p>
+                            <p>{t.absUnjust}: <strong>{data.discipline.absencesUnjustified}h</strong></p>
+                        </div>
+                    </div>
+
+                    <div className="col-span-5 border-2 border-black p-1 rounded-lg flex flex-col justify-between" style={{ borderColor: config.body.tableBorderColor }}>
+                        <div className="grid grid-cols-2 gap-1 h-full">
+                            <div className="border-r border-black/10 text-center flex flex-col justify-between p-0.5">
+                                <p className="font-black uppercase underline text-[4px]">{t.parent}</p>
+                                <div className="border border-dashed border-gray-200 h-6 w-full" />
+                            </div>
+                            <div className="text-center flex flex-col justify-between p-0.5">
+                                <p className="font-black uppercase underline text-[4px]">{t.direction}</p>
+                                <div className="border border-dashed border-gray-200 h-6 w-full" />
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div className="border border-black p-1 rounded-md flex flex-col justify-between">
-                    <p className="font-black uppercase mb-1 underline text-center">Signatures</p>
-                    <div className="flex justify-between mt-auto">
-                        <div className="w-6 h-6 border border-dashed border-gray-200" />
-                        <div className="w-6 h-6 border border-dashed border-gray-200" />
-                    </div>
+
+                <div className="mt-auto pt-2 border-t border-gray-100 flex justify-between items-center opacity-30">
+                    <p className="text-[4px] font-black uppercase tracking-[0.3em]">Scholar Analysis Engine v3.1</p>
+                    <p className="text-[4px] font-black uppercase">Page 1 / 1</p>
                 </div>
             </div>
+
+            {/* Second Page Preview (Charts) */}
+            {config.stats.showCharts && (
+                <div className="bg-white shadow-2xl rounded-sm w-full aspect-[1/1.41] flex flex-col p-8 overflow-hidden text-[6px] origin-top transition-all border border-gray-200 animate-in slide-in-from-right-4">
+                    <div className="border-b-2 border-black pb-2 mb-6 flex justify-between items-end">
+                        <h2 className="text-[12px] font-black uppercase tracking-tighter">{t.diagnostic}</h2>
+                        <p className="text-[8px] font-black text-accent">{data.student.nomComplet}</p>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-[20px] p-6 border border-gray-100 mb-6 flex-1 flex flex-col">
+                        <h3 className="text-[8px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <BarChart3 size={12} className="text-accent" />
+                            {t.poles}
+                        </h3>
+
+                        <div className="flex-1 flex items-end gap-6 px-10 pb-10">
+                            {data.chartData.map((d: any, idx: number) => (
+                                <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+                                    <div className="w-full flex gap-1 items-end h-full">
+                                        <div className="flex-1 bg-accent rounded-t-md" style={{ height: `${(d.élève / 20) * 100}%` }} />
+                                        <div className="flex-1 bg-gray-200 rounded-t-md" style={{ height: `${(d.classe / 20) * 100}%` }} />
+                                    </div>
+                                    <span className="text-[5px] font-black uppercase whitespace-nowrap">{d.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 h-[120px]">
+                        <div className="bg-black text-white p-4 rounded-[20px] flex flex-col justify-center items-center">
+                            <h4 className="text-[6px] font-black uppercase tracking-widest text-accent mb-2">Forces & Faiblesses</h4>
+                            <div className="w-16 h-16 border-2 border-accent/20 rounded-full flex items-center justify-center">
+                                <div className="w-10 h-10 border-2 border-accent rounded-full animate-pulse" />
+                            </div>
+                        </div>
+                        <div className="bg-white border-2 border-black p-4 rounded-[20px]">
+                            <h4 className="text-[6px] font-black uppercase tracking-widest mb-2">Décision Pédagogique</h4>
+                            <div className="space-y-2">
+                                <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                                    <div className="h-full bg-green-500" style={{ width: '75%' }} />
+                                </div>
+                                <p className="font-bold">Passage en classe supérieure recommandé avec félicitations du jury.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

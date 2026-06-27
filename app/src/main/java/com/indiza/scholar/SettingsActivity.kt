@@ -117,6 +117,8 @@ fun SettingsScreen(
     var doubleReceipts by remember { mutableStateOf(SyncConfig.doubleReceipts) }
     var nbTelephones by remember { mutableIntStateOf(SyncConfig.nbTelephones) }
     var useCompetences by remember { mutableStateOf(SyncConfig.useCompetences) }
+    var appLanguage by remember { mutableStateOf(SyncConfig.appLanguage) }
+    var forceDocLanguage by remember { mutableStateOf(SyncConfig.forceDocLanguage) }
 
     LaunchedEffect(Unit) {
         val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -124,11 +126,15 @@ fun SettingsScreen(
         doubleReceipts = prefs.getBoolean("double_receipts", false)
         nbTelephones = prefs.getInt("nb_telephones", 2)
         useCompetences = prefs.getBoolean("use_competences", false)
+        appLanguage = prefs.getString("app_language", "FR") ?: "FR"
+        forceDocLanguage = prefs.getBoolean("force_doc_language", false)
         
         SyncConfig.isRemoteSyncEnabled = isSyncEnabled
         SyncConfig.doubleReceipts = doubleReceipts
         SyncConfig.nbTelephones = nbTelephones
         SyncConfig.useCompetences = useCompetences
+        SyncConfig.appLanguage = appLanguage
+        SyncConfig.forceDocLanguage = forceDocLanguage
     }
 
     val apiService = remember(networkKey) {
@@ -147,6 +153,7 @@ fun SettingsScreen(
 
     // States for BottomSheets
     var showAnneeSelector by remember { mutableStateOf(false) }
+    var showLanguageSelector by remember { mutableStateOf(false) }
     var showStructureSheet by remember { mutableStateOf(false) }
     var showThemeSheet by remember { mutableStateOf(false) }
     var showNetworkSheet by remember { mutableStateOf(false) }
@@ -185,6 +192,38 @@ fun SettingsScreen(
         )
 
         // 1. Section Synchronisation (Master Switch)
+        SettingsSection(title = "Langue & Régional") {
+            SettingsItem(
+                icon = Icons.Default.Language,
+                iconColor = Color(0xFF007AFF),
+                title = "Langue de l'application",
+                subtitle = when(appLanguage) {
+                    "EN" -> "English"
+                    "ES" -> "Español"
+                    else -> "Français"
+                },
+                onClick = { showLanguageSelector = true }
+            )
+            SettingsItem(
+                icon = Icons.Default.GTranslate,
+                iconColor = Color(0xFF34C759),
+                title = "Appliquer aux documents",
+                subtitle = "Utilise la langue de l'app pour tous les reçus",
+                action = {
+                    Switch(
+                        checked = forceDocLanguage,
+                        onCheckedChange = { isChecked ->
+                            forceDocLanguage = isChecked
+                            SyncConfig.forceDocLanguage = isChecked
+                            context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putBoolean("force_doc_language", isChecked).apply()
+                        }
+                    )
+                },
+                showDivider = false
+            )
+        }
+
+        // 2. Section Synchronisation (Master Switch)
         SettingsSection(title = "Synchronisation") {
             SettingsItem(
                 icon = Icons.Default.Sync,
@@ -447,6 +486,26 @@ fun SettingsScreen(
     }
 
     // BottomSheets
+    if (showLanguageSelector) {
+        ModalBottomSheet(onDismissRequest = { showLanguageSelector = false }) {
+            Column(modifier = Modifier.padding(16.dp).fillMaxWidth().padding(bottom = 32.dp)) {
+                Text("Sélectionner la langue", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 16.dp))
+                listOf("FR" to "Français", "EN" to "English", "ES" to "Español").forEach { (code, label) ->
+                    ListItem(
+                        headlineContent = { Text(label) },
+                        modifier = Modifier.clickable { 
+                            appLanguage = code
+                            SyncConfig.appLanguage = code
+                            context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putString("app_language", code).apply()
+                            showLanguageSelector = false 
+                        },
+                        trailingContent = { if(appLanguage == code) Icon(Icons.Default.Check, null, tint = Color(0xFF1ABC9C)) }
+                    )
+                }
+            }
+        }
+    }
+
     if (showAnneeSelector) {
         val annees by anneeViewModel.annees.collectAsState()
         ModalBottomSheet(onDismissRequest = { showAnneeSelector = false }) {

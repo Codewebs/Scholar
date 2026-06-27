@@ -163,6 +163,151 @@ const GradeDisplay: React.FC<{
     );
 };
 
+// --- Translations Dictionary ---
+const bulletinTranslations: any = {
+    FR: {
+        bulletin: "B U L L E T I N  D E  N O T E S",
+        pvTitle: "Procès-Verbal de la Salle de Classe",
+        resultsTitle: "Liste des Résultats",
+        honorsTitle: "Tableau d'Honneur",
+        certExcellence: "Certification d'Excellence",
+        awardedTo: "Décerné avec félicitations à",
+        forResults: "Pour ses résultats exceptionnels au cours du",
+        withAverage: "avec une moyenne générale de",
+        deliveredBy: "Délivré par",
+        officialSeal: "Sceau Officiel",
+        student: "Élève",
+        class: "Classe / Salle",
+        eff: "Eff.",
+        sex: "Sexe",
+        bornOn: "Né(e) le",
+        at: "à",
+        matricule: "Matricule",
+        subjects: "Matières / Compétences",
+        moy20: "Moy /20",
+        coef: "Coef",
+        points: "Points",
+        rank: "Rang",
+        appreciation: "Appréciations",
+        groupMoy: "Moy. Gr",
+        groupTotal: "Total Pts Gr",
+        totals: "Totaux",
+        max: "Max",
+        min: "Min",
+        classStats: "Stats Classe",
+        moyStudent: "Moyenne Élève",
+        absJust: "Abs. Just.",
+        absUnjust: "Abs. N.J.",
+        decision: "Décision",
+        effortIn: "Effort en",
+        parent: "LE PARENT",
+        teacher: "LE PROF PRINCIPAL",
+        director: "LE CHEF D'ÉTABLISSEMENT",
+        diagnostic: "Diagnostic de Performance",
+        polesOverview: "Bilan des Pôles d'Apprentissage",
+        radarProgression: "Radar de Progression",
+        impactPoles: "Impact des Pôles (Points)",
+        admitted: "Admis",
+        failed: "Échec",
+        warning: "Avertissement",
+        promotion: "Passage"
+    },
+    EN: {
+        bulletin: "R E P O R T  C A R D",
+        pvTitle: "Classroom Performance Minutes",
+        resultsTitle: "Results List",
+        honorsTitle: "Honor Roll",
+        certExcellence: "Certification of Excellence",
+        awardedTo: "Proudly awarded to",
+        forResults: "For outstanding academic performance during",
+        withAverage: "with a cumulative average of",
+        deliveredBy: "Issued by",
+        officialSeal: "Official Seal",
+        student: "Student",
+        class: "Class / Room",
+        eff: "Roll",
+        sex: "Sex",
+        bornOn: "Born on",
+        at: "at",
+        matricule: "ID Number",
+        subjects: "Subjects / Competencies",
+        moy20: "Avg /20",
+        coef: "Coef",
+        points: "Points",
+        rank: "Rank",
+        appreciation: "Remarks",
+        groupMoy: "Group Avg",
+        groupTotal: "Group Total",
+        totals: "Totals",
+        max: "Max",
+        min: "Min",
+        classStats: "Class Stats",
+        moyStudent: "Student Average",
+        absJust: "Exc. Abs.",
+        absUnjust: "Unexc. Abs.",
+        decision: "Decision",
+        effortIn: "Effort in",
+        parent: "PARENT",
+        teacher: "CLASS TEACHER",
+        director: "PRINCIPAL / HEADMASTER",
+        diagnostic: "Performance Diagnostic",
+        polesOverview: "Learning Areas Overview",
+        radarProgression: "Progression Radar",
+        impactPoles: "Subjects Impact (Points)",
+        admitted: "Passed",
+        failed: "Failed",
+        warning: "Warning",
+        promotion: "Promotion"
+    },
+    ES: {
+        bulletin: "B O L E T Í N  D E  N O T A S",
+        pvTitle: "Acta de Calificaciones del Aula",
+        resultsTitle: "Lista de Resultados",
+        honorsTitle: "Cuadro de Honor",
+        certExcellence: "Certificación de Excelencia",
+        awardedTo: "Otorgado con felicitaciones a",
+        forResults: "Por su destacado rendimiento académico durante",
+        withAverage: "con un promedio general de",
+        deliveredBy: "Emitido por",
+        officialSeal: "Sello Oficial",
+        student: "Estudiante",
+        class: "Clase / Aula",
+        eff: "Cant.",
+        sex: "Sexo",
+        bornOn: "Nacido el",
+        at: "en",
+        matricule: "Matrícula",
+        subjects: "Materias / Competencias",
+        moy20: "Prom /20",
+        coef: "Coef",
+        points: "Puntos",
+        rank: "Puesto",
+        appreciation: "Apreciaciones",
+        groupMoy: "Prom. Gr",
+        groupTotal: "Total Pts Gr",
+        totals: "Totales",
+        max: "Máx",
+        min: "Mín",
+        classStats: "Estad. Clase",
+        moyStudent: "Promedio Estudiante",
+        absJust: "Aus. Just.",
+        absUnjust: "Aus. N.J.",
+        decision: "Decisión",
+        effortIn: "Esfuerzo en",
+        parent: "EL PADRE",
+        teacher: "EL TUTOR",
+        director: "EL DIRECTOR",
+        diagnostic: "Diagnóstico de Rendimiento",
+        polesOverview: "Resumen de Áreas de Aprendizaje",
+        radarProgression: "Radar de Progresión",
+        impactPoles: "Impacto de Materias (Puntos)",
+        admitted: "Aprobado",
+        failed: "Reprobado",
+        warning: "Advertencia",
+        promotion: "Promoción"
+    }
+};
+
 const BulletinPrintPage: React.FC = () => {
     const [searchParams] = useSearchParams();
     const { selectedYear } = useSchoolYear();
@@ -668,6 +813,9 @@ const InstitutionalHeader: React.FC<{ school: any, customHeader?: any }> = ({ sc
 };
 
 const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }> = ({ data, config, overrides }) => {
+    const lang = config?.language || 'FR';
+    const t = bulletinTranslations[lang] || bulletinTranslations.FR;
+
     const totalCols = 1 +
         (config?.periodType === 'ANNUAL' && config?.showSubPeriods ? 1 : 0) +
         (config?.periodType === 'TRIMESTER' && config?.showSubPeriods ? 2 : 0) +
@@ -768,14 +916,14 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
            <div className="mb-1 text-center relative z-10">
                <div className="inline-flex items-center gap-4 border-2 border-black bg-white px-3 py-1 rounded-xl shadow-sm">
                    <h1 className="text-sm font-black uppercase tracking-[0.3em] text-black mb-0 whitespace-nowrap">
-                       B U L L E T I N&nbsp;&nbsp;D E&nbsp;&nbsp;N O T E S
+                       {t.bulletin}
                    </h1>
 
                    {/* Séparateur vertical propre */}
                    <span className="text-gray-300 font-light">|</span>
 
                    <p className="text-[9px] font-black uppercase tracking-[0.1em] text-gray-600 mb-0 whitespace-nowrap">
-                       {data.period?.label || (config?.periodType === 'ANNUAL' ? 'BILAN ANNUEL' : config?.periodType)} — {data.year.libelle}
+                       {data.period?.label || (config?.periodType === 'ANNUAL' ? (lang === 'FR' ? 'BILAN ANNUEL' : lang === 'EN' ? 'ANNUAL REPORT' : 'BALANCE ANUAL') : config?.periodType)} — {data.year.libelle}
                    </p>
                </div>
            </div>
@@ -796,35 +944,35 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
 
                     {/* Colonne 1 : Élève (Prend 4 colonnes sur 12) */}
                     <div className="space-y-0.5 col-span-4">
-                        <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">Élève</span>
+                        <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">{t.student}</span>
                         <p className="text-xs font-black uppercase tracking-tight text-black truncate">{data.student.nomComplet}</p>
                     </div>
 
                     {/* Colonne 2 : Salle (Prend 3 colonnes sur 12) */}
                     <div className="space-y-0.5 col-span-3">
-                        <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">Salle</span>
+                        <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">{t.class}</span>
                         <p className="text-xs font-black uppercase tracking-tight text-black whitespace-nowrap">{data.salle.nomSalle}</p>
                     </div>
 
                     {/* Colonne 3 : Effectif & Sexe (Prend 1 colonne sur 12) */}
                     <div className="space-y-0.5 col-span-1">
                         <div className="flex flex-col">
-                            <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">Eff.</span>
+                            <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">{t.eff}</span>
                             <p className="text-xs font-black uppercase tracking-tight text-black whitespace-nowrap">{data.salle.effectif}</p>
-                            <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block mt-0.5">Sexe</span>
+                            <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block mt-0.5">{t.sex}</span>
                             <p className="text-xs font-black uppercase tracking-tight text-black">{data.student.sexe}</p>
                         </div>
                     </div>
 
                     {/* Colonne 4 : Né(e) le (Prend 3 colonnes sur 12) */}
                     <div className="space-y-0.5 col-span-3">
-                        <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">Né(e) le</span>
-                        <p className="text-[9px] font-bold uppercase text-black truncate">{data.student.dateNaissance} à {data.student.lieuNaissance}</p>
+                        <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">{t.bornOn}</span>
+                        <p className="text-[9px] font-bold uppercase text-black truncate">{data.student.dateNaissance} {t.at} {data.student.lieuNaissance}</p>
                     </div>
 
                     {/* Colonne 5 : Matricule (Prend 2 colonnes sur 12) */}
                     <div className="space-y-0.5 col-span-3">
-                        <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">Matricule</span>
+                        <span className="text-[7px] font-black uppercase tracking-widest text-gray-400 block">{t.matricule}</span>
                         <p className="text-[10px] font-bold uppercase text-black whitespace-nowrap">{data.student.matricule}</p>
                     </div>
 
@@ -835,10 +983,10 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                 <table className="w-full border-collapse" style={{ borderColor: config?.body?.tableBorderColor || '#000', fontSize: `${overrides.subjectFontSize}px` }}>
                     <thead>
                         <tr className="bg-black text-white">
-                            <th className="p-0.5 font-black uppercase tracking-widest text-left" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>Matières / Compétences</th>
+                            <th className="p-0.5 font-black uppercase tracking-widest text-left" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>{t.subjects}</th>
                             {config?.periodType === 'ANNUAL' && config?.showSubPeriods && (
                                 <th className="p-0.5 font-black uppercase tracking-widest text-center text-[7px]" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
-                                    {overrides.showPeriodAbreviations ? 'ABRÉV. SÉQ.' : 'Détail Séquences'}
+                                    {overrides.showPeriodAbreviations ? 'ABRÉV.' : (lang === 'FR' ? 'Détail Périodes' : lang === 'EN' ? 'Period Details' : 'Detalles de Periodos')}
                                 </th>
                             )}
                             {config?.periodType === 'TRIMESTER' && config?.showSubPeriods && (
@@ -851,13 +999,13 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                                     </th>
                                 </>
                             )}
-                            <th className="p-0.5 font-black uppercase tracking-widest text-center w-14" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>Moy /20</th>
-                            <th className="p-0.5 font-black uppercase tracking-widest text-center w-8" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>Coef</th>
-                            <th className="p-0.5 font-black uppercase tracking-widest text-center w-14" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>Points</th>
+                            <th className="p-0.5 font-black uppercase tracking-widest text-center w-14" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>{t.moy20}</th>
+                            <th className="p-0.5 font-black uppercase tracking-widest text-center w-8" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>{t.coef}</th>
+                            <th className="p-0.5 font-black uppercase tracking-widest text-center w-14" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>{t.points}</th>
                             {overrides.showRank && (
-                                <th className="p-0.5 font-black uppercase tracking-widest text-center w-8" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>Rang</th>
+                                <th className="p-0.5 font-black uppercase tracking-widest text-center w-8" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>{t.rank}</th>
                             )}
-                            <th className="p-0.5 font-black uppercase tracking-widest text-left" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>Appréciations</th>
+                            <th className="p-0.5 font-black uppercase tracking-widest text-left" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>{t.appreciation}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -870,8 +1018,8 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                                                 <span>{group.name}</span>
                                                 {overrides.showGroupSummaries && (
                                                     <div className="flex gap-4 text-[7px] text-accent">
-                                                        <span>Moy. Gr : <strong>{group.groupAverage?.toFixed(2)}</strong></span>
-                                                        <span>Total Pts Gr : <strong>{group.groupTotalPoints?.toFixed(2)}</strong></span>
+                                                        <span>{t.groupMoy} : <strong>{group.groupAverage?.toFixed(2)}</strong></span>
+                                                        <span>{t.groupTotal} : <strong>{group.groupTotalPoints?.toFixed(2)}</strong></span>
                                                         <span>Total Coef : <strong>{group.groupTotalCoef}</strong></span>
                                                     </div>
                                                 )}
@@ -975,7 +1123,7 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                     <tfoot className="bg-white font-black text-black">
                         {/* Totaux Classiques */}
                         <tr className="bg-gray-100 font-black">
-                            <td className="p-1.5 text-right uppercase text-[8px]" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>Totaux</td>
+                            <td className="p-1.5 text-right uppercase text-[8px]" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>{t.totals}</td>
                             {config?.periodType === 'ANNUAL' && config?.showSubPeriods && <td style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }} />}
                             {config?.periodType === 'TRIMESTER' && config?.showSubPeriods && <td colSpan={2} style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }} />}
                             <td className="p-1 text-center" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
@@ -1004,7 +1152,7 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                     <thead>
                         <tr className="bg-gray-200">
                             <td colSpan={6} className="p-1 font-black uppercase text-center text-[9px] tracking-[0.2em] border border-black" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
-                                SYNTHÈSE {config?.periodType === 'ANNUAL' ? 'BILAN ANNUEL' : (data.period?.label || config?.periodType)} — {data.year.libelle}
+                                {t.totals.replace('T O T A U X', 'SYNTHÈSE').replace('T O T A L S', 'SUMMARY').replace('T O T A L E S', 'SÍNTESIS')} {config?.periodType === 'ANNUAL' ? (lang === 'FR' ? 'BILAN ANNUEL' : lang === 'EN' ? 'ANNUAL REPORT' : 'BALANCE ANUAL') : (data.period?.label || config?.periodType)} — {data.year.libelle}
                             </td>
                         </tr>
                     </thead>
@@ -1014,14 +1162,14 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                             <td colSpan={1} className="p-0.5 border border-black align-top w-[15%]" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
                                 <h4 className="text-[9px] font-black uppercase underline mb-0.5 leading-none">Moyennes</h4>
                                 <div className="text-[9.5px] space-y-0">
-                                    <div className="flex justify-between"><span>Max :</span> <strong>{data.stats.maxMoy.toFixed(2)}</strong></div>
-                                    <div className="flex justify-between"><span>Min :</span> <strong>{data.stats.minMoy.toFixed(2)}</strong></div>
+                                    <div className="flex justify-between"><span>{t.max} :</span> <strong>{data.stats.maxMoy.toFixed(2)}</strong></div>
+                                    <div className="flex justify-between"><span>{t.min} :</span> <strong>{data.stats.minMoy.toFixed(2)}</strong></div>
                                 </div>
                             </td>
                             <td colSpan={1} className="p-0.5 border border-black align-top w-[15%]" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
-                                <h4 className="text-[9px] font-black uppercase underline mb-0.5 leading-none">Stats Classe</h4>
+                                <h4 className="text-[9px] font-black uppercase underline mb-0.5 leading-none">{t.classStats}</h4>
                                 <div className="text-[10px] space-y-0">
-                                    <div className="flex justify-between"><span>Moy. :</span> <strong>{data.stats.avgMoy.toFixed(2)}</strong></div>
+                                    <div className="flex justify-between"><span>{t.moy20.replace('/20', '')} :</span> <strong>{data.stats.avgMoy.toFixed(2)}</strong></div>
                                     <div className="flex justify-between"><span>Taux :</span> <strong>{data.stats.successRate.toFixed(2)}%</strong></div>
                                 </div>
                             </td>
@@ -1029,18 +1177,18 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                             {overrides.showRank ? (
                                 <>
                                     <td colSpan={2} className="p-0.5 border border-black text-center align-middle bg-gray-50/30" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
-                                        <h4 className="text-[13px] font-black uppercase underline mb-0.5 leading-none">Moyenne Élève</h4>
+                                        <h4 className="text-[13px] font-black uppercase underline mb-0.5 leading-none">{t.moyStudent}</h4>
                                         <p className="text-[19px] font-black">{data.performance.average.toFixed(2)}</p>
                                     </td>
                                     <td colSpan={2} className="p-0.5 border border-black text-center align-middle bg-gray-50/30" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
-                                        <h4 className="text-[11px] font-black uppercase underline mb-0.5 leading-none">Rang</h4>
-                                        <p className="text-[15px] font-black">{data.performance.rank}<sup>{data.performance.rank === 1 ? 'er' : 'ème'}</sup> / {data.salle.effectif}</p>
+                                        <h4 className="text-[11px] font-black uppercase underline mb-0.5 leading-none">{t.rank}</h4>
+                                        <p className="text-[15px] font-black">{data.performance.rank}<sup>{data.performance.rank === 1 ? (lang === 'FR' ? 'er' : 'st') : (lang === 'FR' ? 'ème' : lang === 'EN' ? (data.performance.rank === 2 ? 'nd' : data.performance.rank === 3 ? 'rd' : 'th') : 'º')}</sup> / {data.salle.effectif}</p>
                                     </td>
                                 </>
                             ) : (
                                 <td colSpan={4} className="p-0.5 border border-black text-center align-middle bg-gray-50/30" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
-                                    <h4 className="text-[9px] font-black uppercase underline mb-0.5 leading-none">Résultat de l'Élève</h4>
-                                    <p className="text-[15px] font-black uppercase">MOYENNE : {data.performance.average.toFixed(2)}</p>
+                                    <h4 className="text-[9px] font-black uppercase underline mb-0.5 leading-none">{lang === 'FR' ? "Résultat de l'Élève" : lang === 'EN' ? "Student Result" : "Resultado del Estudiante"}</h4>
+                                    <p className="text-[15px] font-black uppercase">{t.moy20.replace('/20', '').toUpperCase()} : {data.performance.average.toFixed(2)}</p>
                                 </td>
                             )}
                         </tr>
@@ -1049,35 +1197,35 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
                         <tr>
                             {/* Discipline - 3 Cols */}
                             <td className="p-0.5 border border-black text-center w-[10%]" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
-                                <span className="text-[8px] font-black block uppercase leading-none mb-0.5">Abs. Just.</span>
+                                <span className="text-[8px] font-black block uppercase leading-none mb-0.5">{t.absJust}</span>
                                 <strong className="text-[10px]">{data.discipline.absencesJustified} h</strong>
                             </td>
                             <td className="p-0.5 border border-black text-center w-[10%]" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
-                                <span className="text-[8px] font-black block uppercase leading-none mb-0.5 text-red-600">Abs. N.J.</span>
+                                <span className="text-[8px] font-black block uppercase leading-none mb-0.5 text-red-600">{t.absUnjust}</span>
                                 <strong className="text-[10px] text-red-600">{data.discipline.absencesUnjustified} h</strong>
                             </td>
 
 
                             {/* Décisions - 3 Cols */}
                             <td className="p-0.5 border border-black text-center align-middle" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
-                                <h4 className="text-[8.5px] font-black uppercase underline leading-none mb-0.5">Décision</h4>
-                                <span className="text-[9px] font-bold uppercase">{data.performance.average < 10 ? 'Avertissement' : 'Passage'}</span>
+                                <h4 className="text-[8.5px] font-black uppercase underline leading-none mb-0.5">{t.decision}</h4>
+                                <span className="text-[9px] font-bold uppercase">{data.performance.average < 10 ? t.warning : t.promotion}</span>
                             </td>
                             <td className="p-0.5 border border-black text-center align-middle" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
-                                <h4 className="text-[8.5px] font-black uppercase underline leading-none mb-0.5">Tableau d'Honneur</h4>
+                                <h4 className="text-[8.5px] font-black uppercase underline leading-none mb-0.5">{t.honorsTitle}</h4>
                                 <span className="text-[9px] font-black uppercase whitespace-nowrap">{data.performance.average >= 12 ? '' : 'N/A'}</span>
                             </td>
                             <td className="p-0.5 border border-black align-middle" style={{ border: `${config?.body?.tableBorderWidth || '1px'} solid ${config?.body?.tableBorderColor || '#000'}` }}>
-                                <p className="text-[6px] italic leading-tight text-gray-400">Effort en : _________________</p>
+                                <p className="text-[6px] italic leading-tight text-gray-400">{t.effortIn} : _________________</p>
                             </td>
                         </tr>
 
                         {/* Ligne : Espaces de Validation (Équilibrés) */}
                         <tr>
                             {[
-                                { show: config?.signatures?.showParent ?? true, title: 'LE PARENT' },
-                                { show: config?.signatures?.showTeacher ?? true, title: 'LE PROF PRINCIPAL' },
-                                { show: config?.signatures?.showDirector ?? true, title: 'LE CHEF D\'ÉTABLISSEMENT' }
+                                { show: config?.signatures?.showParent ?? true, title: t.parent },
+                                { show: config?.signatures?.showTeacher ?? true, title: t.teacher },
+                                { show: config?.signatures?.showDirector ?? true, title: t.director }
                             ].filter(s => s.show).map((s, idx, arr) => (
                                 <td
                                     key={idx}
@@ -1097,6 +1245,9 @@ const BulletinPage: React.FC<{ data: BulletinData, config: any, overrides: any }
 };
 
 const StatisticsPage: React.FC<{ data: BulletinData, config: any }> = ({ data, config }) => {
+    const lang = config?.language || 'FR';
+    const t = bulletinTranslations[lang] || bulletinTranslations.FR;
+
     const getPerformanceColor = (avg: number) => {
         if (avg < 10) return '#EF4444'; // Rouge: Sous-moyenne
         if (avg < 12) return '#3B82F6'; // Bleu: Juste la moyenne/Passable
@@ -1152,14 +1303,14 @@ const StatisticsPage: React.FC<{ data: BulletinData, config: any }> = ({ data, c
             {/* Header Profil */}
             <div className="flex justify-between items-end mb-8 border-b-2 border-black pb-4">
                 <div>
-                    <h2 className="text-2xl font-black uppercase tracking-tighter">Diagnostic de Performance</h2>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Analyse pondérée par coefficients — {data.student.nomComplet}</p>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter">{t.diagnostic}</h2>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{lang === 'FR' ? 'Analyse pondérée par coefficients' : lang === 'EN' ? 'Weighted analysis by coefficients' : 'Análisis ponderado por coeficientes'} — {data.student.nomComplet}</p>
                 </div>
                 <div className="text-right space-y-1">
                     <div className="px-4 py-1 bg-black text-white rounded-lg text-[9px] font-black uppercase tracking-widest inline-block">
                         {data.period.label}
                     </div>
-                    <p className="text-[8px] font-black text-accent uppercase tracking-widest block">Moyenne Générale : {data.performance.average.toFixed(2)}</p>
+                    <p className="text-[8px] font-black text-accent uppercase tracking-widest block">{t.moyStudent} : {data.performance.average.toFixed(2)}</p>
                 </div>
             </div>
 
@@ -1170,9 +1321,9 @@ const StatisticsPage: React.FC<{ data: BulletinData, config: any }> = ({ data, c
                         <div>
                             <h3 className="text-xs font-black uppercase tracking-widest text-black flex items-center gap-2">
                                 <BarChart3 size={16} className="text-accent" />
-                                Bilan des Pôles d'Apprentissage
+                                {t.polesOverview}
                             </h3>
-                            <p className="text-[7px] font-medium text-gray-400 uppercase tracking-widest mt-1">La largeur des barres indique le poids (Coefficients) du groupe</p>
+                            <p className="text-[7px] font-medium text-gray-400 uppercase tracking-widest mt-1">{lang === 'FR' ? 'La largeur des barres indique le poids (Coefficients) du groupe' : lang === 'EN' ? 'Bar width indicates group weight (Coefficients)' : 'El ancho de barra indica el peso del grupo (Coeficientes)'}</p>
                         </div>
                     </div>
 
@@ -1233,10 +1384,10 @@ const StatisticsPage: React.FC<{ data: BulletinData, config: any }> = ({ data, c
                         <div className="relative z-10 mb-4">
                             <h3 className="text-xs font-black uppercase tracking-widest text-accent flex items-center gap-2">
                                 <Zap size={14} />
-                                {isComparative ? "Radar de Progression" : "Analyse d'Équilibre"}
+                                {t.radarProgression}
                             </h3>
                             <p className="text-[8px] font-medium text-gray-400 leading-relaxed mt-1">
-                                Visualisation de la maîtrise des compétences par pôle. {isComparative && "Comparaison entre les évaluations."}
+                                {lang === 'FR' ? 'Visualisation de la maîtrise des compétences par pôle.' : lang === 'EN' ? 'Visualization of competency mastery by learning area.' : 'Visualización del dominio de competencias por área.'} {isComparative && (lang === 'FR' ? "Comparaison entre les évaluations." : lang === 'EN' ? "Comparison between evaluations." : "Comparación entre evaluaciones.")}
                             </p>
                         </div>
 
@@ -1280,7 +1431,7 @@ const StatisticsPage: React.FC<{ data: BulletinData, config: any }> = ({ data, c
                     </div>
 
                     <div className="bg-white border-2 border-black p-6 rounded-[32px] flex flex-col">
-                        <h3 className="text-xs font-black uppercase tracking-widest mb-4">Impact des Pôles (Points)</h3>
+                        <h3 className="text-xs font-black uppercase tracking-widest mb-4">{t.impactPoles}</h3>
                         <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
                             {barData.sort((a, b) => b.pointsEarned - a.pointsEarned).map((item, idx) => (
                                 <div key={idx} className="bg-gray-50 p-3 rounded-2xl border border-gray-100 flex items-center justify-between">
@@ -1290,11 +1441,11 @@ const StatisticsPage: React.FC<{ data: BulletinData, config: any }> = ({ data, c
                                         </div>
                                         <div>
                                             <p className="text-[9px] font-black uppercase leading-tight">{item.name}</p>
-                                            <p className="text-[7px] font-bold text-gray-400 uppercase">Poids: x{item.weight}</p>
+                                            <p className="text-[7px] font-bold text-gray-400 uppercase">{t.coef.replace('Coef', 'Peso')}: x{item.weight}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[10px] font-black">+{item.pointsEarned.toFixed(1)} <span className="text-[7px] text-gray-400">pts</span></p>
+                                        <p className="text-[10px] font-black">+{item.pointsEarned.toFixed(1)} <span className="text-[7px] text-gray-400">{t.points.toLowerCase()}</span></p>
                                         <div className="w-16 h-1 bg-gray-200 rounded-full mt-1">
                                             <div className="h-full rounded-full" style={{ width: `${(item.élève/20)*100}%`, backgroundColor: item.color }} />
                                         </div>
@@ -1306,10 +1457,10 @@ const StatisticsPage: React.FC<{ data: BulletinData, config: any }> = ({ data, c
                         <div className="pt-4 border-t border-gray-100 mt-4">
                             <div className="flex items-center gap-2 mb-2">
                                 <div className="w-2 h-2 rounded-full bg-green-500" />
-                                <p className="text-[7px] font-black text-gray-500 uppercase tracking-widest">Points Totaux : {data.performance.totalPoints.toFixed(1)} / {data.performance.totalCoef * 20}</p>
+                                <p className="text-[7px] font-black text-gray-500 uppercase tracking-widest">{lang === 'FR' ? 'Points Totaux' : lang === 'EN' ? 'Total Points' : 'Puntos Totales'} : {data.performance.totalPoints.toFixed(1)} / {data.performance.totalCoef * 20}</p>
                             </div>
                             <p className="text-[8px] font-bold text-black uppercase leading-relaxed">
-                                Dominante Stratégique : <span className="text-accent">{barData.sort((a, b) => b.pointsEarned - a.pointsEarned)[0]?.name}</span>
+                                {lang === 'FR' ? 'Dominante Stratégique' : lang === 'EN' ? 'Strategic Dominant' : 'Dominante Estratégico'} : <span className="text-accent">{barData.sort((a, b) => b.pointsEarned - a.pointsEarned)[0]?.name}</span>
                             </p>
                         </div>
                     </div>
@@ -1333,6 +1484,9 @@ const StatisticsPage: React.FC<{ data: BulletinData, config: any }> = ({ data, c
 // --- NEW COMPONENTS FOR PV, RESULTS AND HONORS ---
 
 const PVPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ bulletins, config }) => {
+    const lang = config?.language || 'FR';
+    const t = bulletinTranslations[lang] || bulletinTranslations.FR;
+
     if (bulletins.length === 0) return null;
 
     // If we fetched the entire class but the user selected a specific SALLE,
@@ -1372,37 +1526,37 @@ const PVPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ bulletin
             <div className="landscape-page w-[297mm] min-h-[210mm] bg-white p-10 print:p-5 print:shadow-none shadow-2xl relative overflow-hidden flex flex-col">
                 <header className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
                     <div className="w-1/3 text-[8px] font-black uppercase">
-                        <p>REPUBLIQUE DU CAMEROUN</p>
-                        <p className="text-gray-400">Année Scolaire {first.year.libelle}</p>
+                        <p>{lang === 'FR' ? 'REPUBLIQUE DU CAMEROUN' : lang === 'EN' ? 'REPUBLIC OF CAMEROON' : 'REPÚBLICA DE CAMERÚN'}</p>
+                        <p className="text-gray-400">{lang === 'FR' ? 'Année Scolaire' : lang === 'EN' ? 'Academic Year' : 'Año Escolar'} {first.year.libelle}</p>
                     </div>
                     <div className="flex-1 text-center">
-                        <h1 className="text-xl font-black uppercase tracking-widest">Procès-Verbal de la Salle de Classe</h1>
+                        <h1 className="text-xl font-black uppercase tracking-widest">{t.pvTitle}</h1>
                         <p className="text-[10px] font-black text-accent uppercase tracking-widest mt-1">
                             {first.salle.nomSalle} — {first.period.label}
                         </p>
                     </div>
                     <div className="w-1/3 text-right text-[8px] font-black uppercase">
                         <p>{first.school.nomFr}</p>
-                        <p className="text-gray-400">Effectif: {targetBulletins.length}</p>
+                        <p className="text-gray-400">{t.eff}: {targetBulletins.length}</p>
                     </div>
                 </header>
 
                 {/* Stat Block */}
                 <div className="grid grid-cols-4 gap-4 mb-8">
                     <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col items-center">
-                        <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Moyenne Générale</span>
+                        <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">{t.moyStudent.replace('Élève', 'Générale').replace('Student', 'General')}</span>
                         <span className="text-xl font-black">{roomAvg.toFixed(2)}</span>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col items-center">
-                        <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Note Max / Min</span>
+                        <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">{t.max} / {t.min}</span>
                         <span className="text-xl font-black">{maxAvg.toFixed(2)} / {minAvg.toFixed(2)}</span>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col items-center">
-                        <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Taux de Réussite</span>
+                        <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">{lang === 'FR' ? 'Taux de Réussite' : lang === 'EN' ? 'Success Rate' : 'Tasa de Éxito'}</span>
                         <span className="text-xl font-black text-green-600">{((successCount/targetBulletins.length)*100).toFixed(1)}%</span>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col items-center">
-                        <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Présents / Absents</span>
+                        <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">{lang === 'FR' ? 'Présents / Absents' : lang === 'EN' ? 'Present / Absent' : 'Presentes / Ausentes'}</span>
                         <span className="text-xl font-black">{targetBulletins.length} / 0</span>
                     </div>
                 </div>
@@ -1411,10 +1565,10 @@ const PVPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ bulletin
                     <table className="w-full border-collapse border border-black text-[9px]">
                         <thead>
                             <tr className="bg-black text-white">
-                                <th className="border border-black p-1 text-left sticky left-0 bg-black z-10" rowSpan={2}>Noms & Prénoms</th>
-                                <th className="border border-black p-1 text-center" colSpan={subjectNames.length}>Matières</th>
-                                <th className="border border-black p-1 text-center" rowSpan={2}>Moyenne</th>
-                                <th className="border border-black p-1 text-center" rowSpan={2}>Rang</th>
+                                <th className="border border-black p-1 text-left sticky left-0 bg-black z-10" rowSpan={2}>{lang === 'FR' ? 'Noms & Prénoms' : lang === 'EN' ? 'Full Names' : 'Nombres y Apellidos'}</th>
+                                <th className="border border-black p-1 text-center" colSpan={subjectNames.length}>{t.subjects.split(' / ')[0]}</th>
+                                <th className="border border-black p-1 text-center" rowSpan={2}>{t.moy20.replace(' /20', '')}</th>
+                                <th className="border border-black p-1 text-center" rowSpan={2}>{t.rank}</th>
                             </tr>
                             <tr className="bg-gray-100 text-black">
                                 {subjectNames.map((name, i) => (
@@ -1447,7 +1601,7 @@ const PVPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ bulletin
                                         {b.performance.average.toFixed(2)}
                                     </td>
                                     <td className="border border-black p-1 text-center font-bold">
-                                        {b.performance.rank}<sup>{b.performance.rank === 1 ? 'er' : 'ème'}</sup>
+                                        {b.performance.rank}<sup>{b.performance.rank === 1 ? (lang === 'FR' ? 'er' : 'st') : (lang === 'FR' ? 'ème' : 'º')}</sup>
                                     </td>
                                 </tr>
                             ))}
@@ -1457,11 +1611,11 @@ const PVPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ bulletin
 
                 <div className="mt-10 grid grid-cols-2 gap-20">
                     <div className="text-center">
-                        <p className="text-[10px] font-black uppercase underline">Le Professeur Principal</p>
+                        <p className="text-[10px] font-black uppercase underline">{t.teacher}</p>
                         <div className="h-20" />
                     </div>
                     <div className="text-center">
-                        <p className="text-[10px] font-black uppercase underline">Le Chef d'Établissement</p>
+                        <p className="text-[10px] font-black uppercase underline">{t.director}</p>
                         <div className="h-20" />
                     </div>
                 </div>
@@ -1526,6 +1680,9 @@ const PVPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ bulletin
 };
 
 const ResultsListPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ bulletins, config }) => {
+    const lang = config?.language || 'FR';
+    const t = bulletinTranslations[lang] || bulletinTranslations.FR;
+
     if (bulletins.length === 0) return null;
     const first = bulletins[0];
 
@@ -1533,30 +1690,30 @@ const ResultsListPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({
         <div className="w-[210mm] min-h-[297mm] bg-white p-10 print:p-5 shadow-2xl flex flex-col">
             <div className="flex justify-between items-start mb-10 border-b border-gray-200 pb-6">
                 <div>
-                    <h1 className="text-2xl font-black uppercase tracking-tighter">Liste des Résultats</h1>
+                    <h1 className="text-2xl font-black uppercase tracking-tighter">{t.resultsTitle}</h1>
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">
                         {first.salle.nomSalle} — {first.period.label}
                     </p>
                 </div>
                 <div className="text-right">
                     <p className="text-[10px] font-black uppercase">{first.school.nomFr}</p>
-                    <p className="text-[8px] font-bold text-gray-400">Année: {first.year.libelle}</p>
+                    <p className="text-[8px] font-bold text-gray-400">{lang === 'FR' ? 'Année' : lang === 'EN' ? 'Year' : 'Año'}: {first.year.libelle}</p>
                 </div>
             </div>
 
             <table className="w-full border-collapse">
                 <thead>
                     <tr className="bg-black text-white">
-                        <th className="p-3 text-left text-[10px] font-black uppercase tracking-widest">Rang</th>
-                        <th className="p-3 text-left text-[10px] font-black uppercase tracking-widest">Nom de l'Élève</th>
-                        <th className="p-3 text-center text-[10px] font-black uppercase tracking-widest">Moyenne</th>
-                        <th className="p-3 text-center text-[10px] font-black uppercase tracking-widest">Décision</th>
+                        <th className="p-3 text-left text-[10px] font-black uppercase tracking-widest">{t.rank}</th>
+                        <th className="p-3 text-left text-[10px] font-black uppercase tracking-widest">{lang === 'FR' ? "Nom de l'Élève" : lang === 'EN' ? "Student Name" : "Nombre del Estudiante"}</th>
+                        <th className="p-3 text-center text-[10px] font-black uppercase tracking-widest">{t.moy20.replace(' /20', '')}</th>
+                        <th className="p-3 text-center text-[10px] font-black uppercase tracking-widest">{t.decision}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {bulletins.sort((a,b) => a.performance.rank - b.performance.rank).map((b, idx) => (
                         <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                            <td className="p-4 text-[11px] font-black">{b.performance.rank}<sup>{b.performance.rank === 1 ? 'er' : 'ème'}</sup></td>
+                            <td className="p-4 text-[11px] font-black">{b.performance.rank}<sup>{b.performance.rank === 1 ? (lang === 'FR' ? 'er' : 'st') : (lang === 'FR' ? 'ème' : 'º')}</sup></td>
                             <td className="p-4 text-[11px] font-black uppercase">{b.student.nomComplet}</td>
                             <td className={clsx(
                                 "p-4 text-center text-[11px] font-black",
@@ -1565,7 +1722,7 @@ const ResultsListPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({
                                 {b.performance.average.toFixed(2)}
                             </td>
                             <td className="p-4 text-center text-[9px] font-bold uppercase tracking-widest text-gray-400">
-                                {b.performance.average >= 10 ? 'Admis' : 'Échec'}
+                                {b.performance.average >= 10 ? t.admitted : t.failed}
                             </td>
                         </tr>
                     ))}
@@ -1576,6 +1733,9 @@ const ResultsListPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({
 };
 
 const HonorsListPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ bulletins, config }) => {
+    const lang = config?.language || 'FR';
+    const t = bulletinTranslations[lang] || bulletinTranslations.FR;
+
     if (bulletins.length === 0) return null;
     const first = bulletins[0];
     const threshold = config?.honors?.threshold || 12.0;
@@ -1585,7 +1745,7 @@ const HonorsListPage: React.FC<{ bulletins: BulletinData[], config: any }> = ({ 
         return (
             <div className="w-[210mm] min-h-[297mm] bg-white p-16 shadow-2xl flex flex-col items-center justify-center">
                 <div className="text-center py-20 bg-gray-50 rounded-[40px] border-2 border-dashed border-gray-200 w-full">
-                    <p className="text-xl font-black uppercase tracking-widest text-gray-300">Aucun élève au tableau d'honneur (Seuil: {threshold})</p>
+                    <p className="text-xl font-black uppercase tracking-widest text-gray-300">{lang === 'FR' ? "Aucun élève au tableau d'honneur" : lang === 'EN' ? "No students on the honor roll" : "Ningún estudiante en el cuadro de honor"} (Seuil: {threshold})</p>
                 </div>
             </div>
         );
@@ -1612,124 +1772,134 @@ const HonorsCertificate: React.FC<{ data: BulletinData, config: any, design: str
     }
 };
 
-const MinimalHonors: React.FC<{ data: BulletinData, config: any }> = ({ data, config }) => (
-    <div className="landscape-page w-[297mm] h-[210mm] bg-white relative overflow-hidden shadow-2xl print:shadow-none flex items-center">
-        {/* Abstract Fluid Background */}
-        <div className="absolute inset-0 pointer-events-none">
-            <svg viewBox="0 0 1000 1000" className="absolute -left-40 -top-40 w-[600px] h-[600px] opacity-20">
-                <path fill="#1E3A8A" d="M444.5,231.4c100.3-43,205.8-23.7,287.5,41.4s139.7,169.1,141.4,271c1.7,101.9-53,201.8-135.2,263.7s-191.9,85.8-292,52.3s-190.7-124.4-209.7-226.3S270.3,313,344.2,274.4C418.1,235.8,444.5,231.4,444.5,231.4z" />
-            </svg>
-            <div className="absolute top-0 left-0 w-1/3 h-full bg-gradient-to-br from-blue-600/10 to-transparent skew-x-[-15deg] -translate-x-20" />
+const MinimalHonors: React.FC<{ data: BulletinData, config: any }> = ({ data, config }) => {
+    const lang = config?.language || 'FR';
+    const t = bulletinTranslations[lang] || bulletinTranslations.FR;
 
-            {/* Blue and Gold Waves like inspiration */}
-            <div className="absolute top-0 right-0 w-[400px] h-[400px]">
-                <svg viewBox="0 0 200 200" className="w-full h-full text-blue-900 opacity-80">
-                    <path fill="currentColor" d="M40,-62.7C52.2,-54.5,62.5,-44.4,69.5,-32.4C76.4,-20.3,80.1,-6.4,78.2,7C76.3,20.4,68.8,33.3,58.8,44.1C48.8,54.8,36.4,63.4,22.6,67.8C8.9,72.2,-6.1,72.3,-20.5,68.2C-34.9,64.1,-48.7,55.8,-59.4,44.4C-70.1,33.1,-77.7,18.7,-79,3.7C-80.3,-11.3,-75.4,-26.8,-66.1,-39.8C-56.9,-52.8,-43.3,-63.3,-29.4,-70.2C-15.6,-77,1.4,-80.1,16.6,-77.5C31.9,-75,40,-62.7,40,-62.7Z" transform="translate(100 100)" />
+    return (
+        <div className="landscape-page w-[297mm] h-[210mm] bg-white relative overflow-hidden shadow-2xl print:shadow-none flex items-center">
+            {/* Abstract Fluid Background */}
+            <div className="absolute inset-0 pointer-events-none">
+                <svg viewBox="0 0 1000 1000" className="absolute -left-40 -top-40 w-[600px] h-[600px] opacity-20">
+                    <path fill="#1E3A8A" d="M444.5,231.4c100.3-43,205.8-23.7,287.5,41.4s139.7,169.1,141.4,271c1.7,101.9-53,201.8-135.2,263.7s-191.9,85.8-292,52.3s-190.7-124.4-209.7-226.3S270.3,313,344.2,274.4C418.1,235.8,444.5,231.4,444.5,231.4z" />
                 </svg>
-                <div className="absolute top-20 right-20 w-32 h-32 border-8 border-[#D4AF37] rounded-full opacity-30" />
+                <div className="absolute top-0 left-0 w-1/3 h-full bg-gradient-to-br from-blue-600/10 to-transparent skew-x-[-15deg] -translate-x-20" />
+
+                {/* Blue and Gold Waves like inspiration */}
+                <div className="absolute top-0 right-0 w-[400px] h-[400px]">
+                    <svg viewBox="0 0 200 200" className="w-full h-full text-blue-900 opacity-80">
+                        <path fill="currentColor" d="M40,-62.7C52.2,-54.5,62.5,-44.4,69.5,-32.4C76.4,-20.3,80.1,-6.4,78.2,7C76.3,20.4,68.8,33.3,58.8,44.1C48.8,54.8,36.4,63.4,22.6,67.8C8.9,72.2,-6.1,72.3,-20.5,68.2C-34.9,64.1,-48.7,55.8,-59.4,44.4C-70.1,33.1,-77.7,18.7,-79,3.7C-80.3,-11.3,-75.4,-26.8,-66.1,-39.8C-56.9,-52.8,-43.3,-63.3,-29.4,-70.2C-15.6,-77,1.4,-80.1,16.6,-77.5C31.9,-75,40,-62.7,40,-62.7Z" transform="translate(100 100)" />
+                    </svg>
+                    <div className="absolute top-20 right-20 w-32 h-32 border-8 border-[#D4AF37] rounded-full opacity-30" />
+                </div>
+            </div>
+
+            <div className="relative z-10 flex flex-col justify-between p-16 h-full items-start pl-40 w-full">
+                {config.honors.showInstitutionalHeader && <InstitutionalHeader school={data.school} customHeader={data.institutionalHeader} />}
+
+                <div className="space-y-2">
+                    <p className="text-[12px] font-black uppercase tracking-[0.5em] text-[#D4AF37]">{t.certExcellence}</p>
+                    <h1 className="text-7xl font-black uppercase tracking-tighter text-[#1E3A8A] leading-none">{t.honorsTitle.split(' ').join('<br/>')}</h1>
+                </div>
+
+                <div className="space-y-6 max-w-2xl">
+                    <p className="text-xl font-medium text-gray-500 italic">{t.awardedTo}</p>
+                    <h2 className="text-6xl font-black text-[#1E3A8A] border-b-4 border-[#D4AF37] pb-4 inline-block">{data.student.nomComplet}</h2>
+                    <p className="text-lg font-bold text-gray-400 uppercase tracking-widest mt-4">
+                        {t.forResults} <span className="text-black">{data.period.label}</span>
+                        <br/>{t.withAverage} <span className="text-accent text-2xl">{data.performance.average.toFixed(2)} / 20</span>
+                    </p>
+                </div>
+
+                <div className="w-full flex justify-between items-end">
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t.deliveredBy} {data.school.nomFr}</p>
+                        <p className="text-[9px] font-bold text-gray-300">{lang === 'FR' ? 'Année Scolaire' : lang === 'EN' ? 'Academic Year' : 'Año Escolar'} {data.year.libelle}</p>
+                    </div>
+
+                    {config.honors.showSeal && (
+                        <div className="w-32 h-32 relative flex items-center justify-center">
+                            <svg viewBox="0 0 100 100" className="w-full h-full text-[#D4AF37] drop-shadow-lg">
+                                <path fill="currentColor" d="M50 0 L58.8 31.2 L90.5 31.2 L64.8 50 L73.6 81.2 L50 62.4 L26.4 81.2 L35.2 50 L9.5 31.2 L41.2 31.2 Z" />
+                            </svg>
+                            <span className="absolute text-[10px] font-black text-white uppercase text-center leading-tight">{t.officialSeal.split(' ').join('<br/>')}</span>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
+    );
+};
 
-        <div className="relative z-10 flex flex-col justify-between p-16 h-full items-start pl-40 w-full">
-            {config.honors.showInstitutionalHeader && <InstitutionalHeader school={data.school} customHeader={data.institutionalHeader} />}
+const ClassicHonors: React.FC<{ data: BulletinData, config: any }> = ({ data, config }) => {
+    const lang = config?.language || 'FR';
+    const t = bulletinTranslations[lang] || bulletinTranslations.FR;
 
-            <div className="space-y-2">
-                <p className="text-[12px] font-black uppercase tracking-[0.5em] text-[#D4AF37]">Certification d'Excellence</p>
-                <h1 className="text-7xl font-black uppercase tracking-tighter text-[#1E3A8A] leading-none">Tableau<br/>d'Honneur</h1>
-            </div>
+    return (
+        <div className="landscape-page w-[297mm] h-[210mm] bg-[#FAF9F6] p-4 shadow-2xl print:shadow-none flex flex-col items-center justify-center">
+            <div className="w-full h-full border-[12px] border-double border-[#1E3A8A] p-10 flex flex-col items-center justify-between text-center relative overflow-hidden">
+                {config.honors.showInstitutionalHeader && <InstitutionalHeader school={data.school} customHeader={data.institutionalHeader} />}
 
-            <div className="space-y-6 max-w-2xl">
-                <p className="text-xl font-medium text-gray-500 italic">Décerné avec félicitations à</p>
-                <h2 className="text-6xl font-black text-[#1E3A8A] border-b-4 border-[#D4AF37] pb-4 inline-block">{data.student.nomComplet}</h2>
-                <p className="text-lg font-bold text-gray-400 uppercase tracking-widest mt-4">
-                    Pour ses résultats exceptionnels au cours du <span className="text-black">{data.period.label}</span>
-                    <br/>avec une moyenne générale de <span className="text-accent text-2xl">{data.performance.average.toFixed(2)} / 20</span>
+                {/* Ornaments in corners */}
+                <div className="absolute top-2 left-2 w-20 h-20 text-[#D4AF37] opacity-60">
+                    <svg viewBox="0 0 100 100" fill="currentColor"><path d="M0 0 L100 0 L0 100 Z" /></svg>
+                </div>
+                <div className="absolute top-2 right-2 w-20 h-20 text-[#D4AF37] opacity-60 rotate-90">
+                    <svg viewBox="0 0 100 100" fill="currentColor"><path d="M0 0 L100 0 L0 100 Z" /></svg>
+                </div>
+                <div className="absolute bottom-2 left-2 w-20 h-20 text-[#D4AF37] opacity-60 -rotate-90">
+                    <svg viewBox="0 0 100 100" fill="currentColor"><path d="M0 0 L100 0 L0 100 Z" /></svg>
+                </div>
+                <div className="absolute bottom-2 right-2 w-20 h-20 text-[#D4AF37] opacity-60 rotate-180">
+                    <svg viewBox="0 0 100 100" fill="currentColor"><path d="M0 0 L100 0 L0 100 Z" /></svg>
+                </div>
+
+                <div className="space-y-2">
+                    <p className="text-sm font-black uppercase tracking-[0.4em] text-gray-500">{data.school.nomFr}</p>
+                    <div className="h-px w-32 bg-[#D4AF37] mx-auto" />
+                </div>
+
+                <div className="space-y-4">
+                    <h1 className="text-6xl font-serif font-bold uppercase tracking-widest text-[#1E3A8A]">{t.honorsTitle}</h1>
+                    <p className="text-xl font-serif italic text-gray-600">{lang === 'FR' ? "Le conseil des professeurs de l'établissement décerne ce titre à" : lang === 'EN' ? "The school's teachers council awards this title to" : "El consejo de profesores del establecimiento otorga este título a"}</p>
+                </div>
+
+                <div className="space-y-2">
+                    <h2 className="text-7xl font-serif font-black text-black tracking-tight underline decoration-[#D4AF37] decoration-4 underline-offset-8">{data.student.nomComplet}</h2>
+                    <p className="text-xl font-bold uppercase tracking-widest text-gray-400 mt-4">{lang === 'FR' ? 'Élève en classe de' : lang === 'EN' ? 'Student in the class of' : 'Estudiante en la clase de'} <span className="text-black">{data.salle.nomSalle}</span></p>
+                </div>
+
+                <p className="text-lg font-serif italic max-w-3xl leading-relaxed">
+                    {lang === 'FR' ? `En reconnaissance de son assiduité et de ses excellents résultats académiques obtenus durant la période de` : lang === 'EN' ? `In recognition of their attendance and excellent academic results obtained during the period of` : `En reconocimiento a su asistencia y excelentes resultados académicos obtenidos durante el período de`} <span className="font-bold not-italic">{data.period.label}</span>,
+                    {lang === 'FR' ? `marquée par une moyenne générale de` : lang === 'EN' ? `marked by a cumulative average of` : `marcado por un promedio general de`} <span className="font-bold not-italic text-2xl">{data.performance.average.toFixed(2)} / 20</span>.
                 </p>
-            </div>
 
-            <div className="w-full flex justify-between items-end">
-                <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Délivré par {data.school.nomFr}</p>
-                    <p className="text-[9px] font-bold text-gray-300">Année Scolaire {data.year.libelle}</p>
+                <div className="w-full flex justify-between items-center px-20 mt-10">
+                    <div className="text-center">
+                        <div className="w-48 border-t border-gray-400 pt-2">
+                            <p className="text-[10px] font-black uppercase">{lang === 'FR' ? 'Le Titulaire' : lang === 'EN' ? 'Class Teacher' : 'El Tutor'}</p>
+                        </div>
+                    </div>
+
+                    {config.honors.showSeal && (
+                        <div className="w-24 h-24 rounded-full border-4 border-[#D4AF37] bg-white flex items-center justify-center shadow-lg transform rotate-[-15deg]">
+                             <ImageIcon size={40} className="text-[#D4AF37] opacity-20" />
+                             <span className="absolute text-[8px] font-black text-[#D4AF37] uppercase text-center">{t.officialSeal.split(' ').join('<br/>')}</span>
+                        </div>
+                    )}
+
+                    <div className="text-center">
+                        <div className="w-48 border-t border-gray-400 pt-2">
+                            <p className="text-[10px] font-black uppercase">{t.director}</p>
+                        </div>
+                    </div>
                 </div>
 
-                {config.honors.showSeal && (
-                    <div className="w-32 h-32 relative flex items-center justify-center">
-                        <svg viewBox="0 0 100 100" className="w-full h-full text-[#D4AF37] drop-shadow-lg">
-                            <path fill="currentColor" d="M50 0 L58.8 31.2 L90.5 31.2 L64.8 50 L73.6 81.2 L50 62.4 L26.4 81.2 L35.2 50 L9.5 31.2 L41.2 31.2 Z" />
-                        </svg>
-                        <span className="absolute text-[10px] font-black text-white uppercase text-center leading-tight">Sceau<br/>Officiel</span>
-                    </div>
-                )}
+                <p className="text-[8px] font-bold text-gray-300 uppercase tracking-widest">{lang === 'FR' ? 'Année Scolaire' : lang === 'EN' ? 'Academic Year' : 'Año Escolar'} {data.year.libelle}</p>
             </div>
         </div>
-    </div>
-);
-
-const ClassicHonors: React.FC<{ data: BulletinData, config: any }> = ({ data, config }) => (
-    <div className="landscape-page w-[297mm] h-[210mm] bg-[#FAF9F6] p-4 shadow-2xl print:shadow-none flex flex-col items-center justify-center">
-        <div className="w-full h-full border-[12px] border-double border-[#1E3A8A] p-10 flex flex-col items-center justify-between text-center relative overflow-hidden">
-            {config.honors.showInstitutionalHeader && <InstitutionalHeader school={data.school} customHeader={data.institutionalHeader} />}
-
-            {/* Ornaments in corners */}
-            <div className="absolute top-2 left-2 w-20 h-20 text-[#D4AF37] opacity-60">
-                <svg viewBox="0 0 100 100" fill="currentColor"><path d="M0 0 L100 0 L0 100 Z" /></svg>
-            </div>
-            <div className="absolute top-2 right-2 w-20 h-20 text-[#D4AF37] opacity-60 rotate-90">
-                <svg viewBox="0 0 100 100" fill="currentColor"><path d="M0 0 L100 0 L0 100 Z" /></svg>
-            </div>
-            <div className="absolute bottom-2 left-2 w-20 h-20 text-[#D4AF37] opacity-60 -rotate-90">
-                <svg viewBox="0 0 100 100" fill="currentColor"><path d="M0 0 L100 0 L0 100 Z" /></svg>
-            </div>
-            <div className="absolute bottom-2 right-2 w-20 h-20 text-[#D4AF37] opacity-60 rotate-180">
-                <svg viewBox="0 0 100 100" fill="currentColor"><path d="M0 0 L100 0 L0 100 Z" /></svg>
-            </div>
-
-            <div className="space-y-2">
-                <p className="text-sm font-black uppercase tracking-[0.4em] text-gray-500">{data.school.nomFr}</p>
-                <div className="h-px w-32 bg-[#D4AF37] mx-auto" />
-            </div>
-
-            <div className="space-y-4">
-                <h1 className="text-6xl font-serif font-bold uppercase tracking-widest text-[#1E3A8A]">Tableau d'Honneur</h1>
-                <p className="text-xl font-serif italic text-gray-600">Le conseil des professeurs de l'établissement décerne ce titre à</p>
-            </div>
-
-            <div className="space-y-2">
-                <h2 className="text-7xl font-serif font-black text-black tracking-tight underline decoration-[#D4AF37] decoration-4 underline-offset-8">{data.student.nomComplet}</h2>
-                <p className="text-xl font-bold uppercase tracking-widest text-gray-400 mt-4">Élève en classe de <span className="text-black">{data.salle.nomSalle}</span></p>
-            </div>
-
-            <p className="text-lg font-serif italic max-w-3xl leading-relaxed">
-                En reconnaissance de son assiduité et de ses excellents résultats académiques obtenus durant la période de <span className="font-bold not-italic">{data.period.label}</span>,
-                marquée par une moyenne générale de <span className="font-bold not-italic text-2xl">{data.performance.average.toFixed(2)} / 20</span>.
-            </p>
-
-            <div className="w-full flex justify-between items-center px-20 mt-10">
-                <div className="text-center">
-                    <div className="w-48 border-t border-gray-400 pt-2">
-                        <p className="text-[10px] font-black uppercase">Le Titulaire</p>
-                    </div>
-                </div>
-
-                {config.honors.showSeal && (
-                    <div className="w-24 h-24 rounded-full border-4 border-[#D4AF37] bg-white flex items-center justify-center shadow-lg transform rotate-[-15deg]">
-                         <ImageIcon size={40} className="text-[#D4AF37] opacity-20" />
-                         <span className="absolute text-[8px] font-black text-[#D4AF37] uppercase text-center">Sceau de<br/>L'école</span>
-                    </div>
-                )}
-
-                <div className="text-center">
-                    <div className="w-48 border-t border-gray-400 pt-2">
-                        <p className="text-[10px] font-black uppercase">Le Chef d'Établissement</p>
-                    </div>
-                </div>
-            </div>
-
-            <p className="text-[8px] font-bold text-gray-300 uppercase tracking-widest">Année Scolaire {data.year.libelle}</p>
-        </div>
-    </div>
-);
+    );
+};
 
 const PlayfulHonors: React.FC<{ data: BulletinData, config: any }> = ({ data, config }) => (
     <div className="landscape-page w-[297mm] h-[210mm] bg-white p-8 shadow-2xl print:shadow-none flex flex-col relative overflow-hidden">
