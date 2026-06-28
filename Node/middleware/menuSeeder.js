@@ -1,4 +1,4 @@
-const Menu = require("../models/Menu");
+const Menu = require("../models/menu");
 
 const MENUS = [
   { libelleMenu: "Tableau de bord établissement" },
