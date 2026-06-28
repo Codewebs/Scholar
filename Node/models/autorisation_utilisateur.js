@@ -2,7 +2,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../db");
 const Utilisateur = require("./Utilisateur");
-const Menu = require("./Menu");
+const Menu = require("./menu");
 const AnneeScolaire = require("./AnneeScolaire");
 
 const AutorisationUtilisateur = sequelize.define("AutorisationUtilisateur", {
