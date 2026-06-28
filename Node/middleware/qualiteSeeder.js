@@ -1,4 +1,4 @@
-const Qualite = require("../models/Qualite");
+const Qualite = require("../models/qualite");
 const QUALITES = require("../constants/qualites");
 
 async function seedQualites() {
