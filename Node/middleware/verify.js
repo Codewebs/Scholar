@@ -1,7 +1,7 @@
 // middleware/verify.js
 
 const AutorisationUtilisateur = require("../models/autorisation_utilisateur");
-const Menu = require("../models/Menu");
+const Menu = require("../models/menu");
 const AnneeScolaire = require("../models/AnneeScolaire");
 
 async function verifyAccess(menuNames, { logic = "AND" } = {}) {
