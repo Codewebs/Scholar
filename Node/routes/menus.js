@@ -6,7 +6,7 @@ const db = require("../db");
 const Menu = require('../models/menu');
 const AutorisationUtilisateur = require('../models/autorisation_utilisateur');
 const Qualite = require('../models/qualite');
-const Utilisateur = require('../models/utilisateur');
+const Utilisateur = require('../models/Utilisateur');
 const { verifyToken } = require("../middleware/auth");
 require("dotenv").config();
 
