@@ -427,7 +427,7 @@ exports.payerFraisExigibles = async (req, res) => {
 
         for (const tarif of tarifs) {
             if (resteAPayer <= 0) break;
-            const dejaPaye = await PaiementFraisExigible.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire, annule: 0 } }], where: { idTarifFraisExigible: tarif.idTarifFraisExigible }, transaction: t }) || 0;
+            const dejaPaye = await PaiementFraisExigible.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire, annule: 0 }, attributes: [] }], where: { idTarifFraisExigible: tarif.idTarifFraisExigible }, transaction: t }) || 0;
             const duSurCeFrais = tarif.montantFraisExigible - dejaPaye;
             if (duSurCeFrais > 0) {
                 const allocation = Math.min(resteAPayer, duSurCeFrais);
@@ -451,7 +451,7 @@ exports.getRecouvrementStats = async (req, res) => {
         const nbEleves = await Inscription.count({ where: { idAnneeScolaire, supprimer: false }, include: [{ model: Salle, where: { idClasse } }] });
         const stats = await Promise.all(tarifs.map(async (t) => {
             const totalAttendu = t.montantFraisExigible * nbEleves;
-            const totalEncaisse = await PaiementFraisExigible.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idAnneeScolaire, annule: 0 } }], where: { idTarifFraisExigible: t.idTarifFraisExigible } }) || 0;
+            const totalEncaisse = await PaiementFraisExigible.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idAnneeScolaire, annule: 0 }, attributes: [] }], where: { idTarifFraisExigible: t.idTarifFraisExigible } }) || 0;
             return { idTarif: t.idTarifFraisExigible, libelle: t.Frais.fraisFr, montantUnitaire: t.montantFraisExigible, attendu: totalAttendu, encaisse: totalEncaisse, pourcentage: totalAttendu > 0 ? (totalEncaisse / totalAttendu) : 0 };
         }));
         res.json({ nbEleves, stats });
@@ -469,7 +469,7 @@ exports.getStudentPaymentDetails = async (req, res) => {
         const idClasse = ins.Salle.Classe.idClasse;
         const tarifs = await TarifFraisExigible.findAll({ where: { idClasse, idAnneeScolaire, supprimer: false }, include: [{ model: FraisExigible, as: "Frais" }], order: [['ordrePaiement', 'ASC']] });
         const details = await Promise.all(tarifs.map(async (t) => {
-            const dejaPaye = await PaiementFraisExigible.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire, annule: 0 } }], where: { idTarifFraisExigible: t.idTarifFraisExigible } }) || 0;
+            const dejaPaye = await PaiementFraisExigible.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire, annule: 0 }, attributes: [] }], where: { idTarifFraisExigible: t.idTarifFraisExigible } }) || 0;
             return { idTarif: t.idTarifFraisExigible, libelle: t.Frais.fraisFr, montantDu: t.montantFraisExigible, montantPaye: dejaPaye, reste: t.montantFraisExigible - dejaPaye, isComplet: dejaPaye >= t.montantFraisExigible };
         }));
         const totalDejaVerse = details.reduce((sum, item) => sum + item.montantPaye, 0);
@@ -732,7 +732,7 @@ exports.getRecouvrementStatsInternal = async (idClasse, idAnneeScolaire, idSalle
     const nbEleves = await Inscription.count({ where: { idAnneeScolaire, idSalle, supprimer: false } });
     const totalUnitaire = await TarifFraisExigible.sum('montantFraisExigible', { where: { idClasse, idAnneeScolaire, supprimer: false } }) || 0;
     const totalAttendu = totalUnitaire * nbEleves;
-    const totalEncaisse = await PaiementFraisExigible.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idAnneeScolaire, annule: 0 }, include: [{ model: Eleve, include: [{ model: Inscription, where: { idSalle } }] }] }] }) || 0;
+    const totalEncaisse = await PaiementFraisExigible.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idAnneeScolaire, annule: 0 }, attributes: [], include: [{ model: Eleve, include: [{ model: Inscription, where: { idSalle } }] }] }] }) || 0;
     return { totalAttendu, totalEncaisse };
 };
 
@@ -747,7 +747,7 @@ exports.getInsolvablesList = async (req, res) => {
         const inscriptions = await Inscription.findAll({ where: whereIns, include: [{ model: Eleve }, { model: Salle, include: [{ model: Classe, as: 'Classe' }] }] });
         const result = [];
         for (const ins of inscriptions) {
-            const verse = await PaiementFraisExigible.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idEleve: ins.idEleve, idAnneeScolaire, annule: 0 } }], where: { idTarifFraisExigible: idTranche } }) || 0;
+            const verse = await PaiementFraisExigible.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idEleve: ins.idEleve, idAnneeScolaire, annule: 0 }, attributes: [] }], where: { idTarifFraisExigible: idTranche } }) || 0;
             const dette = tarif.montantFraisExigible - verse;
             if (dette > 0) { if (severity === 'TOTAL' && verse > 0) continue; result.push({ matricule: ins.Eleve.matricule, nomComplet: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(), classeSalle: `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}`, montantExigible: tarif.montantFraisExigible, montantVerse: verse, dette, tauxDefaillance: (dette / tarif.montantFraisExigible) * 100 }); }
         }
@@ -813,13 +813,13 @@ exports.payerFraisPeriscolaires = async (req, res) => {
         if (idTarifFraisActivitePeriscolaire) {
             const tarif = await TarifFraisPeriscolaire.findByPk(idTarifFraisActivitePeriscolaire, { transaction: t });
             if (!tarif) throw new Error("Tarif périscolaire introuvable.");
-            const dejaPaye = await PaiementFraisPeriscolaire.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire, annule: 0 } }], where: { idTarifFraisActivitePeriscolaire }, transaction: t }) || 0;
+            const dejaPaye = await PaiementFraisPeriscolaire.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire, annule: 0 }, attributes: [] }], where: { idTarifFraisActivitePeriscolaire }, transaction: t }) || 0;
             const duSurCeFrais = tarif.montantFraisActivitePeriscolaire - dejaPaye;
             const allocation = Math.min(resteAPayer, duSurCeFrais);
             if (allocation > 0) { await PaiementFraisPeriscolaire.create({ montantAlloue: allocation, idTarifFraisActivitePeriscolaire, idPaiementFraisGlobal: global.idPaiementFraisGlobal }, { transaction: t }); resteAPayer -= allocation; }
         } else {
             const tarifs = await TarifFraisPeriscolaire.findAll({ where: { idAnneeScolaire, supprimer: false }, order: [['createdAt', 'ASC']], transaction: t });
-            for (const tarif of tarifs) { if (resteAPayer <= 0) break; const dejaPaye = await PaiementFraisPeriscolaire.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire, annule: 0 } }], where: { idTarifFraisActivitePeriscolaire: tarif.idTarifFraisActivitePeriscolaire }, transaction: t }) || 0; const duSurCeFrais = tarif.montantFraisActivitePeriscolaire - dejaPaye; if (duSurCeFrais > 0) { const allocation = Math.min(resteAPayer, duSurCeFrais); await PaiementFraisPeriscolaire.create({ montantAlloue: allocation, idTarifFraisActivitePeriscolaire: tarif.idTarifFraisActivitePeriscolaire, idPaiementFraisGlobal: global.idPaiementFraisGlobal }, { transaction: t }); resteAPayer -= allocation; } }
+            for (const tarif of tarifs) { if (resteAPayer <= 0) break; const dejaPaye = await PaiementFraisPeriscolaire.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire, annule: 0 }, attributes: [] }], where: { idTarifFraisActivitePeriscolaire: tarif.idTarifFraisActivitePeriscolaire }, transaction: t }) || 0; const duSurCeFrais = tarif.montantFraisActivitePeriscolaire - dejaPaye; if (duSurCeFrais > 0) { const allocation = Math.min(resteAPayer, duSurCeFrais); await PaiementFraisPeriscolaire.create({ montantAlloue: allocation, idTarifFraisActivitePeriscolaire: tarif.idTarifFraisActivitePeriscolaire, idPaiementFraisGlobal: global.idPaiementFraisGlobal }, { transaction: t }); resteAPayer -= allocation; } }
         }
         await t.commit();
         res.status(201).json({ message: "Paiement périscolaire enregistré", idPaiement: global.idPaiementFraisGlobal, tropPercu: resteAPayer });
@@ -836,7 +836,7 @@ exports.getStudentPeriscolaireDetails = async (req, res) => {
         if (!ins) return res.status(404).json({ error: "Élève non trouvé." });
         const tarifs = await TarifFraisPeriscolaire.findAll({ where: { idAnneeScolaire, supprimer: false }, include: [{ model: FraisActivitePeriscolaire, as: "Frais" }], order: [['createdAt', 'ASC']] });
         const details = await Promise.all(tarifs.map(async (t) => {
-            const dejaPaye = await PaiementFraisPeriscolaire.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire, annule: 0 } }], where: { idTarifFraisActivitePeriscolaire: t.idTarifFraisActivitePeriscolaire } }) || 0;
+            const dejaPaye = await PaiementFraisPeriscolaire.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire, annule: 0 }, attributes: [] }], where: { idTarifFraisActivitePeriscolaire: t.idTarifFraisActivitePeriscolaire } }) || 0;
             return { idTarif: t.idTarifFraisPeriscolaire, libelle: t.Frais.libelleFr, montantDu: t.montantFraisActivitePeriscolaire, montantPaye: dejaPaye, reste: t.montantFraisActivitePeriscolaire - dejaPaye, isComplet: dejaPaye >= t.montantFraisActivitePeriscolaire };
         }));
         res.json({ nomComplet: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(), classeLabel: ins.Salle ? `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}` : "N/A", totalDejaVerse: details.reduce((sum, item) => sum + item.montantPaye, 0), totalTotalDu: details.reduce((sum, item) => sum + item.montantDu, 0), resteGlobal: details.reduce((sum, item) => sum + item.reste, 0), frais: details });

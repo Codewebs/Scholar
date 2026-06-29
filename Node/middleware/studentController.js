@@ -350,7 +350,8 @@ exports.getStudentsBySchoolYear = async (req, res) => {
                     where: { annule: false },
                     include: [{
                         model: PaiementFraisGlobal,
-                        where: { idEleve, idAnneeScolaire, annule: false }
+                        where: { idEleve, idAnneeScolaire, annule: false },
+                        attributes: []
                     }]
                 }) || 0;
 
@@ -363,14 +364,16 @@ exports.getStudentsBySchoolYear = async (req, res) => {
                     where: { annule: false },
                     include: [{
                         model: PaiementFraisGlobal,
-                        where: { idEleve, idAnneeScolaire, annule: false }
+                        where: { idEleve, idAnneeScolaire, annule: false },
+                        attributes: []
                     }]
                 }) > 0) ||
                 (await PaiementTransport.count({
                     where: { annule: false },
                     include: [{
                         model: PaiementFraisGlobal,
-                        where: { idEleve, idAnneeScolaire, annule: false }
+                        where: { idEleve, idAnneeScolaire, annule: false },
+                        attributes: []
                     }]
                 }) > 0);
 

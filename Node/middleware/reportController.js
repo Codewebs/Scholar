@@ -88,7 +88,8 @@ exports.getInsolventFees = async (req, res) => {
                 const totalPaye = await PaiementFraisExigible.sum('montantAlloue', {
                     include: [{
                         model: PaiementFraisGlobal,
-                        where: { idEleve: ins.idEleve, idAnneeScolaire, annule: false }
+                        where: { idEleve: ins.idEleve, idAnneeScolaire, annule: false },
+                        attributes: []
                     }],
                     where: { annule: false }
                 }) || 0;
@@ -201,12 +202,20 @@ exports.getGlobalFinancialStatus = async (req, res) => {
 
             const list = await Promise.all(inscriptions.map(async (ins) => {
                 const payeExigible = await PaiementFraisExigible.sum('montantAlloue', {
-                    include: [{ model: PaiementFraisGlobal, where: { idEleve: ins.idEleve, idAnneeScolaire, annule: false } }],
+                    include: [{
+                        model: PaiementFraisGlobal,
+                        where: { idEleve: ins.idEleve, idAnneeScolaire, annule: false },
+                        attributes: []
+                    }],
                     where: { annule: false }
                 }) || 0;
 
                 const payePeri = await PaiementFraisPeriscolaire.sum('montantAlloue', {
-                    include: [{ model: PaiementFraisGlobal, where: { idEleve: ins.idEleve, idAnneeScolaire, annule: false } }],
+                    include: [{
+                        model: PaiementFraisGlobal,
+                        where: { idEleve: ins.idEleve, idAnneeScolaire, annule: false },
+                        attributes: []
+                    }],
                     where: { annule: false }
                 }) || 0;
 
@@ -216,7 +225,11 @@ exports.getGlobalFinancialStatus = async (req, res) => {
                 });
                 const duTransport = transportInfo?.TarifTransport?.montantTransport || 0;
                 const payeTransport = await PaiementTransport.sum('montantVerse', {
-                    include: [{ model: PaiementFraisGlobal, where: { idEleve: ins.idEleve, idAnneeScolaire, annule: false } }],
+                    include: [{
+                        model: PaiementFraisGlobal,
+                        where: { idEleve: ins.idEleve, idAnneeScolaire, annule: false },
+                        attributes: []
+                    }],
                     where: { annule: false }
                 }) || 0;
 
@@ -349,7 +362,7 @@ exports.getFeesBilan = async (req, res) => {
                 for (const t of tarifs) {
                     const sum = await PaiementFraisExigible.sum('montantAlloue', {
                         where: { idTarifFraisExigible: t.idTarifFraisExigible, annule: false },
-                        include: [{ model: PaiementFraisGlobal, where: { idAnneeScolaire, annule: false } }]
+                        include: [{ model: PaiementFraisGlobal, where: { idAnneeScolaire, annule: false }, attributes: [] }]
                     }) || 0;
                     details.push({ label: t.Frais?.fraisFr, attendu: t.montantFraisExigible * nbEleves, paye: sum });
                     paye += sum;
@@ -364,7 +377,7 @@ exports.getFeesBilan = async (req, res) => {
                 for (const t of tarifs) {
                     const sum = await PaiementFraisPeriscolaire.sum('montantAlloue', {
                         where: { idTarifFraisActivitePeriscolaire: t.idTarifFraisActivitePeriscolaire, annule: false },
-                        include: [{ model: PaiementFraisGlobal, where: { idAnneeScolaire, annule: false } }]
+                        include: [{ model: PaiementFraisGlobal, where: { idAnneeScolaire, annule: false }, attributes: [] }]
                     }) || 0;
                     // On pourrait aussi compter les abonnés réels si table d'association
                     details.push({ label: t.Frais?.libelleFr, paye: sum });
@@ -375,6 +388,7 @@ exports.getFeesBilan = async (req, res) => {
                     include: [{
                         model: PaiementFraisGlobal,
                         where: { idAnneeScolaire, annule: false },
+                        attributes: [],
                         include: [{ model: Eleve, include: [{ model: Inscription, where: { idSalle: salle.idSalle } }] }]
                     }],
                     where: { annule: false }
