@@ -22,6 +22,8 @@ const sequelize = new Sequelize(
 
 const initDatabase = async () => {
   try {
+  console.log(`📡 Tentative de connexion à la base de données sur ${process.env.DB_HOST || "localhost"}...`);
+      
     await sequelize.authenticate();
     console.log("✅ Connexion à la base de données réussie.");
 
