@@ -109,6 +109,7 @@ const BulletinConfigPage: React.FC = () => {
   });
 
   const [classes, setClasses] = useState<any[]>([]);
+  const [cycles, setCycles] = useState<any[]>([]);
   const [periods, setPeriods] = useState<any[]>([]);
   const [filteredSequences, setFilteredSequences] = useState<any[]>([]);
   const [schoolData, setSchoolData] = useState<any>(null);
@@ -163,6 +164,7 @@ const BulletinConfigPage: React.FC = () => {
   useEffect(() => {
     if (yearId) {
         api.get(`/pedagogy/periodes/annee/${yearId}`).then(res => setPeriods(res.data));
+        api.get(`/academic-structure/cycles/annee/${yearId}`).then(res => setCycles(res.data)).catch(() => {});
         api.get(`/salles/classes/stats/${yearId}`).then(res => {
             console.log("📊 Données Classes/Salles reçues:", res.data);
             setClasses(res.data);
@@ -215,6 +217,25 @@ const BulletinConfigPage: React.FC = () => {
     setOpenAccordions(prev =>
       prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
     );
+  };
+
+  const getSelectedLabel = () => {
+    if (!config.selectedId) return null;
+    if (config.selectedPerimeter === 'SALLE') {
+        const foundClass = classes.find(c => (c.salles || c.Salles || []).some((s: any) => s.idSalle === config.selectedId));
+        const foundSalle = foundClass ? (foundClass.salles || foundClass.Salles || []).find((s: any) => s.idSalle === config.selectedId) : null;
+        const className = foundClass ? (foundClass.nomClasse || foundClass.libelleClasseFr) : '';
+        return foundClass && foundSalle ? `${className} ${foundSalle.nomSalle}` : `ID: ${config.selectedId}`;
+    }
+    if (config.selectedPerimeter === 'CLASSE') {
+        const foundClass = classes.find(c => c.idClasse === config.selectedId);
+        return foundClass ? (foundClass.nomClasse || foundClass.libelleClasseFr) : `ID: ${config.selectedId}`;
+    }
+    if (config.selectedPerimeter === 'CYCLE') {
+        const foundCycle = cycles.find(cy => cy.idCycle === config.selectedId);
+        return foundCycle ? foundCycle.libelleCycleFr : `ID: ${config.selectedId}`;
+    }
+    return null;
   };
 
   const templates: BulletinTemplate[] = [
@@ -322,6 +343,37 @@ const BulletinConfigPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* Main Config Area */}
           <div className="lg:col-span-7 space-y-6">
+            {/* Mandatory Instructions Banner */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
+                <div className={clsx(
+                    "p-4 rounded-[20px] border-2 transition-all flex flex-col gap-1",
+                    yearId ? "bg-green-50 border-green-100" : "bg-red-50 border-red-100 animate-pulse"
+                )}>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Étape 1</span>
+                    <p className={clsx("text-[10px] font-black uppercase", yearId ? "text-green-600" : "text-red-600")}>
+                        {yearId ? "✓ Année Sélectionnée" : "⚠ Choisir l'Année Scolaire"}
+                    </p>
+                </div>
+                <div className={clsx(
+                    "p-4 rounded-[20px] border-2 transition-all flex flex-col gap-1",
+                    config.selectedId ? "bg-green-50 border-green-100" : "bg-blue-50 border-blue-100"
+                )}>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Étape 2</span>
+                    <p className={clsx("text-[10px] font-black uppercase", config.selectedId ? "text-green-600" : "text-blue-600")}>
+                        {config.selectedId ? `✓ ${config.selectedPerimeter} OK` : "⚠ Choisir un Périmètre"}
+                    </p>
+                </div>
+                <div className={clsx(
+                    "p-4 rounded-[20px] border-2 transition-all flex flex-col gap-1",
+                    (config.periodType === 'ANNUAL' || config.selectedPeriodId) ? "bg-green-50 border-green-100" : "bg-purple-50 border-purple-100"
+                )}>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Étape 3</span>
+                    <p className={clsx("text-[10px] font-black uppercase", (config.periodType === 'ANNUAL' || config.selectedPeriodId) ? "text-green-600" : "text-purple-600")}>
+                        {(config.periodType === 'ANNUAL' || config.selectedPeriodId) ? "✓ Période OK" : "⚠ Choisir la Période"}
+                    </p>
+                </div>
+            </div>
+
             <div className="bg-white rounded-[40px] shadow-sm border border-gray-50 overflow-hidden">
               {/* Accordion A: Périmètre */}
               <AccordionHeader
@@ -379,13 +431,13 @@ const BulletinConfigPage: React.FC = () => {
                                     setShowPerimeterSheet(true);
                                 }}
                                 className={clsx(
-                                    "flex-1 p-4 rounded-2xl border-2 text-[10px] font-black uppercase transition-all flex flex-col items-center gap-2",
+                                    "flex-1 p-4 rounded-2xl border-2 text-[10px] font-black uppercase transition-all flex flex-col items-center gap-2 text-center",
                                     config.selectedPerimeter === p ? "border-black bg-black text-white" : "border-gray-100 bg-white text-gray-400"
                                 )}
                             >
                                 <span>{p}</span>
                                 {config.selectedPerimeter === p && config.selectedId && (
-                                    <span className="text-[8px] opacity-60">ID: {config.selectedId}</span>
+                                    <span className="text-[8px] opacity-80 font-bold leading-tight line-clamp-1">{getSelectedLabel()}</span>
                                 )}
                             </button>
                         ))}
@@ -849,7 +901,7 @@ const BulletinConfigPage: React.FC = () => {
                                         config.selectedId === s.idSalle ? "border-black bg-black text-white" : "border-gray-100 bg-white hover:border-gray-300"
                                     )}
                                 >
-                                    <p className="text-[10px] font-black uppercase tracking-tight">{c.libelleClasseFr} {s.nomSalle}</p>
+                                    <p className="text-[10px] font-black uppercase tracking-tight">{(c.nomClasse || c.libelleClasseFr)} {s.nomSalle}</p>
                                     <p className={clsx("text-[8px] mt-1 uppercase font-bold tracking-widest", config.selectedId === s.idSalle ? "text-white/50" : "text-gray-400")}>
                                         Effectif: {s.effectif || 0} Élèves
                                     </p>
@@ -872,9 +924,32 @@ const BulletinConfigPage: React.FC = () => {
                                         config.selectedId === c.idClasse ? "border-black bg-black text-white" : "border-gray-100 bg-white hover:border-gray-300"
                                     )}
                                 >
-                                    <p className="text-[10px] font-black uppercase tracking-tight">{c.libelleClasseFr}</p>
+                                    <p className="text-[10px] font-black uppercase tracking-tight">{c.nomClasse || c.libelleClasseFr}</p>
                                     <p className={clsx("text-[8px] mt-1 uppercase font-bold tracking-widest", config.selectedId === c.idClasse ? "text-white/50" : "text-gray-400")}>
                                         Total: {(c.salles || c.Salles || []).length} Salles
+                                    </p>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {config.selectedPerimeter === 'CYCLE' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {cycles.map(cy => (
+                                <button
+                                    key={cy.idCycle}
+                                    onClick={() => {
+                                        setConfig({...config, selectedId: cy.idCycle});
+                                        setShowPerimeterSheet(false);
+                                    }}
+                                    className={clsx(
+                                        "p-5 rounded-2xl border-2 text-left transition-all",
+                                        config.selectedId === cy.idCycle ? "border-black bg-black text-white" : "border-gray-100 bg-white hover:border-gray-300"
+                                    )}
+                                >
+                                    <p className="text-[10px] font-black uppercase tracking-tight">{cy.libelleCycleFr}</p>
+                                    <p className={clsx("text-[8px] mt-1 uppercase font-bold tracking-widest", config.selectedId === cy.idCycle ? "text-white/50" : "text-gray-400")}>
+                                        ID: {cy.idCycle}
                                     </p>
                                 </button>
                             ))}
