@@ -2,8 +2,20 @@ const { Sequelize } = require("sequelize");
 const path = require("path");
 const dotenv = require("dotenv");
 
-// Charger le .env depuis le répertoire web (car Node/.env est ignoré par Git)
-dotenv.config({ path: path.join(__dirname, "..", "web", ".env") });
+const envPath = path.join(__dirname, "..", "web", ".env");
+const result = dotenv.config({ path: envPath });
+
+console.log("🔍 [DB Debug] Chemin .env :", envPath);
+if (result.error) {
+  console.error("❌ [DB Debug] Erreur chargement .env :", result.error.message);
+} else {
+  console.log("✅ [DB Debug] .env chargé avec succès.");
+}
+
+console.log("📊 [DB Debug] Configuration cible :");
+console.log("   - HOST :", process.env.DB_HOST || "localhost (DEFAULT)");
+console.log("   - DB   :", process.env.DB_NAME || "scholar_db (DEFAULT)");
+console.log("   - USER :", process.env.DB_USER || "root (DEFAULT)");
 
 const sequelize = new Sequelize(
   process.env.DB_NAME || "scholar_db",
