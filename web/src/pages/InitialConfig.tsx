@@ -256,9 +256,9 @@ const InitialConfig: React.FC = () => {
             <div className="grid grid-cols-1 gap-4">
               <div
                 onClick={() => { setIsCreatingSchool(true); setStep(SetupStep.SELECT_LANGUAGE); }}
-                className="card p-6 cursor-pointer hover:border-black group transition-all"
+                className="bg-white p-6 cursor-pointer border-2 border-blue-50 hover:border-blue-500 shadow-sm hover:shadow-blue-100 hover:shadow-xl group transition-all rounded-[24px]"
               >
-                <div className="w-12 h-12 bg-gray-50 rounded-sharp flex items-center justify-center mb-4 group-hover:bg-black group-hover:text-white transition-colors">
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-sharp flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors shadow-inner">
                   <Plus size={24} />
                 </div>
                 <h3 className="font-black text-black uppercase text-sm tracking-tight">Créer un établissement</h3>
@@ -267,9 +267,9 @@ const InitialConfig: React.FC = () => {
 
               <div
                 onClick={() => { setSelectedProfile('ENSEIGNANT'); setStep(SetupStep.SELECT_LANGUAGE); }}
-                className="card p-6 cursor-pointer hover:border-black group transition-all"
+                className="bg-white p-6 cursor-pointer border-2 border-purple-50 hover:border-purple-500 shadow-sm hover:shadow-purple-100 hover:shadow-xl group transition-all rounded-[24px]"
               >
-                <div className="w-12 h-12 bg-gray-50 rounded-sharp flex items-center justify-center mb-4 group-hover:bg-black group-hover:text-white transition-colors">
+                <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-sharp flex items-center justify-center mb-4 group-hover:bg-purple-600 group-hover:text-white transition-colors shadow-inner">
                   <Users size={24} />
                 </div>
                 <h3 className="font-black text-black uppercase text-sm tracking-tight">Rejoindre le personnel</h3>
@@ -278,9 +278,9 @@ const InitialConfig: React.FC = () => {
 
               <div
                 onClick={() => { setSelectedProfile('ELEVE'); setStep(SetupStep.SELECT_LANGUAGE); }}
-                className="card p-6 cursor-pointer hover:border-black group transition-all"
+                className="bg-white p-6 cursor-pointer border-2 border-orange-50 hover:border-orange-500 shadow-sm hover:shadow-orange-100 hover:shadow-xl group transition-all rounded-[24px]"
               >
-                <div className="w-12 h-12 bg-gray-50 rounded-sharp flex items-center justify-center mb-4 group-hover:bg-black group-hover:text-white transition-colors">
+                <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-sharp flex items-center justify-center mb-4 group-hover:bg-orange-600 group-hover:text-white transition-colors shadow-inner">
                   <GraduationCap size={24} />
                 </div>
                 <h3 className="font-black text-black uppercase text-sm tracking-tight">Accès Élève / Parent</h3>
@@ -346,7 +346,7 @@ const InitialConfig: React.FC = () => {
               onChange={(e) => handleSearchSchools(e.target.value)}
             />
 
-            <div className="space-y-6 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-6 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar p-1">
               {/* 1. Show existing associations (Recrutements ou demandes) */}
               {associations.length > 0 && schools.length === 0 && (
                 <div className="space-y-3">
@@ -362,8 +362,10 @@ const InitialConfig: React.FC = () => {
                         key={`assoc-${sId}-${index}`}
                         onClick={() => handleSelectSchool(school)}
                         className={clsx(
-                          "p-5 border-2 rounded-soft cursor-pointer transition-all flex items-center justify-between",
-                          selectedSId === sId ? "border-black bg-gray-50 shadow-md" : "border-gray-100 hover:border-gray-200 bg-white"
+                          "p-5 border-2 rounded-[20px] cursor-pointer transition-all flex items-center justify-between",
+                          selectedSId === sId
+                            ? "border-accent bg-accent/5 shadow-xl shadow-accent/10 -translate-y-1"
+                            : "border-gray-100 bg-white shadow-sm hover:border-accent/30 hover:shadow-md"
                         )}
                       >
                         <div>
@@ -403,8 +405,10 @@ const InitialConfig: React.FC = () => {
                         key={`search-${sId}-${index}`}
                         onClick={() => handleSelectSchool(school)}
                         className={clsx(
-                          "p-5 border-2 rounded-soft cursor-pointer transition-all flex items-center justify-between",
-                          selectedSId === sId ? "border-black bg-gray-50 shadow-md" : "border-gray-100 hover:border-gray-200 bg-white"
+                          "p-5 border-2 rounded-[20px] cursor-pointer transition-all flex items-center justify-between",
+                          selectedSId === sId
+                            ? "border-accent bg-accent/5 shadow-xl shadow-accent/10 -translate-y-1"
+                            : "border-gray-100 bg-white shadow-sm hover:border-accent/30 hover:shadow-md"
                         )}
                       >
                         <div>
@@ -470,8 +474,10 @@ const InitialConfig: React.FC = () => {
                   key={profile}
                   onClick={() => setSelectedProfile(profile)}
                   className={clsx(
-                    "p-5 border-2 rounded-soft cursor-pointer transition-all flex items-center justify-between",
-                    selectedProfile === profile ? "border-black bg-gray-50 shadow-lg" : "border-gray-100 hover:border-gray-200"
+                    "p-5 border-2 rounded-[20px] cursor-pointer transition-all flex items-center justify-between",
+                    selectedProfile === profile
+                        ? "border-accent bg-accent/5 shadow-xl shadow-accent/10 -translate-y-1"
+                        : "border-gray-100 bg-white shadow-sm hover:border-accent/30 hover:shadow-md"
                   )}
                 >
                    <div className="flex items-center space-x-4">
@@ -515,7 +521,7 @@ const InitialConfig: React.FC = () => {
              </div>
 
              {isCreatingYear ? (
-               <div className="space-y-6 animate-in slide-in-from-top-2 duration-300 card p-8 border-2 border-black relative overflow-hidden">
+               <div className="space-y-6 animate-in slide-in-from-top-2 duration-300 bg-white p-8 border-2 border-black rounded-[32px] shadow-2xl relative overflow-hidden">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="font-black uppercase text-xs tracking-widest text-secondary">Nouvelle Année</h3>
                     <button onClick={() => setIsCreatingYear(false)} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><X size={18}/></button>
@@ -531,9 +537,9 @@ const InitialConfig: React.FC = () => {
                </div>
              ) : (
                <div className="space-y-3">
-                 <div className="p-8 border-2 border-dashed border-gray-100 rounded-[24px] min-h-[200px] flex flex-col items-center justify-center bg-gray-50/30">
+                 <div className="p-4 border-2 border-dashed border-gray-100 rounded-[32px] min-h-[200px] flex flex-col items-center justify-center bg-gray-50/20">
                    {activeYears.length > 0 ? (
-                     <div className="w-full space-y-3">
+                     <div className="w-full space-y-3 p-2">
                         {activeYears.map((year, index) => {
                           const yId = year.idServeur || year.idAnneeScolaire;
                           const tempYId = tempSelectedYear?.idServeur || tempSelectedYear?.idAnneeScolaire;
@@ -542,8 +548,10 @@ const InitialConfig: React.FC = () => {
                               key={`${yId}-${index}`}
                               onClick={() => setTempSelectedYear(year)}
                               className={clsx(
-                                "p-5 border-2 rounded-soft cursor-pointer transition-all flex items-center justify-between",
-                                tempYId === yId ? "border-black bg-white shadow-xl translate-y-[-2px]" : "border-transparent bg-white hover:border-gray-200"
+                                "p-5 border-2 rounded-[20px] cursor-pointer transition-all flex items-center justify-between",
+                                tempYId === yId
+                                    ? "border-accent bg-accent/5 shadow-xl shadow-accent/10 -translate-y-1"
+                                    : "border-gray-100 bg-white shadow-sm hover:border-accent/30"
                               )}
                             >
                               <div className="flex items-center space-x-4">
