@@ -10,7 +10,8 @@ const seedEducationProfiles = require("./middleware/educationProfilesSeeder");
 const seedQualites = require("./middleware/qualiteSeeder");
 const seedSpecialities = require("./middleware/specialitySeeder");
 
-dotenv.config();
+const path = require("path");
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 // Middlewares
 app.use(cors());

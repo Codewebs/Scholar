@@ -1,6 +1,9 @@
 const { Sequelize } = require("sequelize");
+const path = require("path");
 const dotenv = require("dotenv");
-dotenv.config();
+
+// Charger le .env depuis le répertoire de ce fichier
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 const sequelize = new Sequelize(
   process.env.DB_NAME || "scholar_db",
@@ -23,7 +26,7 @@ const sequelize = new Sequelize(
 const initDatabase = async () => {
   try {
   console.log(`📡 Tentative de connexion à la base de données sur ${process.env.DB_HOST || "localhost"}...`);
-      
+
     await sequelize.authenticate();
     console.log("✅ Connexion à la base de données réussie.");
 
