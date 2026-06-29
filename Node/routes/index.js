@@ -31,6 +31,11 @@ app.use((req, res, next) => {
     next();
 });
 
+// Endpoint de santé pour Uptimerobot (Public)
+app.get("/health", (req, res) => {
+    res.status(200).json({ status: "ok", message: "Server is awake" });
+});
+
 // Placer les routes spécifiques AVANT les routes génériques ou montées sur "/"
 app.use("/annee", anneeRoutes);
 app.use("/etablissement", etablissementRoutes);
