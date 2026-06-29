@@ -548,14 +548,21 @@ exports.getRegistrationReceiptData = async (req, res) => {
 
         const tarifsExigibles = await TarifFraisExigible.findAll({ where: { idClasse, idAnneeScolaire, supprimer: false }, include: [{ model: FraisExigible, as: "Frais" }], order: [['ordrePaiement', 'ASC']] });
         const fullHistory = await Promise.all(tarifsExigibles.map(async (t, index) => {
-            const dejaPaye = await PaiementFraisExigible.sum('montantAlloue', { where: { idTarifFraisExigible: t.idTarifFraisExigible, annule: 0 }, include: [{ model: PaiementFraisGlobal, where: { idEleve, idAnneeScolaire, annule: 0 } }] }) || 0;
+            const dejaPaye = await PaiementFraisExigible.sum('montantAlloue', {
+                where: { idTarifFraisExigible: t.idTarifFraisExigible, annule: 0 },
+                include: [{
+                    model: PaiementFraisGlobal,
+                    where: { idEleve, idAnneeScolaire, annule: 0 },
+                    attributes: []
+                }]
+            }) || 0;
             return { ordre: index + 1, libelle: t.Frais?.fraisFr || "Inconnu", montantTotal: t.montantFraisExigible, augmentation: 0, reduction: 0, dejaPaye: dejaPaye, reste: t.montantFraisExigible - dejaPaye };
         }));
         const totalDejaVerse = fullHistory.reduce((sum, h) => sum + h.dejaPaye, 0);
         const totalTotalDu = fullHistory.reduce((sum, h) => sum + h.montantTotal, 0);
         res.json({ schoolInfo: { name: school?.nomFr || "INSTITUT BILINGUE ROGER AMPERE", devise: school?.devise || "Discipline - Travail - Succès", ministry: school?.tutelle || "Ministère des Enseignements Secondaires", address: school?.adresse, bp: school?.bp, phones: school?.telephone1?.toString(), email: school?.email, authorizationNo: school?.numeroAgrement, logoUrl: school?.logo }, receiptInfo: { title: "REÇU DE PAIEMENT", receiptNo: `FS-${lastPayment.idPaiementFraisGlobal}`, schoolYear: ins.AnneeScolaire.libelleAnneeScolaire, dateTime: lastPayment.createdAt, operationTime: lastPayment.createdAt }, studentInfo: { matricule: ins.Eleve.matricule, fullName: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(), classLabel: `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}`, dateNaissance: ins.Eleve.dateNaissance, lieuNaissance: ins.Eleve.lieuNaissance, sexe: ins.Eleve.sexe === 'M' ? 'MASCULIN' : 'FEMININ', redoublant: ins.nouveau ? 'NON' : 'OUI' }, financialDetail: { nature: "Paiement frais de scolarité", amountDigits: lastPayment.montantTotal, amountWords: "...", paymentMode: lastPayment.modePaiement, balance: totalDejaVerse, remaining: totalTotalDu - totalDejaVerse, penalties: 0, printedBy: lastPayment.Caissier?.nom || "ADMINISTRATEUR", todayBreakdown, fullHistory }, validation: { cashierName: lastPayment.Caissier?.nom || "La Caisse", qrContent: `REF:${lastPayment.idPaiementFraisGlobal}-EL:${idEleve}` } });
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
+        console.error("Error in getRegistrationReceiptData:", error);
         res.status(500).json({ error: error.message });
     }
 };
