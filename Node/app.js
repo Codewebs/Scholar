@@ -11,7 +11,7 @@ const seedQualites = require("./middleware/qualiteSeeder");
 const seedSpecialities = require("./middleware/specialitySeeder");
 
 const path = require("path");
-dotenv.config({ path: path.join(__dirname, ".env") });
+dotenv.config({ path: path.join(__dirname, "..", "web", ".env") });
 
 // Middlewares
 app.use(cors());

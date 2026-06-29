@@ -7,7 +7,8 @@ const { Utilisateur, Qualite, Specialite, sequelize } = require('../models');
 const { verifyToken } = require("../middleware/auth");
 const { Op } = require("sequelize");
 
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", "..", "web", ".env") });
 
 // 🔹 Profil utilisateur actuel
 router.get("/me", verifyToken, async (req, res) => {

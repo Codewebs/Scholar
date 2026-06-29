@@ -2,8 +2,8 @@ const { Sequelize } = require("sequelize");
 const path = require("path");
 const dotenv = require("dotenv");
 
-// Charger le .env depuis le répertoire de ce fichier
-dotenv.config({ path: path.join(__dirname, ".env") });
+// Charger le .env depuis le répertoire web (car Node/.env est ignoré par Git)
+dotenv.config({ path: path.join(__dirname, "..", "web", ".env") });
 
 const sequelize = new Sequelize(
   process.env.DB_NAME || "scholar_db",
