@@ -158,7 +158,7 @@ const GradeManagementPage: React.FC = () => {
                 setSelectedSalle(normalized[0]);
             }
         } catch (error) {
-            console.error('Erreur chargement salles:', error);
+            console.error('Error loading rooms:', error);
         } finally {
             setLoading(false);
         }
@@ -182,7 +182,7 @@ const GradeManagementPage: React.FC = () => {
                 setSelectedSequence(normalizedSequences[0]);
             }
         } catch (error) {
-            console.error('Erreur chargement séquences:', error);
+            console.error('Error loading sequences:', error);
             setSequences([]);
         } finally {
             setLoading(false);
@@ -216,7 +216,7 @@ const GradeManagementPage: React.FC = () => {
                 setSelectedMatiere(normalizedMatieres[0]);
             }
         } catch (error) {
-            console.error('Erreur chargement matières:', error);
+            console.error('Error loading subjects:', error);
             setMatieres([]);
         } finally {
             setLoading(false);
@@ -243,7 +243,7 @@ const GradeManagementPage: React.FC = () => {
                 setSelectedEleve(normalizedEleves[0]);
             }
         } catch (error) {
-            console.error('Erreur chargement élèves:', error);
+            console.error('Error loading students:', error);
             setEleves([]);
         } finally {
             setLoading(false);
@@ -261,7 +261,7 @@ const GradeManagementPage: React.FC = () => {
                 sequenceId: selectedSequence.idSousPeriode
             }).then(res => {
                 console.clear();
-                console.log(`🪜 [Escalier] 1. Compétences liées à la matière "${selectedMatiere.libelle}" dans la salle "${selectedSalle.nomSalle}":`, res.data);
+                console.log(`🪜 [Steps] 1. Competencies linked to subject "${selectedMatiere.libelle}" in room "${selectedSalle.nomSalle}":`, res.data);
                 setCompetences(res.data);
             });
         }
@@ -326,7 +326,7 @@ const GradeManagementPage: React.FC = () => {
                 return updated;
             });
         } catch (error) {
-            console.error('❌ [Progress Error] Erreur chargement données:', error);
+            console.error('❌ [Progress Error] Error loading data:', error);
         }
     };
 
@@ -363,7 +363,7 @@ const GradeManagementPage: React.FC = () => {
     useEffect(() => {
         if (sequences.length > 0 && sequences.every(s => s.isComplete) && selectedSalle) {
             setSalles(prev => prev.map(s =>
-                s.idSalle === salle.idSalle ? { ...s, isComplete: true } : s
+                s.idSalle === selectedSalle.idSalle ? { ...s, isComplete: true } : s
             ));
         }
     }, [sequences, selectedSalle]);
@@ -390,7 +390,7 @@ const GradeManagementPage: React.FC = () => {
 
                 if (student.idInscription === eleve.idInscription) {
                     startIndex = allItems.length;
-                    console.log(`🪜 [Escalier] 2. Tuples de notes pour l'élève "${student.nomEleve}" (Séquence: ${selectedSequence?.nomSequence}, Matière: ${selectedMatiere?.libelle}):`, studentNotes);
+                    console.log(`🪜 [Steps] 2. Grade tuples for student "${student.nomEleve}" (Sequence: ${selectedSequence?.nomSequence}, Subject: ${selectedMatiere?.libelle}):`, studentNotes);
                 }
 
                 if (competences.length === 0) {
@@ -476,10 +476,10 @@ const GradeManagementPage: React.FC = () => {
     };
 
     const menuItems = [
-        { id: 'matiere', label: t('grades.views.subject'), icon: BookOpen, desc: 'Saisie groupée pour une classe' },
-        { id: 'eleve', label: t('grades.views.student'), icon: User, desc: 'Toutes les notes d\'un étudiant' },
-        { id: 'absences', label: t('grades.views.absences'), icon: Clock, desc: 'Suivi de présence & retards' },
-        { id: 'pv', label: t('grades.views.pv'), icon: FileText, desc: 'Rapports et délibérations' },
+        { id: 'matiere', label: t('grades.views.subject'), icon: BookOpen, desc: 'Group entry for a class' },
+        { id: 'eleve', label: t('grades.views.student'), icon: User, desc: 'All grades of a student' },
+        { id: 'absences', label: t('grades.views.absences'), icon: Clock, desc: 'Attendance & delays tracking' },
+        { id: 'pv', label: t('grades.views.pv'), icon: FileText, desc: 'Reports and deliberations' },
         { id: 'config', label: t('grades.views.config'), icon: Layers, desc: 'Configuration' }
     ];
 
@@ -519,8 +519,8 @@ const GradeManagementPage: React.FC = () => {
                 <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center text-red-500 shadow-inner">
                     <Zap size={40} />
                 </div>
-                <h2 className="text-2xl font-black uppercase tracking-tighter text-black">Accès Interdit</h2>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Ce module est réservé au personnel pédagogique</p>
+                <h2 className="text-2xl font-black uppercase tracking-tighter text-black">Access Denied</h2>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">This module is reserved for pedagogical personnel</p>
                 <button
                     onClick={() => window.history.back()}
                     className="mt-8 px-10 py-4 bg-black text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 transition-all"
@@ -583,7 +583,7 @@ const GradeManagementPage: React.FC = () => {
                                 <button
                                     onClick={() => setSalleSort(prev => ({ field: 'COUNT', order: prev.order === 'ASC' ? 'DESC' : 'ASC' }))}
                                     className="p-1 hover:bg-gray-100 rounded text-gray-400"
-                                    title="Trier par effectif"
+                                    title="Sort by head count"
                                 >
                                     <Users size={10} />
                                 </button>
