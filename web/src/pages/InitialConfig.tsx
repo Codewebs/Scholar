@@ -23,10 +23,12 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import ServerConfigModal from '../components/ServerConfigModal';
+import { useTranslation } from 'react-i18next';
 
 enum SetupStep { LANDING, SELECT_LANGUAGE, WELCOME, SELECT_SCHOOL, SELECT_PROFILE, SELECT_YEAR, SECURITY_PIN }
 
 const InitialConfig: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user, isAuthenticated, isInitialized, updateUser } = useAuth();
   const { years, fetchYears, selectYear, createYear } = useSchoolYear();
@@ -37,7 +39,9 @@ const InitialConfig: React.FC = () => {
 
   // Data State
   const [associations, setAssociations] = useState<UserAssociation[]>([]);
-  const [language, setLanguage] = useState<'Français' | 'English'>('Français');
+  const [language, setLanguage] = useState<'Français' | 'English'>(
+    i18n.language.startsWith('fr') ? 'Français' : 'English'
+  );
   const [schools, setSchools] = useState<School[]>([]);
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<string | null>('ENSEIGNANT');
@@ -92,7 +96,7 @@ const InitialConfig: React.FC = () => {
       const res = await setupService.searchSchools(query);
       setSchools(res.data);
     } catch (err) {
-      setError("Erreur lors de la recherche");
+      setError(t('common.error'));
     }
   };
 
@@ -123,9 +127,9 @@ const InitialConfig: React.FC = () => {
 
   const getBreadcrumbs = () => {
     const steps = [
-        { label: 'École', val: selectedSchool?.nomFr },
-        { label: 'Profil', val: selectedProfile },
-        { label: 'Année', val: tempSelectedYear?.libelleAnneeScolaire }
+        { label: t('setup.breadcrumbs.school'), val: selectedSchool?.nomFr },
+        { label: t('setup.breadcrumbs.profile'), val: selectedProfile },
+        { label: t('setup.breadcrumbs.year'), val: tempSelectedYear?.libelleAnneeScolaire }
     ].filter(s => s.val);
     return steps;
   };
@@ -149,7 +153,7 @@ const InitialConfig: React.FC = () => {
           setStep(SetupStep.SELECT_YEAR);
         }
       } else if (assoc?.etat === 'EN_ATTENTE') {
-        setError("Votre demande est déjà en cours d'étude.");
+        setError(t('setup.select_school.demande_en_attente_msg', { defaultValue: "Votre demande est déjà en cours d'étude." }));
       } else if (isCreatingSchool) {
         setSelectedProfile('ADMINISTRATEUR');
         if (schoolId) await fetchYears(schoolId as number);
@@ -161,7 +165,10 @@ const InitialConfig: React.FC = () => {
         const expected = isStaff ? selectedSchool.codeRecrutement : selectedSchool.codeInscription;
 
         if (entered !== expected) {
-          setError(`Code ${isStaff ? 'de recrutement' : 'd\'inscription'} invalide`);
+          setError(t('setup.select_school.code_invalide_msg', {
+            defaultValue: `Code ${isStaff ? 'de recrutement' : 'd\'inscription'} invalide`,
+            type: isStaff ? t('setup.select_school.recruitment_code') : t('setup.select_school.inscription_code')
+          }));
           setLoading(false);
           return;
         }
@@ -169,7 +176,7 @@ const InitialConfig: React.FC = () => {
         await submitDemand();
       }
     } catch (err) {
-      setError("Erreur de validation");
+      setError(t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -193,9 +200,9 @@ const InitialConfig: React.FC = () => {
         await setupService.envoyerDemande(payload);
         const res = await setupService.getUserAssociations(user!.id);
         setAssociations(res.data);
-        alert("Demande envoyée avec succès !");
+        alert(t('common.success'));
     } catch (err) {
-        setError("Échec de l'envoi de la demande");
+        setError(t('common.error'));
     }
   };
 
@@ -216,7 +223,7 @@ const InitialConfig: React.FC = () => {
       setNewYearStart('');
       setNewYearEnd('');
     } catch (err) {
-      setError("Erreur lors de la création de l'année");
+      setError(t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -261,8 +268,8 @@ const InitialConfig: React.FC = () => {
                 <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-sharp flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors shadow-inner">
                   <Plus size={24} />
                 </div>
-                <h3 className="font-black text-black uppercase text-sm tracking-tight">Créer un établissement</h3>
-                <p className="text-[10px] text-[#9E9E9E] font-black uppercase tracking-widest">Nouvelle intégration</p>
+                <h3 className="font-black text-black uppercase text-sm tracking-tight">{t('setup.landing.create_school_title')}</h3>
+                <p className="text-[10px] text-[#9E9E9E] font-black uppercase tracking-widest">{t('setup.landing.create_school_subtitle')}</p>
               </div>
 
               <div
@@ -280,11 +287,11 @@ const InitialConfig: React.FC = () => {
                 )}>
                   <Users size={24} />
                 </div>
-                <h3 className="font-black text-black uppercase text-sm tracking-tight">Accès Staff & Enseignant</h3>
+                <h3 className="font-black text-black uppercase text-sm tracking-tight">{t('setup.landing.staff_access_title')}</h3>
                 <p className={clsx(
                     "text-[10px] font-black uppercase tracking-widest",
                     selectedProfile === 'ENSEIGNANT' ? "text-purple-600" : "text-[#9E9E9E]"
-                )}>Espace Professionnel</p>
+                )}>{t('setup.landing.staff_access_subtitle')}</p>
               </div>
 
               <div
@@ -294,8 +301,8 @@ const InitialConfig: React.FC = () => {
                 <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-sharp flex items-center justify-center mb-4 group-hover:bg-orange-600 group-hover:text-white transition-colors shadow-inner">
                   <GraduationCap size={24} />
                 </div>
-                <h3 className="font-black text-black uppercase text-sm tracking-tight">Accès Élève / Parent</h3>
-                <p className="text-[10px] text-[#9E9E9E] font-black uppercase tracking-widest">Consulter les notes & frais</p>
+                <h3 className="font-black text-black uppercase text-sm tracking-tight">{t('setup.landing.student_access_title')}</h3>
+                <p className="text-[10px] text-[#9E9E9E] font-black uppercase tracking-widest">{t('setup.landing.student_access_subtitle')}</p>
               </div>
             </div>
           </div>
@@ -304,12 +311,17 @@ const InitialConfig: React.FC = () => {
       case SetupStep.SELECT_LANGUAGE:
         return (
           <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
-            <h2 className="text-xl font-black uppercase tracking-tight mb-8">Langue du portail</h2>
+            <h2 className="text-xl font-black uppercase tracking-tight mb-8">{t('setup.language_title')}</h2>
             <div className="space-y-3">
               {(['Français', 'English'] as const).map(lang => (
                 <div
                   key={lang}
-                  onClick={() => { setLanguage(lang); setStep(isNewUser ? SetupStep.WELCOME : SetupStep.SELECT_SCHOOL); }}
+                  onClick={() => {
+                    const lngCode = lang === 'Français' ? 'fr' : 'en';
+                    setLanguage(lang);
+                    i18n.changeLanguage(lngCode);
+                    setStep(isNewUser ? SetupStep.WELCOME : SetupStep.SELECT_SCHOOL);
+                  }}
                   className={clsx(
                     "p-5 border-2 rounded-soft cursor-pointer transition-all flex items-center justify-between",
                     language === lang ? "border-black bg-gray-50" : "border-gray-100 hover:border-gray-200"
@@ -333,13 +345,13 @@ const InitialConfig: React.FC = () => {
                <SchoolIcon size={40} />
             </div>
             <div>
-              <h2 className="text-3xl font-black uppercase tracking-tighter mb-4">Bienvenue sur Scholar</h2>
+              <h2 className="text-3xl font-black uppercase tracking-tighter mb-4">{t('setup.welcome_title')}</h2>
               <p className="text-sm text-[#9E9E9E] font-medium max-w-xs mx-auto">
-                Prêt à numériser la gestion de votre établissement en toute simplicité ?
+                {t('setup.welcome_subtitle')}
               </p>
             </div>
             <AuthButton onClick={() => setStep(SetupStep.SELECT_SCHOOL)}>
-              Rechercher mon école
+              {t('setup.select_school.placeholder')}
             </AuthButton>
           </div>
         );
@@ -352,8 +364,8 @@ const InitialConfig: React.FC = () => {
         return (
           <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
             <AuthInput
-              label="Rechercher mon établissement"
-              placeholder="Ex: Lycée Classique..."
+              label={t('setup.select_school.placeholder')}
+              placeholder={t('setup.select_school.hint')}
               onChange={(e) => handleSearchSchools(e.target.value)}
             />
 
@@ -362,7 +374,7 @@ const InitialConfig: React.FC = () => {
               {associations.length > 0 && schools.length === 0 && (
                 <div className="space-y-3">
                   <p className="text-[10px] font-black uppercase tracking-widest text-accent ml-1 flex items-center gap-2">
-                    <ShieldCheck size={12} /> Mes établissements
+                    <ShieldCheck size={12} /> {t('setup.select_school.my_schools')}
                   </p>
                   {associations.map((assoc, index) => {
                     const school = assoc.school;
@@ -404,7 +416,7 @@ const InitialConfig: React.FC = () => {
               {schools.length > 0 && (
                 <div className="space-y-3">
                   <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">
-                    Résultats de la recherche
+                    {t('setup.select_school.search_results')}
                   </p>
                   {schools.map((school, index) => {
                     const sId = school.idServeur || school.idEtablissement;
@@ -446,7 +458,7 @@ const InitialConfig: React.FC = () => {
               {schools.length === 0 && associations.length === 0 && (
                 <div className="text-center py-10 opacity-40">
                   <Search size={40} className="mx-auto mb-4" />
-                  <p className="text-[10px] font-black uppercase tracking-widest">Recherchez une école pour commencer</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest">{t('setup.select_school.no_school_found')}</p>
                 </div>
               )}
             </div>
@@ -454,8 +466,8 @@ const InitialConfig: React.FC = () => {
             {selectedSchool && !isCreatingSchool && !isAlreadyValidated && currentAssoc?.etat !== 'EN_ATTENTE' && (
               <div className="pt-4 animate-in fade-in duration-300">
                  <AuthInput
-                   label={selectedProfile === 'ELEVE' ? "Code d'inscription" : "Code de recrutement"}
-                   placeholder="Code à 4 chiffres"
+                   label={selectedProfile === 'ELEVE' ? t('setup.select_school.inscription_code') : t('setup.select_school.recruitment_code')}
+                   placeholder={t('setup.select_school.code_placeholder')}
                    value={selectedProfile === 'ELEVE' ? inscriptionCode : recruitmentCode}
                    onChange={(e) => selectedProfile === 'ELEVE' ? setInscriptionCode(e.target.value) : setRecruitmentCode(e.target.value)}
                  />
@@ -467,9 +479,9 @@ const InitialConfig: React.FC = () => {
                 onClick={handleValidateSchool}
                 disabled={!selectedSchool || loading || currentAssoc?.etat === 'EN_ATTENTE'}
               >
-                {loading ? "Vérification..." :
-                 currentAssoc?.etat === 'EN_ATTENTE' ? "Demande en attente" :
-                 isAlreadyValidated ? "Continuer" : "Confirmer l'Établissement"}
+                {loading ? t('common.loading') :
+                 currentAssoc?.etat === 'EN_ATTENTE' ? t('setup.select_school.demande_en_attente_msg', { defaultValue: "Demande en attente" }) :
+                 isAlreadyValidated ? t('common.success') : t('setup.select_school.confirm_button')}
               </AuthButton>
             </div>
           </div>
@@ -478,7 +490,7 @@ const InitialConfig: React.FC = () => {
       case SetupStep.SELECT_PROFILE:
         return (
           <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
-            <h2 className="text-xl font-black uppercase tracking-tight mb-8">Choisissez un Profil</h2>
+            <h2 className="text-xl font-black uppercase tracking-tight mb-8">{t('setup.profile.title')}</h2>
             <div className="space-y-3">
               {availableProfiles.map(profile => (
                 <div
@@ -509,7 +521,7 @@ const InitialConfig: React.FC = () => {
                     setStep(SetupStep.SELECT_YEAR);
                   }
                }} disabled={!selectedProfile}>
-                 Confirmer le Profil
+                 {t('setup.profile.confirm_button')}
                </AuthButton>
             </div>
           </div>
@@ -520,7 +532,7 @@ const InitialConfig: React.FC = () => {
         return (
           <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-xl font-black uppercase tracking-tight leading-none">Année Scolaire Active</h2>
+                <h2 className="text-xl font-black uppercase tracking-tight leading-none">{t('setup.year.active_title')}</h2>
                 {isCreatingSchool && (
                   <button
                     onClick={() => setIsCreatingYear(true)}
@@ -534,16 +546,16 @@ const InitialConfig: React.FC = () => {
              {isCreatingYear ? (
                <div className="space-y-6 animate-in slide-in-from-top-2 duration-300 bg-white p-8 border-2 border-black rounded-[32px] shadow-2xl relative overflow-hidden">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-black uppercase text-xs tracking-widest text-secondary">Nouvelle Année</h3>
+                    <h3 className="font-black uppercase text-xs tracking-widest text-secondary">{t('setup.year.new_title')}</h3>
                     <button onClick={() => setIsCreatingYear(false)} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><X size={18}/></button>
                   </div>
-                  <AuthInput label="Libellé (ex: 2024-2025)" value={newYearLabel} onChange={e => setNewYearLabel(e.target.value)} />
+                  <AuthInput label={t('setup.year.label')} value={newYearLabel} onChange={e => setNewYearLabel(e.target.value)} />
                   <div className="grid grid-cols-2 gap-4">
-                    <AuthInput label="Date Début" type="date" value={newYearStart} onChange={e => setNewYearStart(e.target.value)} />
-                    <AuthInput label="Date Fin" type="date" value={newYearEnd} onChange={e => setNewYearEnd(e.target.value)} />
+                    <AuthInput label={t('setup.year.start')} type="date" value={newYearStart} onChange={e => setNewYearStart(e.target.value)} />
+                    <AuthInput label={t('setup.year.end')} type="date" value={newYearEnd} onChange={e => setNewYearEnd(e.target.value)} />
                   </div>
                   <AuthButton onClick={handleCreateYear} disabled={loading}>
-                    {loading ? "Création..." : "Créer l'année"}
+                    {loading ? t('common.loading') : t('setup.year.create_button')}
                   </AuthButton>
                </div>
              ) : (
@@ -579,13 +591,13 @@ const InitialConfig: React.FC = () => {
                      </div>
                    ) : (
                      <div className="text-center space-y-6">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Aucune année configurée</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">{t('setup.select_school.no_school_found')}</p>
                         {isCreatingSchool && (
                           <button
                             onClick={() => setIsCreatingYear(true)}
                             className="px-8 py-3 border border-border rounded-sharp font-black text-[10px] uppercase tracking-widest hover:bg-white transition-all active:scale-95"
                           >
-                            Créer la première année
+                            {t('setup.year.create_button')}
                           </button>
                         )}
                      </div>
@@ -597,7 +609,7 @@ const InitialConfig: React.FC = () => {
              {!isCreatingYear && (
                <div className="pt-12">
                   <AuthButton onClick={handleFinish} disabled={!tempSelectedYear}>
-                    Terminer la Configuration
+                    {t('setup.year.finish_button')}
                   </AuthButton>
                </div>
              )}
@@ -629,7 +641,7 @@ const InitialConfig: React.FC = () => {
 
           <div className="flex flex-col items-end">
               <span className="text-[10px] font-black uppercase tracking-widest text-black bg-gray-100 px-4 py-1.5 rounded-full mb-2">
-                Étape {step + 1}/7
+                {t('setup.step_info', { current: step + 1, total: 7 })}
               </span>
               <div className="flex gap-1">
                 {getBreadcrumbs().map((b, i) => (
@@ -644,10 +656,10 @@ const InitialConfig: React.FC = () => {
         <div className="flex-1 flex flex-col relative z-10">
           <div className="mb-10">
             <h1 className="text-4xl font-black text-black mb-2 uppercase tracking-tighter leading-none">
-              Setup Flow.
+              {t('setup.title')}
             </h1>
             <p className="text-lg text-[#9E9E9E] font-medium leading-tight">
-              Finalisez ces étapes pour commencer.
+              {t('setup.subtitle')}
             </p>
           </div>
 

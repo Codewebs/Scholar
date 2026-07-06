@@ -113,13 +113,13 @@ const TeacherRepartitionPage: React.FC = () => {
         <div className="p-8 border-b border-gray-50">
            <h3 className="text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-3">
              <User size={18} className="text-accent" />
-             Vivier Enseignants
+             Teachers Pool
            </h3>
            <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
-                placeholder="Nom ou spécialité..."
+                placeholder="Name or specialty..."
                 className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-accent transition-all"
                 value={searchTeacher}
                 onChange={e => setSearchTeacher(e.target.value)}
@@ -144,10 +144,10 @@ const TeacherRepartitionPage: React.FC = () => {
                  </div>
                  <div className="flex-1 min-w-0">
                     <p className="text-[11px] font-black uppercase truncate">{t.nom} {t.prenom}</p>
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight truncate">{t.Utilisateur?.diplomes || 'Non renseigné'}</p>
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight truncate">{t.Utilisateur?.diplomes || 'Not specified'}</p>
                  </div>
                  <div className="px-2.5 py-1 bg-accent/10 text-accent rounded-full text-[9px] font-black">
-                   {t.assignmentCount} {t.assignmentCount > 1 ? 'salles' : 'salle'}
+                   {t.assignmentCount} {t.assignmentCount > 1 ? 'rooms' : 'room'}
                  </div>
                </div>
              </motion.div>
@@ -161,7 +161,7 @@ const TeacherRepartitionPage: React.FC = () => {
         <div className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 flex items-center justify-between">
            <div className="flex items-center gap-6">
               <div className="space-y-1">
-                 <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Sélectionner la salle</p>
+                 <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Select room</p>
                  <select
                    className="h-14 px-6 bg-gray-50 border-none rounded-2xl font-black text-xs uppercase tracking-widest focus:ring-2 focus:ring-accent outline-none"
                    value={selectedRoomId || ''}
@@ -174,8 +174,8 @@ const TeacherRepartitionPage: React.FC = () => {
               </div>
               <div className="h-10 w-px bg-gray-100" />
               <div>
-                 <h2 className="text-2xl font-black uppercase tracking-tighter">Répartition de la salle</h2>
-                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Gestion de l'équipe pédagogique</p>
+                 <h2 className="text-2xl font-black uppercase tracking-tighter">Room Distribution</h2>
+                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pedagogical Team Management</p>
               </div>
            </div>
 
@@ -190,7 +190,7 @@ const TeacherRepartitionPage: React.FC = () => {
                 onClick={() => window.open(`/app/pedagogy/teachers-repartition/print?idSalle=${selectedRoomId}&emargement=true`, '_blank')}
                 className="flex items-center gap-3 px-6 py-4 bg-black text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
               >
-                <Printer size={18} /> Liste Émargement
+                <Printer size={18} /> Attendance List
               </button>
            </div>
         </div>
@@ -214,7 +214,7 @@ const TeacherRepartitionPage: React.FC = () => {
                {principalTeacher ? (
                  <div className="relative z-10 space-y-6">
                     <div className="flex items-center gap-3 bg-amber-500 text-white px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest mx-auto w-fit">
-                       <Crown size={14} /> Enseignant Principal
+                       <Crown size={14} /> Head Teacher
                     </div>
                     <div className="flex items-center gap-6">
                        <div className="w-24 h-24 rounded-[32px] bg-white shadow-2xl border-4 border-white overflow-hidden">
@@ -222,12 +222,12 @@ const TeacherRepartitionPage: React.FC = () => {
                        </div>
                        <div className="text-left">
                           <h3 className="text-3xl font-black uppercase tracking-tighter text-black">{principalTeacher.InscriptionPersonnel?.nom} {principalTeacher.InscriptionPersonnel?.prenom}</h3>
-                          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Désigné pour coordonner la salle</p>
+                          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Appointed to coordinate the room</p>
                           <button
                             onClick={() => removeAssignment(principalTeacher.idRepartitionEnseignant)}
                             className="mt-4 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-red-500 hover:text-red-700 transition-colors"
                           >
-                             <Trash2 size={14} /> Retirer le trône
+                             <Trash2 size={14} /> Remove Head Teacher
                           </button>
                        </div>
                     </div>
@@ -238,8 +238,8 @@ const TeacherRepartitionPage: React.FC = () => {
                        <Plus size={32} />
                     </div>
                     <div>
-                       <p className="text-lg font-black uppercase tracking-tight text-gray-400 italic">Le Trône est vacant</p>
-                       <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-1">Glissez un enseignant ici pour le nommer Enseignant Principal</p>
+                       <p className="text-lg font-black uppercase tracking-tight text-gray-400 italic">The Throne is vacant</p>
+                       <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-1">Drag a teacher here to appoint as Head Teacher</p>
                     </div>
                  </div>
                )}
@@ -248,16 +248,16 @@ const TeacherRepartitionPage: React.FC = () => {
             {/* 2. GRILLE DES DISCIPLINES */}
             <div className="bg-white p-10 rounded-[56px] border border-gray-100 shadow-sm">
                 <h3 className="text-xl font-black uppercase tracking-tight mb-8 flex items-center gap-3">
-                   <BookOpen size={24} className="text-accent" />
-                   Équipe Pédagogique (Matières)
+                   < BookOpen size={24} className="text-accent" />
+                   Pedagogical Team (Subjects)
                 </h3>
 
                 {roomData?.subjects.length === 0 ? (
                   <div className="p-20 bg-red-50 rounded-[40px] border-2 border-dashed border-red-100 text-center space-y-4">
                      <AlertCircle size={48} className="mx-auto text-red-300" />
                      <div>
-                        <p className="text-lg font-black uppercase tracking-tight text-red-900">Aucune matière affectée</p>
-                        <p className="text-xs font-bold text-red-400 uppercase tracking-widest mt-1">Veuillez d'abord configurer la structure de cette classe</p>
+                        <p className="text-lg font-black uppercase tracking-tight text-red-900">No subjects assigned</p>
+                        <p className="text-xs font-bold text-red-400 uppercase tracking-widest mt-1">Please first configure the structure of this class</p>
                      </div>
                   </div>
                 ) : (
@@ -279,7 +279,7 @@ const TeacherRepartitionPage: React.FC = () => {
                              </div>
 
                              <div className="flex-1">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{subject.GroupeMatiere?.libelleFr || 'Général'}</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{subject.GroupeMatiere?.libelleFr || 'General'}</p>
                                 <h4 className="text-lg font-black uppercase tracking-tight">{subject.Matiere?.libelleFr}</h4>
                              </div>
 
@@ -303,7 +303,7 @@ const TeacherRepartitionPage: React.FC = () => {
                                   </div>
                                 ) : (
                                   <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-300 italic group-hover:text-accent transition-colors">
-                                     <span>Déposer l'enseignant ici</span>
+                                     <span>Drop teacher here</span>
                                      <ChevronRight size={14} className="animate-pulse" />
                                   </div>
                                 )}

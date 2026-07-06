@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import AuthButton from '../../../../components/ui/AuthButton';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 interface SaisieEleveViewProps {
     salle?: any;
@@ -29,6 +30,8 @@ interface SaisieEleveViewProps {
 }
 
 const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, eleve: propEleve, sequence: propSequence, refreshTrigger }) => {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const { selectedYear } = useSchoolYear();
   const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
@@ -96,7 +99,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
       });
       setSequences(allSequences);
     } catch (err) {
-      setError("Erreur lors du chargement des données");
+      setError(t('grades.status.error_loading_data', { defaultValue: "Erreur lors du chargement des données" }));
     }
   };
 
@@ -203,7 +206,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
       setNotes(gridNotes);
 
     } catch (err) {
-      setError("Erreur lors du chargement des notes");
+      setError(t('grades.status.error_loading_grades', { defaultValue: "Erreur lors du chargement des notes" }));
     } finally {
       setLoading(false);
     }
@@ -224,7 +227,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
       // Validation: idRepartitionCompetence is mandatory
       const invalidNotes = notes.filter(n => n.idCompetence && !n.idRepartitionCompetence);
       if (invalidNotes.length > 0) {
-          throw new Error("Erreur de configuration: ID Répartition Compétence manquant.");
+          throw new Error(t('grades.errors.missing_comp_id', { defaultValue: "Erreur de configuration: ID Répartition Compétence manquant." }));
       }
 
       const payload = {
@@ -245,11 +248,11 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
       };
 
       await gradeService.saveStudentNotes(payload as any);
-      setSuccess("Notes enregistrées !");
+      setSuccess(t('grades.status.success'));
       setTimeout(() => setSuccess(null), 3000);
       handleLoadNotes();
     } catch (err: any) {
-      setError(err.message || "Erreur lors de l'enregistrement");
+      setError(err.message || t('grades.status.error'));
     } finally {
       setSaving(false);
     }
@@ -290,7 +293,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
       {/* Selection Summary (Breadcrumbs) */}
       <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 flex flex-wrap items-center gap-4">
           <SelectionSummaryItem
-            label="Salle"
+            label={t('grades.selection.room')}
             value={selectedSalle?.nomSalle}
             isActive={step === 'SALLE'}
             onClick={() => { setStep('SALLE'); setSelectedStudentId(null); setSelectedSequenceId(null); }}
@@ -298,7 +301,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
           {selectedSalle && <ChevronRight size={14} className="text-gray-300" />}
 
           <SelectionSummaryItem
-            label="Élève"
+            label={t('grades.selection.student')}
             value={selectedStudent ? `${selectedStudent.nom} ${selectedStudent.prenom}` : undefined}
             isActive={step === 'ELEVE'}
             isVisible={!!selectedSalle}
@@ -307,7 +310,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
           {selectedStudent && <ChevronRight size={14} className="text-gray-300" />}
 
           <SelectionSummaryItem
-            label="Évaluation"
+            label={t('grades.selection.sequence')}
             value={selectedSequence?.libelleSousPeriodeFr}
             isActive={step === 'SEQUENCE'}
             isVisible={!!selectedStudent}
@@ -350,7 +353,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
                     <SelectionCard
                         key={s.idSousPeriode}
                         title={s.libelleSousPeriodeFr}
-                        subtitle="Période d'évaluation"
+                        subtitle={t('grades.selection.choose')}
                         icon={Calendar}
                         onClick={() => { setSelectedSequenceId(s.idSousPeriode!); setStep('SAISIE'); }}
                     />
@@ -370,7 +373,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
                                 {selectedStudent?.nom} {selectedStudent?.prenom}
                             </h3>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                {selectedSalle?.nomSalle} — {notes.length} Matières
+                                {selectedSalle?.nomSalle} — {notes.length} {t('menu.subjects')}
                             </p>
                         </div>
                     </div>
@@ -379,7 +382,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
                         <button
                             onClick={() => { setSequentialIndex(0); setShowSequential(true); }}
                             className="p-3 bg-accent/10 text-accent hover:bg-accent hover:text-white rounded-2xl transition-all shadow-sm"
-                            title="Saisie Rapide"
+                            title={t('grades.entry.quick_entry')}
                         >
                             <Zap size={20} />
                         </button>
@@ -390,7 +393,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
                         >
                             <div className="flex items-center space-x-2">
                                 <Save size={18} />
-                                <span>{saving ? "..." : "Enregistrer Fiche"}</span>
+                                <span>{saving ? "..." : t('grades.entry.save_sheet')}</span>
                             </div>
                         </AuthButton>
                     </div>
@@ -400,20 +403,20 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
                     {loading ? (
                         <div className="py-20 flex flex-col items-center justify-center space-y-4">
                              <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
-                             <p className="text-[10px] font-black uppercase tracking-widest text-black">Génération...</p>
+                             <p className="text-[10px] font-black uppercase tracking-widest text-black">{t('common.loading')}</p>
                         </div>
                     ) : notes.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-gray-300">
                            <SearchX size={48} className="mb-4" />
-                           <p className="text-[10px] font-black uppercase tracking-widest">Aucune matière configurée</p>
+                           <p className="text-[10px] font-black uppercase tracking-widest">{lang === 'fr' ? 'Aucune matière configurée' : 'No subject configured'}</p>
                         </div>
                     ) : (
                         <table className="w-full">
                             <thead className="sticky top-0 bg-white z-[5] shadow-sm">
                                 <tr className="bg-gray-50/50">
-                                    <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Matière / Compétence</th>
+                                    <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{t('grades.selection.subject')} / Compétence</th>
                                     <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Coef</th>
-                                    <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 w-48">Note (/20)</th>
+                                    <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 w-48">{t('grades.entry.note_sur', { max: 20 })}</th>
                                     <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Cote</th>
                                 </tr>
                             </thead>

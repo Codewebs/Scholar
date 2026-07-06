@@ -22,7 +22,7 @@ const WaitingRoom: React.FC = () => {
 
         <h1 className="text-4xl font-black text-black mb-4 uppercase tracking-tighter">Please wait.</h1>
         <p className="text-[10px] text-[#9E9E9E] font-black uppercase tracking-widest leading-relaxed max-w-[280px]">
-          Nous configurons votre espace de travail, cela ne prendra que quelques secondes.
+          We are configuring your workspace, it will only take a few seconds.
         </p>
       </div>
     </div>

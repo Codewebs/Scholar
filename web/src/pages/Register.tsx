@@ -5,8 +5,10 @@ import Snackbar from '../components/ui/Snackbar';
 import { ArrowLeft } from 'lucide-react';
 import AuthButton from '../components/ui/AuthButton';
 import AuthInput from '../components/ui/AuthInput';
+import { useTranslation } from 'react-i18next';
 
 const Register: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [fullName, setFullName] = useState('');
@@ -27,36 +29,36 @@ const Register: React.FC = () => {
 
   useEffect(() => {
     if (email && !emailRegex.test(email)) {
-      setEmailError("Format d'email invalide");
+      setEmailError(t('register.errors.email_invalid'));
     } else {
       setEmailError('');
     }
-  }, [email]);
+  }, [email, t]);
 
   useEffect(() => {
     if (password && password.length < 4) {
-      setPasswordError('Le mot de passe doit contenir au moins 4 caractères');
+      setPasswordError(t('register.errors.password_too_short'));
     } else {
       setPasswordError('');
     }
-  }, [password]);
+  }, [password, t]);
 
   useEffect(() => {
     if (confirmPassword && confirmPassword !== password) {
-      setConfirmPasswordError('Les mots de passe ne correspondent pas');
+      setConfirmPasswordError(t('register.errors.passwords_dont_match'));
     } else {
       setConfirmPasswordError('');
     }
-  }, [confirmPassword, password]);
+  }, [confirmPassword, password, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName || !email || !password || !confirmPassword) {
-      setSubmitError('Veuillez remplir tous les champs');
+      setSubmitError(t('register.errors.fill_all_fields'));
       return;
     }
     if (emailError || passwordError || confirmPasswordError) {
-      setSubmitError('Veuillez corriger les erreurs avant de continuer');
+      setSubmitError(t('register.errors.correct_errors'));
       return;
     }
 
@@ -76,10 +78,10 @@ const Register: React.FC = () => {
         confirmPassword
       });
 
-      setSnackbar({ message: "Compte créé avec succès ! Redirection vers la connexion...", type: 'success' });
+      setSnackbar({ message: t('register.success'), type: 'success' });
       setTimeout(() => navigate('/login'), 2000);
     } catch (err: any) {
-      const msg = err.response?.data?.message || "Erreur lors de l'inscription";
+      const msg = err.response?.data?.message || t('register.errors.register_error');
       setSubmitError(msg);
       setSnackbar({ message: msg, type: 'error' });
     } finally {
@@ -99,23 +101,23 @@ const Register: React.FC = () => {
         </button>
 
         <div className="mb-10">
-          <h1 className="text-4xl font-black text-black mb-2 tracking-tighter uppercase">Create Account.</h1>
+          <h1 className="text-4xl font-black text-black mb-2 tracking-tighter uppercase">{t('register.title')}</h1>
           <p className="text-lg text-[#9E9E9E] font-medium leading-tight">
-            Commencez votre voyage avec nous dès aujourd'hui.
+            {t('register.subtitle')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5 flex-1">
           <AuthInput
-            label="Full Name"
-            placeholder="John Doe"
+            label={t('register.label_name')}
+            placeholder={t('register.placeholder_name')}
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             required
           />
           <AuthInput
-            label="Email"
-            placeholder="john@example.com"
+            label={t('register.label_email')}
+            placeholder={t('register.placeholder_email')}
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -123,7 +125,7 @@ const Register: React.FC = () => {
             required
           />
           <AuthInput
-            label="Password"
+            label={t('register.label_password')}
             type="password"
             placeholder="••••••••"
             value={password}
@@ -132,7 +134,7 @@ const Register: React.FC = () => {
             required
           />
           <AuthInput
-            label="Confirm Password"
+            label={t('register.label_confirm_password')}
             type="password"
             placeholder="••••••••"
             value={confirmPassword}
@@ -149,9 +151,9 @@ const Register: React.FC = () => {
 
           <div className="pt-8 text-center">
             <p className="text-xs font-black text-[#9E9E9E] uppercase tracking-widest">
-              Already have an account?{' '}
+              {t('register.already_have_account')}{' '}
               <Link to="/login" className="text-black hover:text-accent transition-colors">
-                Login
+                {t('register.login_link')}
               </Link>
             </p>
           </div>
@@ -159,7 +161,7 @@ const Register: React.FC = () => {
 
         <div className="mt-8">
           <AuthButton onClick={handleSubmit} disabled={loading}>
-            {loading ? "Chargement..." : "Register"}
+            {loading ? t('register.loading') : t('register.register_button')}
           </AuthButton>
         </div>
 

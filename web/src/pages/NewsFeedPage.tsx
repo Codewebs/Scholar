@@ -60,7 +60,7 @@ const NewsFeedPage: React.FC = () => {
     <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-black uppercase tracking-tighter">Fil d'Actualité</h1>
+        <h1 className="text-3xl font-black uppercase tracking-tighter">News Feed</h1>
         <button className="p-2 hover:bg-white rounded-full transition-colors border border-transparent hover:border-border">
           <Settings size={22} className="text-black" />
         </button>
@@ -76,7 +76,7 @@ const NewsFeedPage: React.FC = () => {
           )}
         >
           <Users size={16} />
-          <span>Communauté</span>
+          <span>Community</span>
         </button>
         <button
           onClick={() => setSelectedTab('public')}
@@ -86,7 +86,7 @@ const NewsFeedPage: React.FC = () => {
           )}
         >
           <Globe size={16} />
-          <span>Publiques</span>
+          <span>Public</span>
         </button>
       </div>
 
@@ -99,7 +99,7 @@ const NewsFeedPage: React.FC = () => {
             </div>
             <textarea
               className="flex-1 bg-gray-50 border-none rounded-soft p-4 text-sm font-medium focus:ring-1 focus:ring-accent outline-none min-h-[100px] transition-all"
-              placeholder="Quoi de neuf dans l'établissement ?"
+              placeholder="What's new in the school?"
               value={postText}
               onChange={(e) => setPostText(e.target.value)}
             />
@@ -114,7 +114,7 @@ const NewsFeedPage: React.FC = () => {
               disabled={!postText.trim()}
               onClick={() => { /* API call to post */ }}
             >
-              <Send size={16} className="mr-2" /> Publier
+              <Send size={16} className="mr-2" /> Post
             </AuthButton>
           </div>
         </div>
@@ -122,7 +122,7 @@ const NewsFeedPage: React.FC = () => {
 
       {/* Feed */}
       {loading ? (
-        <div className="p-20 text-center animate-pulse uppercase font-black tracking-widest text-[#9E9E9E]">Chargement du fil...</div>
+        <div className="p-20 text-center animate-pulse uppercase font-black tracking-widest text-[#9E9E9E]">Loading feed...</div>
       ) : (
         <div className="space-y-8">
           {annonces.map((annonce) => (
@@ -141,7 +141,7 @@ const NewsFeedPage: React.FC = () => {
                             {selectedTab === 'public' ? (annonce.nomEtablissement || 'Scholar') : annonce.nomAuteur}
                           </h3>
                           <p className="text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest">
-                            {selectedTab === 'public' ? `${annonce.villeEtablissement || 'Ville'}` : annonce.posteAuteur} • 3min
+                            {selectedTab === 'public' ? `${annonce.villeEtablissement || 'City'}` : annonce.posteAuteur} • 3min
                           </p>
                        </div>
                     </div>
@@ -170,7 +170,7 @@ const NewsFeedPage: React.FC = () => {
                      {/* Rare Violet Accent: Interaction counts */}
                      <button className="flex items-center space-x-2 text-[#9E9E9E] hover:text-accent transition-colors font-black text-[10px] uppercase tracking-widest">
                         <Megaphone size={16} />
-                        <span>Alerte</span>
+                        <span>Alert</span>
                      </button>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -186,7 +186,7 @@ const NewsFeedPage: React.FC = () => {
                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center">
                   <Megaphone size={32} className="text-[#9E9E9E]" />
                </div>
-               <p className="text-sm font-black uppercase tracking-widest text-[#9E9E9E]">Aucune actualité pour le moment</p>
+               <p className="text-sm font-black uppercase tracking-widest text-[#9E9E9E]">No news at the moment</p>
             </div>
           )}
         </div>

@@ -29,6 +29,7 @@ import AbsenceView from './views/AbsenceView';
 import PVView from './views/PVView';
 import JustificationManagement from './components/JustificationManagement';
 import GradeSequentialEntry from './components/GradeSequentialEntry';
+import { useTranslation } from 'react-i18next';
 
 interface Salle {
     idSalle: number;
@@ -72,6 +73,8 @@ type SalleSortField = 'NAME' | 'COUNT';
 type ViewType = 'matiere' | 'eleve' | 'absences' | 'pv' | 'config';
 
 const GradeManagementPage: React.FC = () => {
+    const { t, i18n } = useTranslation();
+    const lang = i18n.language;
     const { user } = useAuth();
     const role = (user?.role || '').toUpperCase();
     const { selectedYear } = useSchoolYear();
@@ -301,7 +304,7 @@ const GradeManagementPage: React.FC = () => {
                     if (currentComps.length === 0) {
                         // Standard mode: check if there's at least one note without competenceId
                         const hasNote = studentGrades.some(g => !g.idCompetence && (g.note !== null || g.nonClasse));
-                        missing = hasNote ? [] : [{ idCompetence: null, label: 'Générale' }];
+                        missing = hasNote ? [] : [{ idCompetence: null, label: t('grades.selection.none') }];
                     } else {
                         // APC mode: check each competence using idRepartitionCompetence
                         missing = currentComps
@@ -360,7 +363,7 @@ const GradeManagementPage: React.FC = () => {
     useEffect(() => {
         if (sequences.length > 0 && sequences.every(s => s.isComplete) && selectedSalle) {
             setSalles(prev => prev.map(s =>
-                s.idSalle === selectedSalle.idSalle ? { ...s, isComplete: true } : s
+                s.idSalle === salle.idSalle ? { ...s, isComplete: true } : s
             ));
         }
     }, [sequences, selectedSalle]);
@@ -399,7 +402,7 @@ const GradeManagementPage: React.FC = () => {
                         note: note?.note ?? null,
                         idNote: note?.idNote,
                         idCompetence: undefined,
-                        competenceLabel: 'Générale',
+                        competenceLabel: t('grades.selection.none'),
                         coef: selectedMatiere?.coef
                     });
                 } else {
@@ -473,11 +476,11 @@ const GradeManagementPage: React.FC = () => {
     };
 
     const menuItems = [
-        { id: 'matiere', label: 'Par Matière', icon: BookOpen, desc: 'Saisie groupée pour une classe' },
-        { id: 'eleve', label: 'Par Élève', icon: User, desc: 'Toutes les notes d\'un étudiant' },
-        { id: 'absences', label: 'Absences', icon: Clock, desc: 'Suivi de présence & retards' },
-        { id: 'pv', label: 'Procès Verbaux', icon: FileText, desc: 'Rapports et délibérations' },
-        { id: 'config', label: 'Config', icon: Layers, desc: 'Configuration' }
+        { id: 'matiere', label: t('grades.views.subject'), icon: BookOpen, desc: 'Saisie groupée pour une classe' },
+        { id: 'eleve', label: t('grades.views.student'), icon: User, desc: 'Toutes les notes d\'un étudiant' },
+        { id: 'absences', label: t('grades.views.absences'), icon: Clock, desc: 'Suivi de présence & retards' },
+        { id: 'pv', label: t('grades.views.pv'), icon: FileText, desc: 'Rapports et délibérations' },
+        { id: 'config', label: t('grades.views.config'), icon: Layers, desc: 'Configuration' }
     ];
 
     const sortedSalles = [...salles].sort((a, b) => {
@@ -522,7 +525,7 @@ const GradeManagementPage: React.FC = () => {
                     onClick={() => window.history.back()}
                     className="mt-8 px-10 py-4 bg-black text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 transition-all"
                 >
-                    Retour
+                    {t('common.back')}
                 </button>
             </div>
         );
@@ -540,10 +543,10 @@ const GradeManagementPage: React.FC = () => {
                             <ArrowLeft size={20} />
                         </button>
                         <div>
-                            <h1 className="text-2xl font-black uppercase tracking-tighter text-black">Notes & Évaluations</h1>
+                            <h1 className="text-2xl font-black uppercase tracking-tighter text-black">{t('grades.title')}</h1>
                             <div className="flex items-center space-x-2 mt-1">
                                 <div className="bg-accent/10 text-accent px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center">
-                                    <GraduationCap size={10} className="mr-1" /> Pédagogie
+                                    <GraduationCap size={10} className="mr-1" /> {lang === 'fr' ? 'Pédagogie' : 'Pedagogy'}
                                 </div>
                             </div>
                         </div>
@@ -574,7 +577,7 @@ const GradeManagementPage: React.FC = () => {
                     <div className="bg-white border border-gray-100 rounded-[20px] p-3 shadow-sm">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.35em] text-[#9E9E9E] flex items-center">
-                                <DoorOpen size={11} className="mr-1.5" /> Salle
+                                <DoorOpen size={11} className="mr-1.5" /> {t('grades.selection.room')}
                             </h3>
                             <div className="flex items-center space-x-1">
                                 <button
@@ -608,13 +611,13 @@ const GradeManagementPage: React.FC = () => {
                                     <div className={clsx(
                                         "text-[8px] tracking-[0.2em] mt-0.5 font-bold uppercase",
                                         selectedSalle?.idSalle === salle.idSalle ? "text-white/70" : "text-[#9E9E9E]"
-                                    )}>{salle.studentCount} Élèves</div>
+                                    )}>{salle.studentCount} {lang === 'fr' ? 'Élèves' : 'Students'}</div>
                                     {salle.isComplete && (
                                         <CheckCircle2 size={10} className="absolute top-2 right-2 text-green-500" />
                                     )}
                                 </button>
                             )) : (
-                                <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest">Aucune salle</div>
+                                <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest">{lang === 'fr' ? 'Aucune salle' : 'No rooms'}</div>
                             )}
                         </div>
                     </div>
@@ -623,7 +626,7 @@ const GradeManagementPage: React.FC = () => {
                     <div className="bg-white border border-gray-100 rounded-[20px] p-3 shadow-sm">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.35em] text-[#9E9E9E] flex items-center">
-                                <Layers size={11} className="mr-1.5" /> Séquence
+                                <Layers size={11} className="mr-1.5" /> {t('grades.selection.sequence')}
                             </h3>
                             <button
                                 onClick={() => setSequenceSort(prev => prev === 'ASC' ? 'DESC' : 'ASC')}
@@ -650,9 +653,9 @@ const GradeManagementPage: React.FC = () => {
                                     )}
                                 </button>
                             )) : (
-                                <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest">Aucune séquence</div>
+                                <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest">{lang === 'fr' ? 'Aucune séquence' : 'No sequences'}</div>
                             )) : (
-                                <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest italic opacity-50">Sélectionnez une salle</div>
+                                <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest italic opacity-50">{t('grades.selection.placeholder_room')}</div>
                             )}
                         </div>
                     </div>
@@ -664,7 +667,7 @@ const GradeManagementPage: React.FC = () => {
                     )}>
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.35em] text-[#9E9E9E] flex items-center">
-                                <BookMarked size={11} className="mr-1.5" /> Matière
+                                <BookMarked size={11} className="mr-1.5" /> {t('grades.selection.subject')}
                             </h3>
                             <button
                                 onClick={() => setMatiereSort(prev => prev === 'ASC' ? 'DESC' : 'ASC')}
@@ -698,9 +701,9 @@ const GradeManagementPage: React.FC = () => {
                                     )}
                                 </button>
                             )) : (
-                                <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest">Aucune matière</div>
+                                <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest">{lang === 'fr' ? 'Aucune matière' : 'No subjects'}</div>
                             )) : (
-                                <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest italic opacity-50">Sélectionnez salle/séquence</div>
+                                <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest italic opacity-50">{t('grades.selection.placeholder_seq')}</div>
                             )}
                         </div>
                     </div>
@@ -709,7 +712,7 @@ const GradeManagementPage: React.FC = () => {
                     <div className="bg-white border border-gray-100 rounded-[20px] p-3 shadow-sm">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.35em] text-[#9E9E9E] flex items-center">
-                                <User size={11} className="mr-1.5" /> Élèves
+                                <User size={11} className="mr-1.5" /> {t('grades.selection.student')}
                             </h3>
                             <div className="flex items-center space-x-1">
                                 <button
@@ -751,20 +754,20 @@ const GradeManagementPage: React.FC = () => {
                                             <div className={clsx(
                                                 "text-[8px] tracking-[0.2em] mt-1 font-bold",
                                                 selectedEleve?.idInscription === eleve.idInscription ? "text-white/70" : "text-gray-300"
-                                            )}>À COMPLÉTER</div>
+                                            )}>{t('grades.status.to_complete')}</div>
                                         </button>
                                     ))
                                 ) : eleves.length > 0 ? (
                                     <div className="text-center py-6 px-4 bg-green-50 rounded-[20px] border border-green-100 animate-in zoom-in-95">
                                         <CheckCircle2 size={24} className="mx-auto text-green-500 mb-2" />
-                                        <div className="text-[9px] font-black text-green-700 uppercase tracking-widest">Saisie Terminée !</div>
-                                        <p className="text-[8px] text-green-600/70 mt-1">Tous les élèves ont une note pour cette matière.</p>
+                                        <div className="text-[9px] font-black text-green-700 uppercase tracking-widest">{t('grades.status.complete')}</div>
+                                        <p className="text-[8px] text-green-600/70 mt-1">{lang === 'fr' ? 'Tous les élèves ont une note pour cette matière.' : 'All students have a grade for this subject.'}</p>
                                     </div>
                                 ) : (
-                                    <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest">Aucun élève</div>
+                                    <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest">{lang === 'fr' ? 'Aucun élève' : 'No students'}</div>
                                 )
                             ) : (
-                                <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest italic opacity-50">Sélectionnez une salle</div>
+                                <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest italic opacity-50">{t('grades.selection.placeholder_room')}</div>
                             )}
                         </div>
                     </div>
@@ -817,7 +820,7 @@ const GradeManagementPage: React.FC = () => {
             {loading && (
                 <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-[100] flex flex-col items-center justify-center space-y-4">
                     <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-                    <p className="font-black uppercase text-[10px] tracking-widest text-black">Chargement...</p>
+                    <p className="font-black uppercase text-[10px] tracking-widest text-black">{t('grades.status.in_progress')}</p>
                 </div>
             )}
         </div>

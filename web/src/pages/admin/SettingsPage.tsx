@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSchoolYear } from '../../context/SchoolYearContext';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   RefreshCw,
   Calendar,
@@ -31,6 +32,7 @@ import { clsx } from 'clsx';
 import ServerConfigModal from '../../components/ServerConfigModal';
 
 const SettingsPage: React.FC = () => {
+  const { t } = useTranslation();
   const { logout } = useAuth();
   const { years, selectedYear, selectYear } = useSchoolYear();
   const navigate = useNavigate();
@@ -71,7 +73,7 @@ const SettingsPage: React.FC = () => {
   }, [forceDocLanguage]);
 
   const handleLogout = () => {
-    if (window.confirm("Êtes-vous sûr de vouloir vous déconnecter ?")) {
+    if (window.confirm(t('settings.logout_confirm'))) {
       logout();
       navigate('/login');
     }
@@ -79,22 +81,20 @@ const SettingsPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto space-y-12 animate-in fade-in duration-500 pb-20 p-4">
-      {/* ... header ... */}
-
       {/* 0. Section Langue & Régional */}
-      <SettingsSection title="Langue & Régional">
+      <SettingsSection title={t('settings.sections.regional')}>
         <SettingsItem
           icon={Globe}
           iconColor="bg-blue-500"
-          title="Langue de l'application"
+          title={t('settings.items.app_language')}
           subtitle={appLanguage === 'EN' ? 'English' : appLanguage === 'ES' ? 'Español' : 'Français'}
           onClick={() => setIsLangModalOpen(true)}
         />
         <SettingsItem
           icon={Languages}
           iconColor="bg-emerald-500"
-          title="Forcer la langue des documents"
-          subtitle="Utiliser la langue de l'app pour tous les reçus"
+          title={t('settings.items.force_doc_lang')}
+          subtitle={t('settings.items.force_doc_lang_sub')}
           action={
             <div
               onClick={() => setForceDocLanguage(!forceDocLanguage)}
@@ -114,12 +114,12 @@ const SettingsPage: React.FC = () => {
       </SettingsSection>
 
       {/* 1. Section Synchronisation */}
-      <SettingsSection title="Synchronisation">
+      <SettingsSection title={t('settings.sections.sync')}>
         <SettingsItem
           icon={RefreshCw}
           iconColor="bg-violet-600"
-          title="Synchronisation distante"
-          subtitle="Sauvegarde automatique sur le serveur central"
+          title={t('settings.items.remote_sync')}
+          subtitle={t('settings.items.remote_sync_sub')}
           action={
             <div
               onClick={() => setIsSyncEnabled(!isSyncEnabled)}
@@ -140,99 +140,99 @@ const SettingsPage: React.FC = () => {
 
       <div className={clsx("space-y-12 transition-all duration-700", !isSyncEnabled && "opacity-25 grayscale pointer-events-none scale-[0.98] blur-[2px]")}>
         {/* 2. Section Établissement */}
-        <SettingsSection title="Établissement">
+        <SettingsSection title={t('settings.sections.school')}>
           <SettingsItem
             icon={Calendar}
             iconColor="bg-blue-600"
-            title="Année Scolaire Active"
-            subtitle={selectedYear?.libelleAnneeScolaire || "Non définie"}
+            title={t('settings.items.active_year')}
+            subtitle={selectedYear?.libelleAnneeScolaire || t('common.undefined')}
             onClick={() => setIsYearModalOpen(true)}
           />
           <SettingsItem
             icon={Network}
             iconColor="bg-accent"
-            title="Structure Académique"
-            subtitle="Cycles et types d'enseignements"
+            title={t('settings.items.academic_structure')}
+            subtitle={t('settings.items.academic_structure_sub')}
             onClick={() => navigate('/app/academic/structure')}
             showDivider={false}
           />
         </SettingsSection>
 
         {/* 3. Section Finance */}
-        <SettingsSection title="Finance & Tarification">
+        <SettingsSection title={t('settings.sections.finance')}>
           <SettingsItem
             icon={Wallet}
             iconColor="bg-orange-500"
-            title="Frais Globaux"
-            subtitle="Bibliothèque des tarifs (Exigibles & Périscolaires)"
+            title={t('settings.items.global_fees')}
+            subtitle={t('settings.items.global_fees_sub')}
             onClick={() => navigate('/app/finance/library')}
           />
           <SettingsItem
             icon={DoorOpen}
             iconColor="bg-green-600"
-            title="Classes & Salles"
-            subtitle="Gestion des effectifs et capacités"
+            title={t('settings.items.classes_rooms')}
+            subtitle={t('settings.items.classes_rooms_sub')}
             onClick={() => navigate('/app/academic/classes')}
           />
           <SettingsItem
             icon={Bus}
             iconColor="bg-purple-600"
-            title="Tarifs Transport"
-            subtitle="Zones et abonnements mensuels"
+            title={t('settings.items.transport_fees')}
+            subtitle={t('settings.items.transport_fees_sub')}
             onClick={() => navigate('/app/finance/transport')}
             showDivider={false}
           />
         </SettingsSection>
 
         {/* 4. Section Pédagogie */}
-        <SettingsSection title="Pédagogie">
+        <SettingsSection title={t('settings.sections.pedagogy')}>
           <SettingsItem
             icon={CalendarDays}
             iconColor="bg-red-600"
-            title="Calendrier Scolaire"
-            subtitle="Trimestres et Séquences d'évaluation"
+            title={t('settings.items.school_calendar')}
+            subtitle={t('settings.items.school_calendar_sub')}
             onClick={() => navigate('/app/pedagogy/calendar')}
           />
           <SettingsItem
             icon={Layers}
             iconColor="bg-orange-600"
-            title="Répartition des Séquences"
-            subtitle="Définir les évaluations par classe"
+            title={t('settings.items.sequences_repartition')}
+            subtitle={t('settings.items.sequences_repartition_sub')}
             onClick={() => navigate('/app/pedagogy/sequences/repartition')}
           />
           <SettingsItem
             icon={BookOpen}
             iconColor="bg-indigo-600"
-            title="Matières"
-            subtitle="Bibliothèque et coefficients par classe"
+            title={t('settings.items.subjects')}
+            subtitle={t('settings.items.subjects_sub')}
             onClick={() => navigate('/app/pedagogy/matieres')}
           />
           <SettingsItem
             icon={ShieldCheck}
             iconColor="bg-green-600"
-            title="Configuration APC"
-            subtitle="Compétences par séquence et groupes"
+            title={t('settings.items.apc_config')}
+            subtitle={t('settings.items.apc_config_sub')}
             onClick={() => navigate('/app/pedagogy/apc')}
           />
           <SettingsItem
             icon={Users}
             iconColor="bg-violet-600"
-            title="Équipe Pédagogique"
-            subtitle="Répartition des enseignants dans les salles"
+            title={t('settings.items.pedagogic_team')}
+            subtitle={t('settings.items.pedagogic_team_sub')}
             onClick={() => navigate('/app/pedagogy/teachers-repartition')}
           />
           <SettingsItem
             icon={Layers}
             iconColor="bg-orange-500"
-            title="Groupes de Matières"
-            subtitle="Bibliothèque des catégories (Sciences, Littérature...)"
-            onClick={() => navigate('/app/pedagogy/apc')} // For now, redirect to APC which has the CRUD
+            title={t('settings.items.subject_groups')}
+            subtitle={t('settings.items.subject_groups_sub')}
+            onClick={() => navigate('/app/pedagogy/apc')}
           />
           <SettingsItem
             icon={Zap}
             iconColor="bg-slate-500"
-            title="Mode de Notation APC"
-            subtitle="Activer l'évaluation CTBA/CNA dans les bulletins"
+            title={t('settings.items.apc_grading_mode')}
+            subtitle={t('settings.items.apc_grading_mode_sub')}
             action={
                 <div
                   onClick={() => setUseCompetences(!useCompetences)}
@@ -251,20 +251,20 @@ const SettingsPage: React.FC = () => {
           <SettingsItem
             icon={Users}
             iconColor="bg-yellow-600"
-            title="Personnel & Staff"
-            subtitle="Affectation des enseignants et administratifs"
+            title={t('settings.items.staff')}
+            subtitle={t('settings.items.staff_sub')}
             onClick={() => navigate('/app/admin/staff')}
             showDivider={false}
           />
         </SettingsSection>
 
         {/* 5. Section Administration & Impression */}
-        <SettingsSection title="Administration & Impression">
+        <SettingsSection title={t('settings.sections.admin_print')}>
           <SettingsItem
             icon={Copy}
             iconColor="bg-sky-600"
-            title="Doubler les reçus de paiement"
-            subtitle="Imprime la copie parent et établissement sur A5"
+            title={t('settings.items.double_receipts')}
+            subtitle={t('settings.items.double_receipts_sub')}
             action={
                 <div
                   onClick={() => setDoubleReceipts(!doubleReceipts)}
@@ -283,8 +283,8 @@ const SettingsPage: React.FC = () => {
           <SettingsItem
             icon={Phone}
             iconColor="bg-emerald-600"
-            title="Nombre de téléphones"
-            subtitle={`Téléphones affichés sur l'en-tête (${nbTelephones})`}
+            title={t('settings.items.phone_count')}
+            subtitle={`${t('settings.items.phone_count_sub')} (${nbTelephones})`}
             action={
               <div className="flex items-center space-x-6 bg-emerald-50 p-3 rounded-sharp border border-emerald-100 shadow-sm">
                 <button
@@ -303,18 +303,18 @@ const SettingsPage: React.FC = () => {
         </SettingsSection>
 
         {/* 6. Section Système */}
-        <SettingsSection title="Système">
+        <SettingsSection title={t('settings.sections.system')}>
           <SettingsItem
             icon={Palette}
             iconColor="bg-pink-600"
-            title="Apparence du Portail"
-            subtitle="Personnalisation des couleurs et thèmes"
+            title={t('settings.items.appearance')}
+            subtitle={t('settings.items.appearance_sub')}
             onClick={() => {/* Handle theme change */}}
           />
           <SettingsItem
             icon={Server}
             iconColor="bg-slate-600"
-            title="Configuration Serveur"
+            title={t('settings.items.server_config')}
             subtitle={serverIp}
             onClick={() => setIsConfigOpen(true)}
             showDivider={false}
@@ -323,12 +323,12 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* 7. Section Compte */}
-      <SettingsSection title="Sécurité">
+      <SettingsSection title={t('settings.sections.security')}>
         <SettingsItem
           icon={LogOut}
           iconColor="bg-red-500"
-          title="Déconnexion"
-          subtitle="Mettre fin à votre session actuelle"
+          title={t('settings.items.logout')}
+          subtitle={t('settings.items.logout_sub')}
           onClick={handleLogout}
           showDivider={false}
         />
@@ -342,9 +342,9 @@ const SettingsPage: React.FC = () => {
               <div className="bg-white rounded-[56px] p-16 max-w-xl w-full shadow-2xl animate-in zoom-in-95 border border-gray-100">
                   <div className="flex items-center space-x-4 text-emerald-600 mb-3">
                       <Globe size={32} />
-                      <span className="text-[11px] font-black uppercase tracking-[0.5em]">Localisation</span>
+                      <span className="text-[11px] font-black uppercase tracking-[0.5em]">{t('settings.modals.localization')}</span>
                   </div>
-                  <h2 className="text-5xl font-black uppercase tracking-tighter mb-10 text-black">Langue</h2>
+                  <h2 className="text-5xl font-black uppercase tracking-tighter mb-10 text-black">{t('settings.modals.language')}</h2>
 
                   <div className="grid grid-cols-1 gap-4">
                       {[
@@ -377,7 +377,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => setIsLangModalOpen(false)}
                     className="w-full mt-12 py-6 font-black uppercase text-xs tracking-[0.4em] bg-gray-50 text-black rounded-sharp hover:bg-black hover:text-white transition-all shadow-sm"
-                  >RETOUR AUX RÉGLAGES</button>
+                  >{t('common.back_to_settings')}</button>
               </div>
           </div>
       )}
@@ -388,9 +388,9 @@ const SettingsPage: React.FC = () => {
               <div className="bg-white rounded-[56px] p-16 max-w-xl w-full shadow-2xl animate-in zoom-in-95 border border-gray-100">
                   <div className="flex items-center space-x-4 text-blue-600 mb-3">
                       <Calendar size={32} />
-                      <span className="text-[11px] font-black uppercase tracking-[0.5em]">Scope Temporel</span>
+                      <span className="text-[11px] font-black uppercase tracking-[0.5em]">{t('settings.modals.time_scope')}</span>
                   </div>
-                  <h2 className="text-5xl font-black uppercase tracking-tighter mb-10 text-black">Année Scolaire</h2>
+                  <h2 className="text-5xl font-black uppercase tracking-tighter mb-10 text-black">{t('settings.modals.school_year')}</h2>
 
                   <div className="grid grid-cols-1 gap-4">
                       {years.map((year, index) => {
@@ -425,7 +425,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     onClick={() => setIsYearModalOpen(false)}
                     className="w-full mt-12 py-6 font-black uppercase text-xs tracking-[0.4em] bg-gray-50 text-black rounded-sharp hover:bg-black hover:text-white transition-all shadow-sm"
-                  >RETOUR AUX RÉGLAGES</button>
+                  >{t('common.back_to_settings')}</button>
               </div>
           </div>
       )}

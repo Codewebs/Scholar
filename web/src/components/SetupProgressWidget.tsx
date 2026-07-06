@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSchoolYear } from '../context/SchoolYearContext';
 import { dashboardService } from '../api/dashboardService';
 import { SetupProgress } from '../types/models';
+import { useTranslation } from 'react-i18next';
 import {
   ClipboardList,
   X,
@@ -12,6 +13,7 @@ import {
 import { clsx } from 'clsx';
 
 const SetupProgressWidget: React.FC = () => {
+  const { t } = useTranslation();
   const { selectedYear } = useSchoolYear();
   const [isOpen, setIsProgressOpen] = useState(false);
   const [progress, setProgress] = useState<SetupProgress | null>(null);
@@ -38,7 +40,7 @@ const SetupProgressWidget: React.FC = () => {
       {isOpen && (
         <div className="mb-6 w-80 bg-white border border-border rounded-[24px] shadow-2xl p-6 animate-in slide-in-from-bottom-4 duration-300">
           <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4">
-            <h4 className="font-black uppercase tracking-widest text-xs">Suivi de configuration</h4>
+            <h4 className="font-black uppercase tracking-widest text-xs">{t('setup.widget.title')}</h4>
             <button onClick={() => setIsProgressOpen(false)} className="hover:rotate-90 transition-transform">
               <X size={18} />
             </button>
@@ -71,14 +73,14 @@ const SetupProgressWidget: React.FC = () => {
             ) : (
               <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
                  <div className="w-12 h-12 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                 <p className="text-[10px] text-[#9E9E9E] font-black uppercase tracking-widest leading-relaxed">Synchronisation des données...</p>
+                 <p className="text-[10px] text-[#9E9E9E] font-black uppercase tracking-widest leading-relaxed">{t('setup.widget.syncing')}</p>
               </div>
             )}
           </div>
 
           <div className="mt-8 pt-4 border-t border-gray-100">
              <button className="w-full flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-accent hover:text-black transition-colors">
-                <span>Finaliser la structure</span>
+                <span>{t('setup.widget.finalize')}</span>
                 <ChevronRight size={14} />
              </button>
           </div>

@@ -3,6 +3,7 @@ import { useSchoolYear } from '../../context/SchoolYearContext';
 import { financeService } from '../../api/financeService';
 import { studentService } from '../../api/studentService';
 import { pedagogyService } from '../../api/pedagogyService';
+import { useTranslation } from 'react-i18next';
 import {
   Wallet,
   TrendingUp,
@@ -33,6 +34,7 @@ import AuthButton from '../../components/ui/AuthButton';
 // Version 3.0 - Advanced Temporal Navigation Cockpit
 
 const ReportingCockpitPage: React.FC = () => {
+  const { t } = useTranslation();
   const { selectedYear } = useSchoolYear();
   const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
@@ -185,16 +187,16 @@ const ReportingCockpitPage: React.FC = () => {
                     `${start.toLocaleDateString()} — ${end.toLocaleDateString()}`;
 
   const reportModules = [
-    { id: 1, title: "Journal de Caisse", desc: "Clôture & Détails journaliers", icon: Banknote },
-    { id: 2, title: "Bilan Mensuel", desc: "Ventilation par caisse", icon: TrendingUp },
-    { id: 3, title: "Annulations/Audit", desc: "Rectifications & Anomalies", icon: AlertCircle },
-    { id: 4, title: "Taux de Recouvrement", desc: "Jauge d'objectif budgétaire", icon: Target },
-    { id: 5, title: "Pyramide Impayés", desc: "Classement des insolvables", icon: Filter },
-    { id: 6, title: "Bourses & Remises", desc: "Manques à gagner", icon: Sparkles },
-    { id: 7, title: "Services Annexes", desc: "Transport & Périscolaire", icon: Wallet },
-    { id: 8, title: "Prévision Trésorerie", desc: "Timeline des échéances", icon: CalendarDays },
-    { id: 9, title: "Compte Résultat", desc: "Recettes vs Charges", icon: TrendingUp },
-    { id: 10, title: "Bilan Éducativo-Fin", desc: "Coût de revient par élève", icon: Users },
+    { id: 1, title: t('reports.modules.daily_journal.title'), desc: t('reports.modules.daily_journal.desc'), icon: Banknote },
+    { id: 2, title: t('reports.modules.monthly_balance.title'), desc: t('reports.modules.monthly_balance.desc'), icon: TrendingUp },
+    { id: 3, title: t('reports.modules.audit.title'), desc: t('reports.modules.audit.desc'), icon: AlertCircle },
+    { id: 4, title: t('reports.modules.recovery.title'), desc: t('reports.modules.recovery.desc'), icon: Target },
+    { id: 5, title: t('reports.modules.insolvency_pyramid.title'), desc: t('reports.modules.insolvency_pyramid.desc'), icon: Filter },
+    { id: 6, title: t('reports.modules.scholarships.title'), desc: t('reports.modules.scholarships.desc'), icon: Sparkles },
+    { id: 7, title: t('reports.modules.annex_services.title'), desc: t('reports.modules.annex_services.desc'), icon: Wallet },
+    { id: 8, title: t('reports.modules.treasury_forecast.title'), desc: t('reports.modules.treasury_forecast.desc'), icon: CalendarDays },
+    { id: 9, title: t('reports.modules.result_account.title'), desc: t('reports.modules.result_account.desc'), icon: TrendingUp },
+    { id: 10, title: t('reports.modules.edu_fin_balance.title'), desc: t('reports.modules.edu_fin_balance.desc'), icon: Users },
   ];
 
   const renderChips = () => {
@@ -234,21 +236,21 @@ const ReportingCockpitPage: React.FC = () => {
          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 relative z-10">
             <div>
                 <h1 className="text-5xl font-black uppercase tracking-tighter text-black flex items-center gap-4">
-                   Cockpit <span className="text-accent">D'Analyse</span>
+                   {t('reports.cockpit.title').split(' ')[0]} <span className="text-accent">{t('reports.cockpit.title').split(' ').slice(1).join(' ')}</span>
                 </h1>
                 <div className="flex items-center gap-3 mt-3">
-                   <div className="bg-black text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.2em]">Live Tracking</div>
-                   <p className="text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest">Pilotage stratégique — {selectedYear?.libelleAnneeScolaire}</p>
+                   <div className="bg-black text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.2em]">{t('reports.cockpit.live_tracking')}</div>
+                   <p className="text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest">{t('reports.cockpit.subtitle', { year: selectedYear?.libelleAnneeScolaire })}</p>
                 </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-4">
                 <div className="flex p-1.5 bg-gray-100 rounded-[24px]">
                     {[
-                        { id: 'ALL', label: 'Etablissement' },
-                        { id: 'CYCLE', label: 'Par Cycle' },
-                        { id: 'CLASSE', label: 'Par Classe' },
-                        { id: 'SALLE', label: 'Par Salle' },
+                        { id: 'ALL', label: t('reports.cockpit.scopes.all') },
+                        { id: 'CYCLE', label: t('reports.cockpit.scopes.cycle') },
+                        { id: 'CLASSE', label: t('reports.cockpit.scopes.classe') },
+                        { id: 'SALLE', label: t('reports.cockpit.scopes.salle') },
                     ].map(s => (
                         <button
                             key={s.id}
@@ -264,7 +266,7 @@ const ReportingCockpitPage: React.FC = () => {
                 </div>
 
                 <AuthButton className="bg-black shadow-2xl px-8 h-14" onClick={() => window.print()}>
-                    <Download size={18} className="mr-2" /> Synthèse PDF
+                    <Download size={18} className="mr-2" /> {t('reports.cockpit.pdf_synthesis')}
                 </AuthButton>
             </div>
          </div>
@@ -278,7 +280,7 @@ const ReportingCockpitPage: React.FC = () => {
                             "px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border",
                             !selectedPeriodeId ? "bg-accent text-white border-accent" : "bg-gray-50 text-gray-400 border-transparent"
                         )}
-                    >Année Complète</button>
+                    >{t('reports.cockpit.periods.full_year')}</button>
                     {periodes.map(p => (
                         <button
                             key={p.idPeriode}
@@ -299,37 +301,37 @@ const ReportingCockpitPage: React.FC = () => {
       {/* KPIs Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <KpiCard
-            title="Revenu Global"
+            title={t('reports.cockpit.kpi.revenue')}
             value={`${(stats?.revenue?.total || 0).toLocaleString()} FCFA`}
-            subValue="Sur la période sélectionnée"
+            subValue={t('reports.cockpit.kpi.revenue_sub')}
             icon={TrendingUp}
             color="bg-accent"
           />
           <KpiCard
-            title="Taux de Recouvrement"
+            title={t('reports.cockpit.kpi.recovery')}
             value={`${(stats?.performance?.recoveryRate || 0).toFixed(1)}%`}
-            subValue="Tranches échues uniquement"
+            subValue={t('reports.cockpit.kpi.recovery_sub')}
             icon={Target}
             color="bg-orange-500"
           />
           <KpiCard
-            title="Insolvables"
+            title={t('reports.cockpit.kpi.insolvables')}
             value={stats?.students?.insolvables || 0}
-            subValue="Élèves avec reliquats échus"
+            subValue={t('reports.cockpit.kpi.insolvables_sub')}
             icon={AlertCircle}
             color="bg-red-600"
           />
           <KpiCard
-            title="Effectif Total"
+            title={t('reports.cockpit.kpi.students')}
             value={stats?.students?.total || 0}
-            subValue="Élèves inscrits"
+            subValue={t('reports.cockpit.kpi.students_sub')}
             icon={Users}
             color="bg-green-600"
           />
           <KpiCard
-            title="Assiduité"
+            title={t('reports.cockpit.kpi.attendance')}
             value={`${(stats?.performance?.attendanceRate || 0).toFixed(1)}%`}
-            subValue="Présence moyenne"
+            subValue={t('reports.cockpit.kpi.attendance_sub')}
             icon={Sparkles}
             color="bg-purple-600"
           />
@@ -340,7 +342,7 @@ const ReportingCockpitPage: React.FC = () => {
           <div className="bg-white p-10 rounded-[56px] border border-gray-100 shadow-sm">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
                   <div>
-                      <h3 className="text-2xl font-black uppercase tracking-tight">Évolution des Encaissements</h3>
+                      <h3 className="text-2xl font-black uppercase tracking-tight">{t('reports.cockpit.evolution')}</h3>
                       <div className="flex items-center gap-3 mt-2">
                         <span className="px-3 py-1 bg-accent/10 text-accent rounded-full text-[9px] font-black uppercase tracking-widest">{dateLabel}</span>
                       </div>
@@ -349,15 +351,20 @@ const ReportingCockpitPage: React.FC = () => {
                   {/* Navigation Controls */}
                   <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-[24px]">
                       <div className="flex gap-1">
-                          {['DAILY', 'WEEKLY', 'MONTHLY', 'ANNUAL'].map(p => (
+                          {[
+                            { id: 'DAILY', label: t('reports.cockpit.periods.daily') },
+                            { id: 'WEEKLY', label: t('reports.cockpit.periods.weekly') },
+                            { id: 'MONTHLY', label: t('reports.cockpit.periods.monthly') },
+                            { id: 'ANNUAL', label: t('reports.cockpit.periods.annual') }
+                          ].map(p => (
                               <button
-                                  key={p}
-                                  onClick={() => setPeriod(p as any)}
+                                  key={p.id}
+                                  onClick={() => setPeriod(p.id as any)}
                                   className={clsx(
                                       "px-4 py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all",
-                                      period === p ? "bg-white text-black shadow-sm" : "text-gray-400 hover:text-black"
+                                      period === p.id ? "bg-white text-black shadow-sm" : "text-gray-400 hover:text-black"
                                   )}
-                              >{p === 'DAILY' ? 'Jour' : p === 'WEEKLY' ? 'Semaine' : p === 'MONTHLY' ? 'Mois' : 'Année'}</button>
+                              >{p.label}</button>
                           ))}
                       </div>
 
@@ -415,18 +422,18 @@ const ReportingCockpitPage: React.FC = () => {
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
 
               <div>
-                <h3 className="text-xl font-black uppercase tracking-tight relative z-10">Réussite Académique</h3>
-                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-2 relative z-10">Performance globale de l'année</p>
+                <h3 className="text-xl font-black uppercase tracking-tight relative z-10">{t('reports.cockpit.academic_success')}</h3>
+                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-2 relative z-10">{t('reports.cockpit.academic_success_sub')}</p>
 
                 <div className="mt-12 space-y-12">
                     <div>
                         <p className="text-6xl font-black">{(stats?.performance?.progressionPass || 0).toFixed(0)}%</p>
-                        <p className="text-[10px] font-black text-green-400 uppercase mt-2 tracking-[0.2em]">Taux de passage estimé</p>
+                        <p className="text-[10px] font-black text-green-400 uppercase mt-2 tracking-[0.2em]">{t('reports.cockpit.estimated_pass_rate')}</p>
                     </div>
 
                     <div className="space-y-4">
                         <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                            <span className="text-gray-500">Moyenne Générale</span>
+                            <span className="text-gray-500">{t('reports.cockpit.general_average')}</span>
                             <span className="text-white">{(stats?.performance?.academicAvg || 0).toFixed(2)} / 20</span>
                         </div>
                         <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
@@ -438,7 +445,7 @@ const ReportingCockpitPage: React.FC = () => {
 
               <div className="mt-20 pt-8 border-t border-white/10">
                   <p className="text-[9px] font-black text-gray-500 uppercase leading-relaxed">
-                      Ce taux est calculé en comparant la moyenne actuelle de chaque élève aux seuils de réussite définis pour chaque cycle.
+                      {t('reports.cockpit.success_rate_calc')}
                   </p>
               </div>
           </div>
@@ -447,10 +454,10 @@ const ReportingCockpitPage: React.FC = () => {
       {/* Robust Financial Reports Engine - 10 Modules Grid */}
       <div className="space-y-6">
           <div className="flex items-center justify-between">
-              <h2 className="text-3xl font-black uppercase tracking-tighter">Moteur de Bilans <span className="text-accent">Financiers</span></h2>
+              <h2 className="text-3xl font-black uppercase tracking-tighter">{t('reports.cockpit.financial_reports_engine').split(' ')[0]} {t('reports.cockpit.financial_reports_engine').split(' ')[1]} <span className="text-accent">{t('reports.cockpit.financial_reports_engine').split(' ').slice(2).join(' ')}</span></h2>
               <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-secondary">Aperçu A4 Prêt</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-secondary">{t('reports.cockpit.a4_preview_ready')}</span>
               </div>
           </div>
 
@@ -480,7 +487,7 @@ const ReportingCockpitPage: React.FC = () => {
       {loading && (
         <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-[100] flex flex-col items-center justify-center space-y-4">
              <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-             <p className="font-black uppercase text-[10px] tracking-widest text-black">Calcul des indicateurs...</p>
+             <p className="font-black uppercase text-[10px] tracking-widest text-black">{t('reports.cockpit.calculating')}</p>
         </div>
       )}
     </div>

@@ -4,8 +4,10 @@ import AuthButton from '../components/ui/AuthButton';
 import { useAuth } from '../context/AuthContext';
 import { Globe } from 'lucide-react';
 import ServerConfigModal from '../components/ServerConfigModal';
+import { useTranslation } from 'react-i18next';
 
 const Welcome: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { isAuthenticated, isInitialized } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,7 +29,7 @@ const Welcome: React.FC = () => {
       >
         <div className="flex items-center space-x-3">
           <Globe size={20} className="text-accent group-hover:rotate-12 transition-transform" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-black">Server IP</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-black">{t('welcome.server_ip')}</span>
         </div>
       </button>
 
@@ -44,19 +46,19 @@ const Welcome: React.FC = () => {
         </div>
 
         <h1 className="text-5xl font-black text-black leading-[1.1] mb-6 whitespace-pre-line tracking-tighter">
-          Welcome to{"\n"}Scholar
+          {t('welcome.title')}
         </h1>
 
         <p className="text-[10px] text-[#9E9E9E] font-black uppercase tracking-widest leading-relaxed max-w-[280px] mb-12">
-          Gérez votre établissement avec une efficacité inégalée et une clarté absolue.
+          {t('welcome.subtitle')}
         </p>
 
         <div className="w-full space-y-4">
           <AuthButton onClick={() => navigate('/login')}>
-            Login
+            {t('welcome.login_button')}
           </AuthButton>
           <AuthButton variant="secondary" onClick={() => navigate('/register')}>
-            Register
+            {t('welcome.register_button')}
           </AuthButton>
         </div>
 

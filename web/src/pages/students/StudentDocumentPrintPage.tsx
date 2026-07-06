@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { studentService } from '../../api/studentService';
+import { useTranslation } from 'react-i18next';
 import {
     Printer,
     ArrowLeft,
@@ -8,6 +9,7 @@ import {
 } from 'lucide-react';
 
 const StudentDocumentPrintPage: React.FC = () => {
+    const { t } = useTranslation();
     const [searchParams] = useSearchParams();
     const [loading, setLoading] = useState(true);
     const [docData, setDocData] = useState<any>(null);
@@ -30,10 +32,10 @@ const StudentDocumentPrintPage: React.FC = () => {
 
                 // Set Document Title
                 const docNameMap: any = {
-                    'CERTIFICAT_SCOLARITE': 'Certificat de Scolarité',
-                    'CERTIFICAT_PROMOTION': 'Certificat de Promotion',
-                    'GLOBAL_RECEIPT_HISTORY': 'Historique des Paiements',
-                    'YEAR_RECEIPT': "Reçu Global de l'Année"
+                    'CERTIFICAT_SCOLARITE': t('students.documents.cert_scolarite'),
+                    'CERTIFICAT_PROMOTION': t('students.documents.cert_promotion'),
+                    'GLOBAL_RECEIPT_HISTORY': t('students.documents.global_history'),
+                    'YEAR_RECEIPT': t('students.documents.year_receipt')
                 };
                 const docName = docNameMap[docType] || docType.split('_').join(' ');
                 if (res.data?.student?.nomComplet) {
@@ -48,13 +50,13 @@ const StudentDocumentPrintPage: React.FC = () => {
         };
 
         loadData();
-    }, [docType, idEleve, idAnneeScolaire]);
+    }, [docType, idEleve, idAnneeScolaire, t]);
 
     if (loading || !docData) {
         return (
             <div className="h-screen flex flex-col items-center justify-center bg-gray-50">
                 <Loader2 className="w-12 h-12 animate-spin text-accent mb-4" />
-                <p className="font-black uppercase tracking-widest text-xs text-gray-400">Génération du document officiel...</p>
+                <p className="font-black uppercase tracking-widest text-xs text-gray-400">{t('students.print.generating')}</p>
             </div>
         );
     }
@@ -70,14 +72,14 @@ const StudentDocumentPrintPage: React.FC = () => {
                 </button>
                 <div className="h-6 w-px bg-gray-200 mx-2" />
                 <p className="text-[10px] font-black uppercase tracking-widest text-black">
-                    Document Officiel - {student.nomComplet}
+                    {t('students.print.official_doc')} - {student.nomComplet}
                 </p>
                 <button
                     onClick={() => window.print()}
                     className="ml-4 px-6 py-2 bg-black text-white rounded-full font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-all flex items-center space-x-2"
                 >
                     <Printer size={16} />
-                    <span>Imprimer (A4)</span>
+                    <span>{t('students.print.print_a4')}</span>
                 </button>
             </div>
 
@@ -96,7 +98,7 @@ const StudentDocumentPrintPage: React.FC = () => {
 
                         <div className="flex-1 flex flex-col items-center text-center px-4">
                             {school?.logo && <img src={school.logo} className="h-20 mb-3 object-contain" alt="Logo" />}
-                            <h1 className="text-lg font-black uppercase tracking-tighter leading-tight text-black">{school?.nomFr || "ÉTABLISSEMENT"}</h1>
+                            <h1 className="text-lg font-black uppercase tracking-tighter leading-tight text-black">{school?.nomFr || t('dashboard.label_school')}</h1>
                             <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1 italic">"{school?.deviseFr}"</p>
                             <p className="text-[9px] font-bold text-black uppercase tracking-widest mt-2">
                                 {school?.ville} | BP: {school?.numBp} | Tel: {school?.telephone1}
@@ -115,7 +117,7 @@ const StudentDocumentPrintPage: React.FC = () => {
                         <div className="flex-1">
                             {docType === 'CERTIFICAT_SCOLARITE' && (
                                 <div className="space-y-12 py-10">
-                                    <h2 className="text-4xl font-black text-center uppercase tracking-[0.2em] underline decoration-4 underline-offset-8">CERTIFICAT DE SCOLARITÉ</h2>
+                                    <h2 className="text-4xl font-black text-center uppercase tracking-[0.2em] underline decoration-4 underline-offset-8">{t('students.documents.cert_scolarite')}</h2>
 
                                     <div className="text-lg leading-[2] text-justify space-y-8 font-medium">
                                         <p>
@@ -136,7 +138,7 @@ const StudentDocumentPrintPage: React.FC = () => {
 
                             {docType === 'CERTIFICAT_PROMOTION' && (
                                 <div className="space-y-12 py-10">
-                                    <h2 className="text-4xl font-black text-center uppercase tracking-[0.2em] underline decoration-4 underline-offset-8">CERTIFICAT DE PROMOTION</h2>
+                                    <h2 className="text-4xl font-black text-center uppercase tracking-[0.2em] underline decoration-4 underline-offset-8">{t('students.documents.cert_promotion')}</h2>
 
                                     <div className="text-lg leading-[2] text-justify space-y-8 font-medium">
                                         <p>
@@ -158,17 +160,17 @@ const StudentDocumentPrintPage: React.FC = () => {
                             {(docType === 'GLOBAL_RECEIPT_HISTORY' || docType === 'YEAR_RECEIPT') && (
                                 <div className="space-y-8">
                                     <h2 className="text-3xl font-black text-center uppercase tracking-widest bg-gray-50 py-4 border-2 border-black rounded-2xl">
-                                        {docType === 'YEAR_RECEIPT' ? "REÇU GLOBAL DE L'ANNÉE" : "RELEVÉ GLOBAL DES PAIEMENTS"}
+                                        {docType === 'YEAR_RECEIPT' ? t('students.documents.year_receipt') : t('students.print.payment_record')}
                                     </h2>
 
                                     <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 grid grid-cols-2 gap-6">
                                         <div>
-                                            <p className="text-[10px] font-black uppercase text-gray-400">Élève</p>
+                                            <p className="text-[10px] font-black uppercase text-gray-400">{t('students.print.student')}</p>
                                             <p className="text-xl font-black uppercase">{student.nomComplet}</p>
                                             <p className="text-sm font-bold text-accent">{student.matricule}</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-[10px] font-black uppercase text-gray-400">Classe / Salle</p>
+                                            <p className="text-[10px] font-black uppercase text-gray-400">{t('students.list.class_room')}</p>
                                             <p className="text-lg font-black uppercase">{student.classeLabel}</p>
                                             <p className="text-sm font-bold">{student.salleLabel}</p>
                                         </div>
@@ -186,8 +188,8 @@ const StudentDocumentPrintPage: React.FC = () => {
                                                 <table className="w-full border-collapse">
                                                     <thead>
                                                         <tr className="bg-gray-100">
-                                                            <th className="border border-gray-200 px-4 py-2 text-[10px] font-black uppercase text-left">Type de Frais</th>
-                                                            <th className="border border-gray-200 px-4 py-2 text-[10px] font-black uppercase text-right w-32">Montant Versé</th>
+                                                            <th className="border border-gray-200 px-4 py-2 text-[10px] font-black uppercase text-left">{t('students.print.fee_type')}</th>
+                                                            <th className="border border-gray-200 px-4 py-2 text-[10px] font-black uppercase text-right w-32">{t('students.print.amount_paid')}</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -199,20 +201,20 @@ const StudentDocumentPrintPage: React.FC = () => {
                                                         ))}
                                                         {yearData.periscolaires.map((p: any, idx: number) => (
                                                             <tr key={`pe-${idx}`}>
-                                                                <td className="border border-gray-200 px-4 py-2 text-[11px] font-bold uppercase">Périscolaire - {p.label}</td>
+                                                                <td className="border border-gray-200 px-4 py-2 text-[11px] font-bold uppercase">{t('students.print.extracurricular')} - {p.label}</td>
                                                                 <td className="border border-gray-200 px-4 py-2 text-[11px] text-right font-black">{p.amount.toLocaleString()} CFA</td>
                                                             </tr>
                                                         ))}
                                                         {yearData.transport > 0 && (
                                                             <tr>
-                                                                <td className="border border-gray-200 px-4 py-2 text-[11px] font-bold uppercase">Service de Transport</td>
+                                                                <td className="border border-gray-200 px-4 py-2 text-[11px] font-bold uppercase">{t('students.print.transport_service')}</td>
                                                                 <td className="border border-gray-200 px-4 py-2 text-[11px] text-right font-black">{yearData.transport.toLocaleString()} CFA</td>
                                                             </tr>
                                                         )}
                                                     </tbody>
                                                     <tfoot className="bg-black text-white font-black">
                                                         <tr>
-                                                            <td className="px-4 py-3 text-[11px] uppercase tracking-widest">Total Annuel</td>
+                                                            <td className="px-4 py-3 text-[11px] uppercase tracking-widest">{t('students.print.annual_total')}</td>
                                                             <td className="px-4 py-3 text-right text-lg">{yearData.total.toLocaleString()} CFA</td>
                                                         </tr>
                                                     </tfoot>
@@ -228,14 +230,14 @@ const StudentDocumentPrintPage: React.FC = () => {
                         <div className="mt-auto pt-10 border-t border-gray-100">
                             <div className="flex justify-between items-end">
                                 <div className="space-y-1">
-                                    <p className="text-[11px] font-black uppercase text-black">Imprimé par : {printerName}</p>
+                                    <p className="text-[11px] font-black uppercase text-black">{t('students.print.printed_by')} : {printerName}</p>
                                     <p className="text-[9px] text-gray-400 italic">
-                                        Généré le {new Date(printDate).toLocaleString()} - Logiciel Scholar v3.1
+                                        {t('students.print.generated_on', { date: new Date(printDate).toLocaleString() })} - {t('students.print.software_version')}
                                     </p>
                                 </div>
                                 <div className="w-64 text-center">
-                                    <p className="text-[13px] font-black uppercase underline mb-24">Le Chef d'établissement</p>
-                                    <p className="text-[11px] text-gray-300 italic">(Signature et Cachet)</p>
+                                    <p className="text-[13px] font-black uppercase underline mb-24">{t('students.print.school_head')}</p>
+                                    <p className="text-[11px] text-gray-300 italic">{t('students.print.signature_stamp')}</p>
                                 </div>
                             </div>
                         </div>

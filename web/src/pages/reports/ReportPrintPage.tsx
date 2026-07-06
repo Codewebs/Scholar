@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { pedagogyService } from '../../api/pedagogyService';
 import { schoolService } from '../../api/schoolService';
+import { useTranslation } from 'react-i18next';
 import {
     Printer,
     ArrowLeft,
@@ -12,6 +13,7 @@ import {
 import { clsx } from 'clsx';
 
 const ReportPrintPage: React.FC = () => {
+    const { t } = useTranslation();
     const { user } = useAuth();
     const [searchParams] = useSearchParams();
     const [loading, setLoading] = useState(true);
@@ -41,7 +43,7 @@ const ReportPrintPage: React.FC = () => {
                 setSchoolInfo(schoolRes.data);
 
                 // Get report name (can be passed via query or hardcoded)
-                const name = searchParams.get('name') || "Rapport Académique";
+                const name = searchParams.get('name') || t('reports.print.academic_report');
                 const type = searchParams.get('type') || "A";
                 setReportInfo({ id: reportId, name, type });
 
@@ -53,13 +55,13 @@ const ReportPrintPage: React.FC = () => {
         };
 
         loadData();
-    }, [reportId, idClasse, idAnneeScolaire]);
+    }, [reportId, idClasse, idAnneeScolaire, t]);
 
     if (loading) {
         return (
             <div className="h-screen flex flex-col items-center justify-center bg-gray-50">
                 <Loader2 className="w-12 h-12 animate-spin text-green-600 mb-4" />
-                <p className="font-black uppercase tracking-widest text-xs text-gray-400">Préparation de l'impression...</p>
+                <p className="font-black uppercase tracking-widest text-xs text-gray-400">{t('reports.print.preparing')}</p>
             </div>
         );
     }
@@ -80,7 +82,7 @@ const ReportPrintPage: React.FC = () => {
                     className="ml-4 px-6 py-2 bg-black text-white rounded-full font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-all flex items-center space-x-2"
                 >
                     <Printer size={16} />
-                    <span>Imprimer (A4)</span>
+                    <span>{t('common.print')} (A4)</span>
                 </button>
             </div>
 
@@ -92,24 +94,24 @@ const ReportPrintPage: React.FC = () => {
                         {/* School Header */}
                         <div className="flex justify-between items-start pb-4 mb-6 border-b-2 border-black">
                             <div className="w-[35%] text-[8px] font-black uppercase leading-tight space-y-1">
-                                <p>REPUBLIQUE DU CAMEROUN</p>
-                                <p className="text-gray-400">REPUBLIC OF CAMEROON</p>
-                                <p>Paix - Travail - Patrie</p>
-                                <p className="text-gray-400 italic">Peace - Work - Fatherland</p>
+                                <p>{t('reports.print.republic_cameroon')}</p>
+                                <p className="text-gray-400">{t('reports.print.republic_cameroon_en')}</p>
+                                <p>{t('reports.print.peace_work_fatherland')}</p>
+                                <p className="text-gray-400 italic">{t('reports.print.peace_work_fatherland_en')}</p>
                             </div>
 
                             <div className="flex-1 flex flex-col items-center text-center px-4">
                                 {schoolInfo?.logo && <img src={schoolInfo.logo} className="h-16 mb-2 object-contain" alt="Logo" />}
-                                <h1 className="text-sm font-black uppercase tracking-tighter leading-tight text-black">{schoolInfo?.nomFr || "ÉTABLISSEMENT"}</h1>
+                                <h1 className="text-sm font-black uppercase tracking-tighter leading-tight text-black">{schoolInfo?.nomFr || t('dashboard.label_school')}</h1>
                                 <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest mt-1">
                                     {schoolInfo?.ville} | BP: {schoolInfo?.numBP} | Tel: {schoolInfo?.tel1}
                                 </p>
                             </div>
 
                             <div className="w-[35%] text-[8px] font-black uppercase text-right leading-tight space-y-1">
-                                <p>MINISTERE DES ENSEIGNEMENTS SECONDAIRES</p>
-                                <p className="text-gray-400">MINISTRY OF SECONDARY EDUCATION</p>
-                                <p>DÉLÉGATION RÉGIONALE DU CENTRE</p>
+                                <p>{t('reports.print.min_sec_edu')}</p>
+                                <p className="text-gray-400">{t('reports.print.min_sec_edu_en')}</p>
+                                <p>{t('reports.print.regional_delegation')}</p>
                             </div>
                         </div>
 
@@ -119,10 +121,10 @@ const ReportPrintPage: React.FC = () => {
                                 <h2 className="text-xl font-black uppercase tracking-[0.2em] text-black">{reportInfo?.name}</h2>
                             </div>
                             {reportInfo?.id === 'daily_payments' && (
-                                <p className="text-sm font-black mt-2">JOURNÉE DU {new Date(section.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase()}</p>
+                                <p className="text-sm font-black mt-2">{t('reports.print.day_of')} {new Date(section.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase()}</p>
                             )}
                             <p className="text-[10px] font-black uppercase tracking-widest mt-3 text-gray-500">
-                                Année Scolaire : {searchParams.get('yearLabel') || 'N/A'} • Salle : {section.nomSalle}
+                                {t('reports.print.academic_year')} : {searchParams.get('yearLabel') || 'N/A'} • {t('reports.print.room')} : {section.nomSalle}
                             </p>
                         </div>
 
@@ -132,7 +134,7 @@ const ReportPrintPage: React.FC = () => {
                                 <div className="space-y-6">
                                     <div className="flex justify-end">
                                         <div className="bg-black text-white px-6 py-2 rounded-xl text-center">
-                                            <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Taux de Recouvrement</p>
+                                            <p className="text-[8px] font-black uppercase tracking-widest opacity-60">{t('reports.print.recovery_rate')}</p>
                                             <p className="text-xl font-black">{section.stats?.tauxRecouvrement || 0}%</p>
                                         </div>
                                     </div>
@@ -140,10 +142,10 @@ const ReportPrintPage: React.FC = () => {
                                         <thead>
                                             <tr className="bg-gray-100 text-black">
                                                 <th className="border border-black px-2 py-2 text-[9px] font-black uppercase w-8 text-center">N°</th>
-                                                <th className="border border-black px-4 py-2 text-[9px] font-black uppercase text-left">Élève</th>
-                                                <th className="border border-black px-3 py-2 text-[9px] font-black uppercase text-right w-24">Dû</th>
-                                                <th className="border border-black px-3 py-2 text-[9px] font-black uppercase text-right w-24">Versé</th>
-                                                <th className="border border-black px-3 py-2 text-[9px] font-black uppercase text-right w-28 bg-red-50 text-red-600">Reste à Payer</th>
+                                                <th className="border border-black px-4 py-2 text-[9px] font-black uppercase text-left">{t('reports.print.student')}</th>
+                                                <th className="border border-black px-3 py-2 text-[9px] font-black uppercase text-right w-24">{t('reports.print.due')}</th>
+                                                <th className="border border-black px-3 py-2 text-[9px] font-black uppercase text-right w-24">{t('reports.print.paid')}</th>
+                                                <th className="border border-black px-3 py-2 text-[9px] font-black uppercase text-right w-28 bg-red-50 text-red-600">{t('reports.print.balance')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -167,11 +169,11 @@ const ReportPrintPage: React.FC = () => {
                                         <thead>
                                             <tr className="bg-gray-100 text-black">
                                                 <th className="border border-black px-2 py-2 text-[9px] font-black uppercase w-8 text-center">N°</th>
-                                                <th className="border border-black px-4 py-2 text-[9px] font-black uppercase text-left">Nom de l'élève</th>
-                                                <th className="border border-black px-3 py-2 text-[9px] font-black uppercase text-left">Activité</th>
-                                                <th className="border border-black px-2 py-2 text-[9px] font-black uppercase text-right w-20">Tarif</th>
-                                                <th className="border border-black px-2 py-2 text-[9px] font-black uppercase text-right w-20">Cumul Payé</th>
-                                                <th className="border border-black px-2 py-2 text-[9px] font-black uppercase text-right w-24 bg-red-50 text-red-600">Dette</th>
+                                                <th className="border border-black px-4 py-2 text-[9px] font-black uppercase text-left">{t('reports.print.full_name')}</th>
+                                                <th className="border border-black px-3 py-2 text-[9px] font-black uppercase text-left">{t('reports.print.activity')}</th>
+                                                <th className="border border-black px-2 py-2 text-[9px] font-black uppercase text-right w-20">{t('reports.print.tariff')}</th>
+                                                <th className="border border-black px-2 py-2 text-[9px] font-black uppercase text-right w-20">{t('reports.print.total_paid')}</th>
+                                                <th className="border border-black px-2 py-2 text-[9px] font-black uppercase text-right w-24 bg-red-50 text-red-600">{t('reports.print.debt')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -180,7 +182,7 @@ const ReportPrintPage: React.FC = () => {
                                                     <td className="border border-black px-2 py-2 text-[10px] text-center font-bold">{idx + 1}</td>
                                                     <td className="border border-black px-4 py-2 text-[11px] font-black uppercase text-black">{item.nom}</td>
                                                     <td className="border border-black px-3 py-2 text-[10px] uppercase font-bold text-gray-500">{item.activite}</td>
-                                                    <td className="border border-black px-2 py-2 text-[10px] text-right font-bold">{item.tarif.toLocaleString()}</td>
+                                                    <td className="border border-black px-2 py-2 text-[10px] text-right font-bold">{item.tariff.toLocaleString()}</td>
                                                     <td className="border border-black px-2 py-2 text-[10px] text-right font-bold text-green-600">{item.paye.toLocaleString()}</td>
                                                     <td className="border border-black px-2 py-2 text-[11px] text-right font-black text-red-600 bg-red-50/30">{item.dette.toLocaleString()}</td>
                                                 </tr>
@@ -195,18 +197,18 @@ const ReportPrintPage: React.FC = () => {
                                     <table className="w-full border-collapse">
                                         <thead>
                                             <tr className="bg-black text-white">
-                                                <th rowSpan={2} className="border border-black px-4 py-2 text-[9px] font-black uppercase text-left">Élève</th>
-                                                <th colSpan={2} className="border border-black px-2 py-2 text-[8px] font-black uppercase text-center">Scolarité</th>
-                                                <th colSpan={1} className="border border-black px-2 py-2 text-[8px] font-black uppercase text-center">Activités</th>
-                                                <th colSpan={2} className="border border-black px-2 py-2 text-[8px] font-black uppercase text-center">Transport</th>
-                                                <th rowSpan={2} className="border border-black px-4 py-2 text-[9px] font-black uppercase text-right bg-red-600">Solde Total</th>
+                                                <th rowSpan={2} className="border border-black px-4 py-2 text-[9px] font-black uppercase text-left">{t('reports.print.student')}</th>
+                                                <th colSpan={2} className="border border-black px-2 py-2 text-[8px] font-black uppercase text-center">{t('reports.print.schooling')}</th>
+                                                <th colSpan={1} className="border border-black px-2 py-2 text-[8px] font-black uppercase text-center">{t('reports.print.activities')}</th>
+                                                <th colSpan={2} className="border border-black px-2 py-2 text-[8px] font-black uppercase text-center">{t('reports.print.transport')}</th>
+                                                <th rowSpan={2} className="border border-black px-4 py-2 text-[9px] font-black uppercase text-right bg-red-600">{t('reports.print.total_balance')}</th>
                                             </tr>
                                             <tr className="bg-gray-100 text-[7px] font-black uppercase">
-                                                <th className="border border-black p-1 text-center">Dû</th>
-                                                <th className="border border-black p-1 text-center">Payé</th>
-                                                <th className="border border-black p-1 text-center">Payé</th>
-                                                <th className="border border-black p-1 text-center">Dû</th>
-                                                <th className="border border-black p-1 text-center">Payé</th>
+                                                <th className="border border-black p-1 text-center">{t('reports.print.due')}</th>
+                                                <th className="border border-black p-1 text-center">{t('reports.print.paid')}</th>
+                                                <th className="border border-black p-1 text-center">{t('reports.print.paid')}</th>
+                                                <th className="border border-black p-1 text-center">{t('reports.print.due')}</th>
+                                                <th className="border border-black p-1 text-center">{t('reports.print.paid')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -236,13 +238,13 @@ const ReportPrintPage: React.FC = () => {
                                     <table className="w-full border-collapse">
                                         <thead>
                                             <tr className="bg-gray-100 text-black">
-                                                <th className="border border-black px-2 py-2 text-[8px] font-black uppercase text-center w-16">Heure</th>
-                                                <th className="border border-black px-4 py-2 text-[9px] font-black uppercase text-left">Élève</th>
-                                                <th className="border border-black px-2 py-2 text-[8px] font-black uppercase text-center w-20">Mode</th>
-                                                <th className="border border-black px-2 py-2 text-[8px] font-black uppercase text-left">Réf.</th>
-                                                <th className="border border-black px-2 py-2 text-[8px] font-black uppercase text-right w-20">Scolarité</th>
-                                                <th className="border border-black px-2 py-2 text-[8px] font-black uppercase text-right w-20">Autres</th>
-                                                <th className="border border-black px-4 py-2 text-[9px] font-black uppercase text-right w-28 bg-black text-white">Total</th>
+                                                <th className="border border-black px-2 py-2 text-[8px] font-black uppercase text-center w-16">{t('reports.print.time')}</th>
+                                                <th className="border border-black px-4 py-2 text-[9px] font-black uppercase text-left">{t('reports.print.student')}</th>
+                                                <th className="border border-black px-2 py-2 text-[8px] font-black uppercase text-center w-20">{t('reports.print.mode')}</th>
+                                                <th className="border border-black px-2 py-2 text-[8px] font-black uppercase text-left">{t('reports.print.ref')}</th>
+                                                <th className="border border-black px-2 py-2 text-[8px] font-black uppercase text-right w-20">{t('reports.print.schooling')}</th>
+                                                <th className="border border-black px-2 py-2 text-[8px] font-black uppercase text-right w-20">{t('reports.print.others')}</th>
+                                                <th className="border border-black px-4 py-2 text-[9px] font-black uppercase text-right w-28 bg-black text-white">{t('reports.print.total')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -260,7 +262,7 @@ const ReportPrintPage: React.FC = () => {
                                         </tbody>
                                         <tfoot className="bg-black text-white font-black text-[10px]">
                                             <tr>
-                                                <td colSpan={6} className="border border-black px-4 py-3 text-right uppercase tracking-widest">Total Journalier Recouvré</td>
+                                                <td colSpan={6} className="border border-black px-4 py-3 text-right uppercase tracking-widest">{t('reports.print.total_recovered')}</td>
                                                 <td className="border border-black px-4 py-3 text-right">{section.eleves.reduce((s: number, e: any) => s + e.total, 0).toLocaleString()} CFA</td>
                                             </tr>
                                         </tfoot>
@@ -272,20 +274,20 @@ const ReportPrintPage: React.FC = () => {
                                 <div className="space-y-12">
                                     <div className="grid grid-cols-2 gap-10">
                                         <div className="bg-gray-50 p-8 rounded-[40px] border-2 border-black flex flex-col items-center justify-center">
-                                            <p className="text-[10px] font-black uppercase tracking-widest mb-2">Taux de Réalisation</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest mb-2">{t('reports.print.realization_rate')}</p>
                                             <p className="text-5xl font-black">{section.taux}%</p>
                                         </div>
                                         <div className="space-y-4">
                                             <div className="flex justify-between border-b border-gray-100 pb-2">
-                                                <span className="text-[10px] font-bold uppercase text-gray-500">Prévisions</span>
+                                                <span className="text-[10px] font-bold uppercase text-gray-500">{t('reports.print.forecasts')}</span>
                                                 <span className="font-black">{section.attendu.toLocaleString()} CFA</span>
                                             </div>
                                             <div className="flex justify-between border-b border-gray-100 pb-2">
-                                                <span className="text-[10px] font-bold uppercase text-gray-500">Réalisations</span>
+                                                <span className="text-[10px] font-bold uppercase text-gray-500">{t('reports.print.realizations')}</span>
                                                 <span className="font-black text-green-600">{section.paye.toLocaleString()} CFA</span>
                                             </div>
                                             <div className="flex justify-between border-b border-gray-100 pb-2">
-                                                <span className="text-[10px] font-bold uppercase text-gray-500">Écart</span>
+                                                <span className="text-[10px] font-bold uppercase text-gray-500">{t('reports.print.gap')}</span>
                                                 <span className="font-black text-red-600">{section.ecart.toLocaleString()} CFA</span>
                                             </div>
                                         </div>
@@ -294,9 +296,9 @@ const ReportPrintPage: React.FC = () => {
                                     <table className="w-full border-collapse">
                                         <thead>
                                             <tr className="bg-black text-white">
-                                                <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-left">Rubrique détaillée</th>
-                                                <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-right">Attendu</th>
-                                                <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-right">Recouvré</th>
+                                                <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-left">{t('reports.print.detailed_section')}</th>
+                                                <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-right">{t('reports.print.due')}</th>
+                                                <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-right">{t('reports.print.recovered')}</th>
                                                 <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-right">RP (%)</th>
                                             </tr>
                                         </thead>
@@ -320,11 +322,11 @@ const ReportPrintPage: React.FC = () => {
                                 <table className="w-full border-collapse">
                                     <thead>
                                         <tr className="bg-black text-white">
-                                            <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-left">Matricule</th>
-                                            <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-left">Nom complet</th>
-                                            <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-right">Tarif Normal</th>
-                                            <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-right">Tarif Appliqué</th>
-                                            <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-left">Motif</th>
+                                            <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-left">{t('reports.print.id_number')}</th>
+                                            <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-left">{t('reports.print.full_name')}</th>
+                                            <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-right">{t('reports.print.normal_tariff')}</th>
+                                            <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-right">{t('reports.print.applied_tariff')}</th>
+                                            <th className="border border-black px-4 py-3 text-[10px] font-black uppercase text-left">{t('reports.print.reason')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -346,15 +348,15 @@ const ReportPrintPage: React.FC = () => {
                                     {/* Stats Ratio */}
                                     <div className="grid grid-cols-3 border-2 border-black divide-x-2 divide-black rounded-xl overflow-hidden mb-6">
                                         <div className="p-4 text-center">
-                                            <p className="text-[9px] font-black uppercase text-pink-600">Filles</p>
+                                            <p className="text-[9px] font-black uppercase text-pink-600">{t('reports.print.girls')}</p>
                                             <p className="text-2xl font-black">{section.stats.girls} ({section.stats.girlsPercent}%)</p>
                                         </div>
                                         <div className="p-4 text-center">
-                                            <p className="text-[9px] font-black uppercase text-blue-600">Garçons</p>
+                                            <p className="text-[9px] font-black uppercase text-blue-600">{t('reports.print.boys')}</p>
                                             <p className="text-2xl font-black">{section.stats.boys} ({section.stats.boysPercent}%)</p>
                                         </div>
                                         <div className="p-4 text-center bg-gray-50">
-                                            <p className="text-[9px] font-black uppercase text-gray-400">Effectif Total</p>
+                                            <p className="text-[9px] font-black uppercase text-gray-400">{t('reports.print.total_effectif')}</p>
                                             <p className="text-2xl font-black">{section.stats.total}</p>
                                         </div>
                                     </div>
@@ -362,7 +364,7 @@ const ReportPrintPage: React.FC = () => {
                                     {/* Split Tables */}
                                     <div className="grid grid-cols-2 gap-8">
                                         <div>
-                                            <h4 className="text-[10px] font-black uppercase mb-4 text-pink-600 border-b border-pink-100 pb-2">Liste des Filles ({section.stats.girls})</h4>
+                                            <h4 className="text-[10px] font-black uppercase mb-4 text-pink-600 border-b border-pink-100 pb-2">{t('reports.print.girls_list')} ({section.stats.girls})</h4>
                                             <table className="w-full border-collapse">
                                                 <tbody>
                                                     {section.girls.map((f: any, idx: number) => (
@@ -375,7 +377,7 @@ const ReportPrintPage: React.FC = () => {
                                             </table>
                                         </div>
                                         <div>
-                                            <h4 className="text-[10px] font-black uppercase mb-4 text-blue-600 border-b border-blue-100 pb-2">Liste des Garçons ({section.stats.boys})</h4>
+                                            <h4 className="text-[10px] font-black uppercase mb-4 text-blue-600 border-b border-blue-100 pb-2">{t('reports.print.boys_list')} ({section.stats.boys})</h4>
                                             <table className="w-full border-collapse">
                                                 <tbody>
                                                     {section.boys.map((m: any, idx: number) => (
@@ -397,13 +399,13 @@ const ReportPrintPage: React.FC = () => {
                                         <thead>
                                             <tr>
                                                 <th className="border border-black px-2 py-2 text-[8px] font-black uppercase w-8">N°</th>
-                                                <th className="border border-black px-4 py-2 text-[9px] font-black uppercase text-left w-64">Nom & Prénom de l'élève</th>
+                                                <th className="border border-black px-4 py-2 text-[9px] font-black uppercase text-left w-64">{t('reports.print.full_name')}</th>
                                                 {[...Array(31)].map((_, i) => (
                                                     <th key={i} className="border border-black p-0 text-[6px] font-black uppercase w-6 text-center">
                                                         <div className="border-b border-black">{i + 1}</div>
                                                         <div className="flex">
-                                                            <span className="flex-1 border-r border-black">M</span>
-                                                            <span className="flex-1">S</span>
+                                                            <span className="flex-1 border-r border-black">{t('reports.print.morning')}</span>
+                                                            <span className="flex-1">{t('reports.print.evening')}</span>
                                                         </div>
                                                     </th>
                                                 ))}
@@ -448,15 +450,15 @@ const ReportPrintPage: React.FC = () => {
                         <div className="mt-auto pt-10 border-t border-gray-100">
                             <div className="flex justify-between items-end">
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-black uppercase text-black">Imprimé par : {user?.nom || user?.email || "Administrateur"}</p>
+                                    <p className="text-[10px] font-black uppercase text-black">{t('reports.print.printed_by')} : {user?.nom || user?.email || t('reports.print.administrator')}</p>
                                     <p className="text-[8px] text-gray-400 italic">
-                                        Extrait le {new Date().toLocaleString()} - Logiciel Scholar v3.1
+                                        {t('reports.print.extracted_at')} {new Date().toLocaleString()} - {t('reports.print.software_version')}
                                     </p>
                                 </div>
                                 <div className="flex space-x-12">
                                     <div className="w-48 text-center">
-                                        <p className="text-[10px] font-black uppercase underline mb-16">Le Principal / Le Chef d'établissement</p>
-                                        <p className="text-[8px] text-gray-300 italic">(Cachet et Signature)</p>
+                                        <p className="text-[10px] font-black uppercase underline mb-16">{t('reports.print.school_head')}</p>
+                                        <p className="text-[8px] text-gray-300 italic">{t('reports.print.stamp_signature')}</p>
                                     </div>
                                 </div>
                             </div>

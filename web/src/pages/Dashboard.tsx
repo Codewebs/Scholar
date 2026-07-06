@@ -16,8 +16,10 @@ import {
 import { clsx } from 'clsx';
 import ServerConfigModal from '../components/ServerConfigModal';
 import { useUI } from '../context/UIContext';
+import { useTranslation } from 'react-i18next';
 
 const Dashboard: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const { user, hasPermission } = useAuth();
   const { years, selectedYear, fetchYears, selectYear } = useSchoolYear();
   const { settings } = useUI();
@@ -66,6 +68,11 @@ const Dashboard: React.FC = () => {
   }, [selectedSchool, selectedYear]);
 
   const flatMenuItems = menuGroups.flatMap(g => g.items).filter(item => !item.permission || hasPermission(item.permission));
+
+  const changeLanguage = (lng: string) => {
+    i18n.changeLanguage(lng);
+    localStorage.setItem('i18nextLng', lng);
+  };
 
   const cardTheme = (title: string) => {
     const themes: Record<string, { badge: string; icon: string; title: string; description: string; } > = {
@@ -166,7 +173,7 @@ const Dashboard: React.FC = () => {
             className="font-black text-black tracking-tighter uppercase leading-none"
             style={{ fontSize: `${3.75 * textScale}rem` }}
           >
-            Tableau de bord
+            {t('dashboard.title')}
           </h1>
           <div className="flex items-center space-x-4 mt-4">
             <button
@@ -175,17 +182,39 @@ const Dashboard: React.FC = () => {
             >
               {isOnline ? <Wifi size={14} className="text-green-500 mr-2" /> : <WifiOff size={14} className="text-red-500 mr-2" />}
               <span className={clsx("text-[10px] font-black uppercase tracking-widest mr-3", isOnline ? "text-green-600" : "text-red-600")}>
-                {isOnline ? "Connecté" : "Hors-ligne"}
+                {isOnline ? t('dashboard.online') : t('dashboard.offline')}
               </span>
               <Globe size={12} className="text-[#9E9E9E] group-hover:text-accent transition-colors" />
             </button>
+
+            {/* Language Switcher */}
+            <div className="flex bg-white border border-border rounded-sharp p-1">
+              <button
+                onClick={() => changeLanguage('fr')}
+                className={clsx(
+                  "px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-sharp transition-all",
+                  i18n.language === 'fr' ? "bg-black text-white" : "text-gray-400 hover:text-black"
+                )}
+              >
+                FR
+              </button>
+              <button
+                onClick={() => changeLanguage('en')}
+                className={clsx(
+                  "px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-sharp transition-all",
+                  i18n.language === 'en' ? "bg-black text-white" : "text-gray-400 hover:text-black"
+                )}
+              >
+                EN
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Selectors Row */}
         <div className="flex flex-wrap gap-4">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase text-[#9E9E9E] tracking-widest ml-1">Établissement</label>
+            <label className="text-[10px] font-black uppercase text-[#9E9E9E] tracking-widest ml-1">{t('dashboard.label_school')}</label>
             <div className="relative">
               <select
                 className="appearance-none bg-white border border-border px-6 py-3.5 pr-14 rounded-sharp font-black text-xs uppercase tracking-tight focus:border-black outline-none transition-all cursor-pointer shadow-sm hover:shadow-lg"
@@ -205,7 +234,7 @@ const Dashboard: React.FC = () => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase text-[#9E9E9E] tracking-widest ml-1">Année Scolaire</label>
+            <label className="text-[10px] font-black uppercase text-[#9E9E9E] tracking-widest ml-1">{t('dashboard.label_year')}</label>
             <div className="relative">
               <select
                 className="appearance-none bg-white border border-border px-6 py-3.5 pr-14 rounded-sharp font-black text-xs uppercase tracking-tight focus:border-black outline-none transition-all cursor-pointer shadow-sm hover:shadow-lg"
@@ -216,7 +245,7 @@ const Dashboard: React.FC = () => {
                   if (year) selectYear(year);
                 }}
               >
-                <option value="">Sélectionner...</option>
+                <option value="">{t('dashboard.select_placeholder')}</option>
                 {years.map((y, index) => {
                   const yId = y.idServeur || y.idAnneeScolaire;
                   return <option key={`${yId}-${index}`} value={yId}>{y.libelleAnneeScolaire}</option>;
@@ -235,6 +264,7 @@ const Dashboard: React.FC = () => {
       >
         {flatMenuItems.map((item, idx) => {
           const theme = cardTheme(item.title);
+          const translatedTitle = t(item.translationKey);
           return (
             <Link
               key={idx}
@@ -259,13 +289,13 @@ const Dashboard: React.FC = () => {
                     className={clsx("font-black uppercase tracking-tight mb-1 transition-transform duration-300 group-hover:translate-x-1", theme.title)}
                     style={{ fontSize: `${1.125 * textScale}rem` }}
                 >
-                    {item.title}
+                    {translatedTitle}
                 </h3>
                 <p
                     className="font-black uppercase tracking-[0.26em] text-black opacity-80"
                     style={{ fontSize: `${11 * textScale}px` }}
                 >
-                    Gérer le module {item.title.toLowerCase()}
+                    {t('dashboard.manage_module', { title: translatedTitle.toLowerCase() })}
                 </p>
               </div>
               <div className="absolute -right-6 -bottom-6 opacity-[0.04] group-hover:opacity-[0.08] group-hover:scale-110 transition-all duration-700 pointer-events-none">
@@ -292,7 +322,7 @@ const Dashboard: React.FC = () => {
             className="font-black uppercase tracking-[0.3em] text-[#9E9E9E] group-hover:text-black"
             style={{ fontSize: `${10 * textScale}px` }}
           >
-            Ajouter
+            {t('dashboard.add_button')}
           </span>
         </button>
       </div>

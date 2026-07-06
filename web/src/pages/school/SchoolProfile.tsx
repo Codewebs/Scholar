@@ -5,6 +5,7 @@ import { School } from '../../types/models';
 import { AcademicPermission } from '../../types/permissions';
 import AuthInput from '../../components/ui/AuthInput';
 import AuthButton from '../../components/ui/AuthButton';
+import { useTranslation } from 'react-i18next';
 import {
   Building2,
   MapPin,
@@ -25,6 +26,7 @@ import {
 import { clsx } from 'clsx';
 
 const SchoolProfile: React.FC = () => {
+  const { t } = useTranslation();
   const { user, hasPermission } = useAuth();
   const [school, setSchool] = useState<School | null>(null);
   const [loading, setLoading] = useState(false);
@@ -68,7 +70,7 @@ const SchoolProfile: React.FC = () => {
       setIsEditing(false);
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
-      alert("Erreur lors de la mise à jour");
+      alert(t('school.profile.error_update'));
     } finally {
       setSaving(false);
     }
@@ -84,7 +86,7 @@ const SchoolProfile: React.FC = () => {
       await schoolService.uploadLogo(id!, file);
       loadSchool(); // Reload to get new logo URL
     } catch (err) {
-      alert("Erreur lors de l'upload du logo");
+      alert(t('school.profile.error_logo'));
     } finally {
       setSaving(false);
     }
@@ -98,7 +100,7 @@ const SchoolProfile: React.FC = () => {
   if (loading) return (
     <div className="h-[60vh] flex flex-col items-center justify-center space-y-6">
         <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-        <p className="font-black uppercase tracking-[0.4em] text-[#9E9E9E] text-[10px]">Chargement du profil...</p>
+        <p className="font-black uppercase tracking-[0.4em] text-[#9E9E9E] text-[10px]">{t('school.profile.loading')}</p>
     </div>
   );
 
@@ -115,9 +117,9 @@ const SchoolProfile: React.FC = () => {
             <div>
                 <div className="flex items-center space-x-3 text-accent mb-2">
                     <ShieldCheck size={20} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em]">Identité Institutionnelle</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em]">{t('school.profile.identity_title')}</span>
                 </div>
-                <h1 className="text-4xl font-black uppercase tracking-tighter text-black">Profil Établissement</h1>
+                <h1 className="text-4xl font-black uppercase tracking-tighter text-black">{t('school.profile.title')}</h1>
             </div>
         </div>
 
@@ -128,7 +130,7 @@ const SchoolProfile: React.FC = () => {
                     className="bg-black text-white py-4 px-8 rounded-sharp flex items-center space-x-3 shadow-xl hover:scale-105 active:scale-95 transition-all font-black uppercase text-[10px] tracking-widest"
                 >
                     <Edit3 size={18} />
-                    <span>Modifier les infos</span>
+                    <span>{t('school.profile.edit_info')}</span>
                 </button>
             )}
             {isEditing && (
@@ -137,12 +139,12 @@ const SchoolProfile: React.FC = () => {
                     className="bg-gray-100 text-black py-4 px-8 rounded-sharp flex items-center space-x-3 hover:bg-gray-200 transition-all font-black uppercase text-[10px] tracking-widest"
                 >
                     <X size={18} />
-                    <span>Annuler</span>
+                    <span>{t('school.profile.cancel')}</span>
                 </button>
             )}
             <div className="bg-blue-50 text-blue-600 px-6 py-4 rounded-sharp border border-blue-100 flex items-center space-x-3 shadow-sm">
                 <Zap size={18} className="animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Actif</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">{t('school.profile.active_status')}</span>
             </div>
         </div>
       </div>
@@ -180,14 +182,14 @@ const SchoolProfile: React.FC = () => {
 
              <h2 className="text-2xl font-black uppercase tracking-tighter text-black mb-2">{school?.nomFr}</h2>
              <div className="bg-gray-50 px-4 py-1.5 rounded-full inline-block">
-                <p className="text-[10px] font-black text-accent uppercase tracking-[0.2em]">{school?.abreviation || 'No Short Name'}</p>
+                <p className="text-[10px] font-black text-accent uppercase tracking-[0.2em]">{school?.abreviation || t('school.profile.no_short_name')}</p>
              </div>
 
              <div className="w-full mt-10 pt-10 border-t border-gray-50 space-y-6">
                 <div className="text-left">
-                    <p className="text-[9px] font-black text-[#9E9E9E] uppercase tracking-[0.3em] mb-3 ml-2">Slogan / Devise</p>
+                    <p className="text-[9px] font-black text-[#9E9E9E] uppercase tracking-[0.3em] mb-3 ml-2">{t('school.profile.slogan_devise')}</p>
                     <div className="bg-gray-50 p-6 rounded-[24px] border border-gray-100 italic font-medium text-gray-600 text-sm leading-relaxed">
-                        "{school?.deviseFr || 'Aucune devise configurée'}"
+                        "{school?.deviseFr || t('school.profile.no_devise')}"
                     </div>
                 </div>
              </div>
@@ -196,17 +198,17 @@ const SchoolProfile: React.FC = () => {
           <div className="bg-white rounded-[40px] p-10 shadow-xl border border-gray-100 space-y-6">
             <div className="flex items-center space-x-3 text-blue-600 mb-2">
                 <FileText size={20} />
-                <h3 className="text-[11px] font-black uppercase tracking-[0.3em]">Enregistrement</h3>
+                <h3 className="text-[11px] font-black uppercase tracking-[0.3em]">{t('school.profile.registration')}</h3>
             </div>
             <AuthInput
-              label="Numéro d'Arrêté"
+              label={t('school.profile.decree_number')}
               value={school?.arrete || ''}
               onChange={(e) => handleInputChange('arrete', e.target.value)}
               disabled={!isEditing}
               icon={Hash}
             />
             <AuthInput
-              label="BP"
+              label={t('school.profile.bp')}
               value={school?.numBp || ''}
               onChange={(e) => handleInputChange('numBp', e.target.value)}
               disabled={!isEditing}
@@ -224,33 +226,33 @@ const SchoolProfile: React.FC = () => {
                   <Building2 size={24} />
                </div>
                <div>
-                  <h3 className="text-xl font-black uppercase tracking-tight text-black leading-none">Identité Officielle</h3>
-                  <p className="text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest mt-2">Dénominations bilingues de l'établissement</p>
+                  <h3 className="text-xl font-black uppercase tracking-tight text-black leading-none">{t('school.profile.official_identity')}</h3>
+                  <p className="text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest mt-2">{t('school.profile.official_identity_sub')}</p>
                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <AuthInput
-                label="Nom de l'établissement (FR)"
+                label={t('school.profile.name_fr')}
                 value={school?.nomFr || ''}
                 onChange={(e) => handleInputChange('nomFr', e.target.value)}
                 disabled={!isEditing}
                 required
               />
               <AuthInput
-                label="Nom de l'établissement (EN)"
+                label={t('school.profile.name_en')}
                 value={school?.nomEn || ''}
                 onChange={(e) => handleInputChange('nomEn', e.target.value)}
                 disabled={!isEditing}
               />
               <AuthInput
-                label="Abréviation"
+                label={t('school.profile.short_name')}
                 value={school?.abreviation || ''}
                 onChange={(e) => handleInputChange('abreviation', e.target.value)}
                 disabled={!isEditing}
               />
               <AuthInput
-                label="Devise (EN)"
+                label={t('school.profile.devise_en')}
                 value={school?.deviseEn || ''}
                 onChange={(e) => handleInputChange('deviseEn', e.target.value)}
                 disabled={!isEditing}
@@ -265,27 +267,27 @@ const SchoolProfile: React.FC = () => {
                   <MapPin size={24} />
                </div>
                <div>
-                  <h3 className="text-xl font-black uppercase tracking-tight text-black leading-none">Coordonnées & Siège</h3>
-                  <p className="text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest mt-2">Localisation physique et canaux de contact</p>
+                  <h3 className="text-xl font-black uppercase tracking-tight text-black leading-none">{t('school.profile.contact_title')}</h3>
+                  <p className="text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest mt-2">{t('school.profile.contact_sub')}</p>
                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <AuthInput
-                label="Ville"
+                label={t('school.profile.city')}
                 value={school?.ville || ''}
                 onChange={(e) => handleInputChange('ville', e.target.value)}
                 disabled={!isEditing}
                 icon={MapPin}
               />
               <AuthInput
-                label="Adresse Physique"
+                label={t('school.profile.address')}
                 value={school?.adresse || ''}
                 onChange={(e) => handleInputChange('adresse', e.target.value)}
                 disabled={!isEditing}
               />
               <AuthInput
-                label="Téléphone 1"
+                label={t('school.profile.phone1')}
                 type="tel"
                 value={school?.telephone1 || ''}
                 onChange={(e) => handleInputChange('telephone1', e.target.value)}
@@ -294,7 +296,7 @@ const SchoolProfile: React.FC = () => {
                 icon={Phone}
               />
               <AuthInput
-                label="Téléphone 2 (Optionnel)"
+                label={t('school.profile.phone2')}
                 type="tel"
                 value={school?.telephone2 || ''}
                 onChange={(e) => handleInputChange('telephone2', e.target.value)}
@@ -302,7 +304,7 @@ const SchoolProfile: React.FC = () => {
                 icon={Phone}
               />
               <AuthInput
-                label="Email Officiel"
+                label={t('school.profile.email')}
                 type="email"
                 value={school?.email || ''}
                 onChange={(e) => handleInputChange('email', e.target.value)}
@@ -310,7 +312,7 @@ const SchoolProfile: React.FC = () => {
                 icon={Mail}
               />
               <AuthInput
-                label="Site Web"
+                label={t('school.profile.website')}
                 value={school?.siteWeb || ''}
                 onChange={(e) => handleInputChange('siteWeb', e.target.value)}
                 disabled={!isEditing}
@@ -329,12 +331,12 @@ const SchoolProfile: React.FC = () => {
                     {saving ? (
                         <div className="flex items-center space-x-3">
                             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            <span>Enregistrement...</span>
+                            <span>{t('school.profile.saving')}</span>
                         </div>
                     ) : (
                         <span className="flex items-center space-x-3">
                             <Save size={22} />
-                            <span className="text-sm">Enregistrer les modifications</span>
+                            <span className="text-sm">{t('school.profile.save_changes')}</span>
                         </span>
                     )}
                 </AuthButton>
@@ -349,7 +351,7 @@ const SchoolProfile: React.FC = () => {
            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
               <CheckCircle2 size={18} />
            </div>
-           <span className="text-[11px] font-black uppercase tracking-[0.2em]">Profil mis à jour avec succès</span>
+           <span className="text-[11px] font-black uppercase tracking-[0.2em]">{t('school.profile.success_toast')}</span>
         </div>
       )}
     </div>

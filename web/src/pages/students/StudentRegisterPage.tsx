@@ -4,6 +4,7 @@ import { useSchoolYear } from '../../context/SchoolYearContext';
 import { studentService, StudentRegistrationPayload } from '../../api/studentService';
 import AuthInput from '../../components/ui/AuthInput';
 import AuthButton from '../../components/ui/AuthButton';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   User,
@@ -20,6 +21,7 @@ import {
 import { clsx } from 'clsx';
 
 const StudentRegisterPage: React.FC = () => {
+  const { t } = useTranslation();
   const { selectedYear } = useSchoolYear();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -156,8 +158,8 @@ const StudentRegisterPage: React.FC = () => {
 
   const selectStudent = (student: any) => {
       if (student.isInscribed) {
-          showToast(`${student.nomComplet} est déjà inscrit cette année.`, 'error');
-          if (window.confirm(`${student.nomComplet} est déjà inscrit cette année en ${student.classeLabel}. Voulez-vous aller sur sa fiche ?`)) {
+          showToast(`${student.nomComplet} ${t('students.register.already_inscribed')}`, 'error');
+          if (window.confirm(`${student.nomComplet} ${t('students.register.already_inscribed_in')} ${student.classeLabel}. ${t('students.register.go_to_profile')}`)) {
               navigate(`/app/students/register?edit=${student.idEleve}`);
           }
           setShowSuggestions(false);
@@ -189,7 +191,7 @@ const StudentRegisterPage: React.FC = () => {
           nouveau: false
       });
       setShowSuggestions(false);
-      showToast("Données de l'ancien élève chargées", 'success');
+      showToast(t('students.register.old_student_data_loaded'), 'success');
   };
 
   const showToast = (message: string, type: 'success' | 'error', studentId?: number) => {
@@ -202,12 +204,12 @@ const StudentRegisterPage: React.FC = () => {
     const yId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
     if (!yId || !formData.idSalle) {
-        showToast("Veuillez sélectionner une salle d'affectation.", 'error');
+        showToast(t('students.register.error_no_room'), 'error');
         return;
     }
 
     if (!parentDirectNom || !parentDirectTel) {
-        showToast("Les informations du responsable principal (Nom et Téléphone) sont obligatoires.", 'error');
+        showToast(t('students.register.error_no_contact'), 'error');
         return;
     }
 
@@ -220,14 +222,14 @@ const StudentRegisterPage: React.FC = () => {
             ...formData,
             idAnneeScolaire: yId,
           } as StudentRegistrationPayload);
-        showToast("Élève mis à jour avec succès", 'success', finalStudentId);
+        showToast(t('students.register.success_update'), 'success', finalStudentId);
       } else {
         const res = await studentService.registerAndEnroll({
             ...formData,
             idAnneeScolaire: yId,
           } as StudentRegistrationPayload);
         finalStudentId = res.data.idEleve;
-        showToast("Inscription validée avec succès", 'success', finalStudentId);
+        showToast(t('students.register.success_register'), 'success', finalStudentId);
       }
 
       if (!editId) {
@@ -240,7 +242,7 @@ const StudentRegisterPage: React.FC = () => {
         setParentDirectTel('');
       }
     } catch (error: any) {
-      const apiError = error.response?.data?.error || error.message || "Une erreur inconnue est survenue";
+      const apiError = error.response?.data?.error || error.message || t('common.unknown_error');
       showToast(apiError, 'error');
     } finally {
       setLoading(false);
@@ -259,7 +261,7 @@ const StudentRegisterPage: React.FC = () => {
               {toast.type === 'success' ? <CheckCircle2 className="text-green-400" /> : <AlertCircle />}
               <div className="flex-1">
                   <p className="text-[10px] font-black uppercase tracking-widest opacity-60">
-                      {toast.type === 'success' ? 'Succès' : 'Erreur'}
+                      {toast.type === 'success' ? t('common.success') : t('common.error')}
                   </p>
                   <p className="font-bold text-xs uppercase">{toast.message}</p>
               </div>
@@ -269,7 +271,7 @@ const StudentRegisterPage: React.FC = () => {
                     className="px-4 py-2 bg-accent text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all flex items-center gap-2"
                   >
                       <CreditCard size={14} />
-                      Payer Frais
+                      {t('students.register.pay_fees')}
                   </button>
               )}
               <button onClick={() => setToast(null)} className="p-1 hover:bg-white/10 rounded-full ml-2">
@@ -284,7 +286,7 @@ const StudentRegisterPage: React.FC = () => {
             <ArrowLeft size={24} />
           </button>
           <h1 className="text-3xl font-black uppercase tracking-tighter">
-            {editId ? "Modification d'Élève" : "Inscription d'Élève"}
+            {editId ? t('students.register.title_edit') : t('students.register.title_new')}
           </h1>
         </div>
       </div>
@@ -294,13 +296,13 @@ const StudentRegisterPage: React.FC = () => {
         <div className="card p-8 space-y-8">
           <div className="flex items-center space-x-3 text-black">
              <User size={20} className="text-accent" />
-             <h3 className="text-sm font-black uppercase tracking-widest">État Civil</h3>
+             <h3 className="text-sm font-black uppercase tracking-widest">{t('students.register.civil_status')}</h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="relative" ref={suggestionRef}>
                 <AuthInput
-                label="Nom de l'élève *"
+                label={`${t('students.register.last_name')} *`}
                 value={formData.nom}
                 onChange={(e) => handleNomChange(e.target.value)}
                 required
@@ -317,19 +319,19 @@ const StudentRegisterPage: React.FC = () => {
                                 <div>
                                     <p className="font-black text-xs uppercase text-black">{s.nom} {s.prenom}</p>
                                     <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{s.sexe === 'M' ? 'Garçon' : 'Fille'}</span>
+                                        <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{s.sexe === 'M' ? t('common.male') : t('common.female')}</span>
                                         <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
-                                        <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Né(e) le {s.dateNaissance}</span>
+                                        <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{t('students.register.born_on')} {s.dateNaissance}</span>
                                     </div>
                                 </div>
                                 <div className="text-right">
                                     {s.isInscribed ? (
                                         <span className="text-[7px] font-black uppercase tracking-widest bg-green-100 text-green-600 px-2 py-1 rounded-full flex items-center gap-1">
-                                            <CheckCircle2 size={8} /> Inscrit en {s.classeLabel}
+                                            <CheckCircle2 size={8} /> {t('students.register.inscribed_in')} {s.classeLabel}
                                         </span>
                                     ) : (
                                         <span className="text-[7px] font-black uppercase tracking-widest bg-orange-100 text-orange-600 px-2 py-1 rounded-full flex items-center gap-1">
-                                            <History size={8} /> Ancien Élève
+                                            <History size={8} /> {t('students.register.old_student')}
                                         </span>
                                     )}
                                 </div>
@@ -340,26 +342,26 @@ const StudentRegisterPage: React.FC = () => {
             </div>
 
             <AuthInput
-              label="Prénom(s)"
+              label={t('students.register.first_name')}
               value={formData.prenom}
               onChange={(e) => handleInputChange('prenom', e.target.value)}
             />
             <AuthInput
-              label="Date de Naissance *"
+              label={`${t('students.register.birth_date')} *`}
               type="date"
               value={formData.dateNaissance}
               onChange={(e) => handleInputChange('dateNaissance', e.target.value)}
               required
             />
             <AuthInput
-              label="Lieu de Naissance *"
+              label={`${t('students.register.birth_place')} *`}
               value={formData.lieuNaissance}
               onChange={(e) => handleInputChange('lieuNaissance', e.target.value)}
               required
             />
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">Sexe <span className="text-red-500 font-black">*</span></label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">{t('students.register.gender')} <span className="text-red-500 font-black">*</span></label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -368,7 +370,7 @@ const StudentRegisterPage: React.FC = () => {
                     "h-14 border rounded-sharp font-bold text-xs uppercase tracking-widest transition-all",
                     formData.sexe === 'M' ? "bg-black text-white" : "border-border text-secondary"
                   )}
-                >Masculin</button>
+                >{t('common.male')}</button>
                 <button
                   type="button"
                   onClick={() => handleInputChange('sexe', 'F')}
@@ -376,12 +378,12 @@ const StudentRegisterPage: React.FC = () => {
                     "h-14 border rounded-sharp font-bold text-xs uppercase tracking-widest transition-all",
                     formData.sexe === 'F' ? "bg-black text-white" : "border-border text-secondary"
                   )}
-                >Féminin</button>
+                >{t('common.female')}</button>
               </div>
             </div>
 
             <AuthInput
-              label="Quartier"
+              label={t('students.register.neighborhood')}
               value={formData.quartier}
               onChange={(e) => handleInputChange('quartier', e.target.value)}
             />
@@ -393,7 +395,7 @@ const StudentRegisterPage: React.FC = () => {
           <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3 text-black">
                 <Users size={20} className="text-accent" />
-                <h3 className="text-sm font-black uppercase tracking-widest">Responsable Principal <span className="text-red-500 font-black">*</span></h3>
+                <h3 className="text-sm font-black uppercase tracking-widest">{t('students.register.primary_contact')} <span className="text-red-500 font-black">*</span></h3>
               </div>
               <div className="flex bg-gray-100 p-1 rounded-xl">
                   {['Père', 'Mère', 'Tuteur'].map(type => (
@@ -405,20 +407,20 @@ const StudentRegisterPage: React.FC = () => {
                             "px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all",
                             parentType === type ? "bg-white text-black shadow-sm" : "text-gray-400 hover:text-gray-600"
                         )}
-                      >{type}</button>
+                      >{type === 'Père' ? t('common.father') : type === 'Mère' ? t('common.mother') : t('common.tutor')}</button>
                   ))}
               </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <AuthInput
-                label={`Nom du ${parentType} *`}
+                label={`${t('students.register.contact_name', { type: parentType === 'Père' ? t('common.father') : parentType === 'Mère' ? t('common.mother') : t('common.tutor') })} *`}
                 value={parentDirectNom}
                 onChange={(e) => setParentDirectNom(e.target.value)}
                 required
             />
             <AuthInput
-                label={`Téléphone ${parentType} *`}
+                label={`${t('students.register.contact_phone', { type: parentType === 'Père' ? t('common.father') : parentType === 'Mère' ? t('common.mother') : t('common.tutor') })} *`}
                 type="tel"
                 value={parentDirectTel}
                 onChange={(e) => setParentDirectTel(e.target.value)}
@@ -429,8 +431,7 @@ const StudentRegisterPage: React.FC = () => {
           <div className="flex items-start space-x-3 p-4 bg-accent/5 rounded-2xl">
               <Info className="text-accent shrink-0" size={18} />
               <p className="text-[10px] font-bold text-gray-500 leading-relaxed uppercase tracking-tight">
-                  Veuillez renseigner les coordonnées d'au moins un parent ou tuteur légal.
-                  Ces informations sont critiques pour le suivi de l'élève et les urgences.
+                  {t('students.register.contact_info_help')}
               </p>
           </div>
         </div>
@@ -439,13 +440,13 @@ const StudentRegisterPage: React.FC = () => {
         <div className="card p-8 space-y-8">
           <div className="flex items-center space-x-3 text-black">
              <GraduationCap size={20} className="text-accent" />
-             <h3 className="text-sm font-black uppercase tracking-widest">Scolarité</h3>
+             <h3 className="text-sm font-black uppercase tracking-widest">{t('students.register.schooling')}</h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1.5">
               <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">
-                Classe d'Affectation <span className="text-red-500 font-black">*</span>
+                {t('students.register.assigned_class')} <span className="text-red-500 font-black">*</span>
               </label>
               <select
                 className="w-full h-14 px-4 bg-white border border-gray-100 rounded-sharp text-sm font-bold focus:border-black focus:ring-1 focus:ring-black outline-none transition-all cursor-pointer"
@@ -453,7 +454,7 @@ const StudentRegisterPage: React.FC = () => {
                 onChange={(e) => handleInputChange('idSalle', Number(e.target.value))}
                 required
               >
-                <option value="0">Sélectionner une salle...</option>
+                <option value="0">{t('students.register.select_room')}</option>
                 {rooms.map(room => (
                   <option key={room.idSalle} value={room.idSalle}>
                     {room.Classe?.libelleClasseFr} {room.nomSalle}
@@ -463,10 +464,10 @@ const StudentRegisterPage: React.FC = () => {
             </div>
 
             <AuthInput
-              label="Ancien Établissement"
+              label={t('students.register.previous_school')}
               value={formData.ancienEtablissement}
               onChange={(e) => handleInputChange('ancienEtablissement', e.target.value)}
-              placeholder="Si ré-inscription"
+              placeholder={t('students.register.previous_school_placeholder')}
             />
           </div>
         </div>
@@ -475,26 +476,26 @@ const StudentRegisterPage: React.FC = () => {
         <div className="card p-8 space-y-8 opacity-60 hover:opacity-100 transition-opacity">
           <div className="flex items-center space-x-3 text-black">
              <Users size={20} className="text-gray-400" />
-             <h3 className="text-sm font-black uppercase tracking-widest text-gray-400">Autres Responsables (Facultatif)</h3>
+             <h3 className="text-sm font-black uppercase tracking-widest text-gray-400">{t('students.register.other_contacts')}</h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {parentType !== 'Père' && (
                 <>
-                    <AuthInput label="Nom du Père" value={formData.nomPere} onChange={(e) => handleInputChange('nomPere', e.target.value)} />
-                    <AuthInput label="Téléphone Père" type="tel" value={formData.telephonePere} onChange={(e) => handleInputChange('telephonePere', e.target.value)} />
+                    <AuthInput label={t('students.register.father_name')} value={formData.nomPere} onChange={(e) => handleInputChange('nomPere', e.target.value)} />
+                    <AuthInput label={t('students.register.father_phone')} type="tel" value={formData.telephonePere} onChange={(e) => handleInputChange('telephonePere', e.target.value)} />
                 </>
             )}
             {parentType !== 'Mère' && (
                 <>
-                    <AuthInput label="Nom de la Mère" value={formData.nomMere} onChange={(e) => handleInputChange('nomMere', e.target.value)} />
-                    <AuthInput label="Téléphone Mère" type="tel" value={formData.telephoneMere} onChange={(e) => handleInputChange('telephoneMere', e.target.value)} />
+                    <AuthInput label={t('students.register.mother_name')} value={formData.nomMere} onChange={(e) => handleInputChange('nomMere', e.target.value)} />
+                    <AuthInput label={t('students.register.mother_phone')} type="tel" value={formData.telephoneMere} onChange={(e) => handleInputChange('telephoneMere', e.target.value)} />
                 </>
             )}
             {parentType !== 'Tuteur' && (
                 <>
-                    <AuthInput label="Nom du Tuteur" value={formData.nomTuteur} onChange={(e) => handleInputChange('nomTuteur', e.target.value)} />
-                    <AuthInput label="Téléphone Tuteur" type="tel" value={formData.telephoneTuteur} onChange={(e) => handleInputChange('telephoneTuteur', e.target.value)} />
+                    <AuthInput label={t('students.register.tutor_name')} value={formData.nomTuteur} onChange={(e) => handleInputChange('nomTuteur', e.target.value)} />
+                    <AuthInput label={t('students.register.tutor_phone')} type="tel" value={formData.telephoneTuteur} onChange={(e) => handleInputChange('telephoneTuteur', e.target.value)} />
                 </>
             )}
           </div>
@@ -506,10 +507,10 @@ const StudentRegisterPage: React.FC = () => {
              className="md:w-auto px-12"
              disabled={loading || !formData.idSalle}
            >
-             {loading ? "Opération en cours..." : (
+             {loading ? t('common.processing') : (
                <span className="flex items-center">
                  <Save size={20} className="mr-2" />
-                 {editId ? "Enregistrer les modifications" : "Valider l'Inscription"}
+                 {editId ? t('common.save_changes') : t('students.register.validate')}
                </span>
              )}
            </AuthButton>

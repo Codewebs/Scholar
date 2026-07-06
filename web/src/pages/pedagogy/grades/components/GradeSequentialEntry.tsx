@@ -10,6 +10,7 @@ import {
     Type
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 interface GradeSequentialEntryProps {
     isOpen: boolean;
@@ -36,6 +37,7 @@ const GradeSequentialEntry: React.FC<GradeSequentialEntryProps> = ({
     studentName,
     subjectLabel
 }) => {
+    const { t } = useTranslation();
     const [entryMode, setEntryMode] = useState<'DECIMAL' | 'ALPHABETIC'>('DECIMAL');
     const [inputValue, setInputValue] = useState<string>('');
     const [saving, setSaving] = useState(false);
@@ -107,11 +109,11 @@ const GradeSequentialEntry: React.FC<GradeSequentialEntryProps> = ({
             const competenceId = currentItem.idCompetence;
 
             if (!competenceId) {
-                throw new Error("La compétence est obligatoire pour enregistrer une note.");
+                throw new Error(t('grades.errors.comp_required', { defaultValue: "La compétence est obligatoire pour enregistrer une note." }));
             }
 
             if (entryMode === 'DECIMAL' && !isNaN(val!) && (val! < 0 || val! > noteSur)) {
-                throw new Error(`La note doit être entre 0 et ${noteSur}`);
+                throw new Error(t('grades.errors.invalid_grade_range', { max: noteSur, defaultValue: `La note doit être entre 0 et ${noteSur}` }));
             }
 
             await onSave(currentIndex, isNaN(val!) ? null : val, entryMode, cote, competenceId);
@@ -125,7 +127,7 @@ const GradeSequentialEntry: React.FC<GradeSequentialEntryProps> = ({
                 onClose();
             }
         } catch (err: any) {
-            setError(err.message || "Erreur d'enregistrement");
+            setError(err.message || t('grades.status.error'));
         } finally {
             setSaving(false);
         }
@@ -148,7 +150,7 @@ const GradeSequentialEntry: React.FC<GradeSequentialEntryProps> = ({
                         </div>
                         <div>
                             <h3 className="font-black uppercase tracking-tight text-[11px] text-black">
-                                {isMultiComp ? "Saisie Multi" : "Saisie"}
+                                {isMultiComp ? "Multi Entry" : t('grades.entry.quick_entry')}
                             </h3>
                             <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1 mt-0.5">
                                 <span>{currentIndex + 1}/{items.length}</span>
@@ -206,7 +208,7 @@ const GradeSequentialEntry: React.FC<GradeSequentialEntryProps> = ({
                             "text-[11px] font-black text-black uppercase leading-tight relative z-10 transition-all duration-1000",
                             zoomCompetence ? "scale-105 text-accent" : "scale-100"
                         )}>
-                            {currentItem.competenceLabel || 'Générale'}
+                            {currentItem.competenceLabel || t('grades.selection.none')}
                         </p>
                     </div>
 
@@ -220,7 +222,7 @@ const GradeSequentialEntry: React.FC<GradeSequentialEntryProps> = ({
                             )}
                         >
                             <Binary size={10} />
-                            <span>Num</span>
+                            <span>{t('grades.entry.numeric')}</span>
                         </button>
                         <button
                             onClick={() => setEntryMode('ALPHABETIC')}
@@ -230,7 +232,7 @@ const GradeSequentialEntry: React.FC<GradeSequentialEntryProps> = ({
                             )}
                         >
                             <Type size={10} />
-                            <span>Alpha</span>
+                            <span>{t('grades.entry.alphabetic')}</span>
                         </button>
                     </div>
 
@@ -317,7 +319,7 @@ const GradeSequentialEntry: React.FC<GradeSequentialEntryProps> = ({
                         disabled={saving}
                         className="bg-black text-white px-5 py-2.5 rounded-[16px] font-black text-[9px] uppercase tracking-[0.1em] shadow-xl hover:scale-105 active:scale-[0.95] transition-all flex items-center space-x-2"
                     >
-                        <span>{saving ? ".." : (currentIndex === items.length - 1 ? "FIN" : "SUIV")}</span>
+                        <span>{saving ? ".." : (currentIndex === items.length - 1 ? t('grades.entry.finish') : t('grades.entry.next'))}</span>
                         <CheckCircle2 size={12} />
                     </button>
                 </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSchoolYear } from '../../context/SchoolYearContext';
 import { studentService } from '../../api/studentService';
+import { useTranslation } from 'react-i18next';
 import {
   FileText,
   Search,
@@ -15,6 +16,7 @@ import {
 import { clsx } from 'clsx';
 
 const StudentDocumentsPage: React.FC = () => {
+    const { t } = useTranslation();
     const { selectedYear } = useSchoolYear();
     const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
@@ -109,8 +111,8 @@ const StudentDocumentsPage: React.FC = () => {
                             <ArrowLeft size={28} />
                         </button>
                         <div>
-                            <h1 className="text-4xl font-black uppercase tracking-tighter text-black">Documents Officiels</h1>
-                            <p className="text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest mt-1">Édition des certificats et reçus académiques</p>
+                            <h1 className="text-4xl font-black uppercase tracking-tighter text-black">{t('students.documents.title')}</h1>
+                            <p className="text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest mt-1">{t('students.documents.subtitle')}</p>
                         </div>
                     </div>
 
@@ -119,7 +121,7 @@ const StudentDocumentsPage: React.FC = () => {
                             <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                             <input
                                 type="text"
-                                placeholder="Nom ou Matricule de l'élève..."
+                                placeholder={t('students.documents.search_placeholder')}
                                 className="w-full h-16 pl-16 pr-8 bg-gray-50 border border-transparent rounded-[24px] font-black text-xs uppercase focus:bg-white focus:border-black transition-all outline-none shadow-inner"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
@@ -132,7 +134,7 @@ const StudentDocumentsPage: React.FC = () => {
                                 value={selectedClassId}
                                 onChange={e => setSelectedClassId(e.target.value)}
                             >
-                                <option value="ALL">Toutes les classes</option>
+                                <option value="ALL">{t('common.all_classes')}</option>
                                 {classes.map(c => (
                                     <option key={c.id} value={c.id}>{c.label}</option>
                                 ))}
@@ -172,7 +174,7 @@ const StudentDocumentsPage: React.FC = () => {
                                     "px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest",
                                     student.isSolded ? "bg-green-100 text-green-700" : "bg-red-50 text-red-600"
                                 )}>
-                                    {student.isSolded ? 'Soldé' : 'Insolvable'}
+                                    {student.isSolded ? t('students.documents.solded') : t('students.documents.insolvent')}
                                 </span>
                             </div>
 
@@ -183,36 +185,36 @@ const StudentDocumentsPage: React.FC = () => {
                                     activeMenu === student.idEleve ? "bg-black text-white" : "bg-gray-50 text-gray-400 hover:text-black hover:bg-gray-100"
                                 )}
                             >
-                                <MoreVertical size={20} />
+                                < MoreVertical size={20} />
                             </button>
 
                             {/* Contextual Menu */}
                             {activeMenu === student.idEleve && (
                                 <div className="absolute right-6 top-24 w-80 bg-white border border-gray-100 rounded-[32px] shadow-2xl z-30 py-4 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                                     <div className="px-6 py-2 border-b border-gray-50 mb-2">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Documents Disponibles</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('students.documents.available_docs')}</p>
                                     </div>
                                     <DocOption
-                                        label="Certificat de Scolarité"
+                                        label={t('students.documents.cert_scolarite')}
                                         icon={UserCheck}
                                         onClick={() => handlePrintDoc('CERTIFICAT_SCOLARITE', student)}
                                         color="text-blue-600"
                                     />
                                     <DocOption
-                                        label="Certificat de Promotion"
+                                        label={t('students.documents.cert_promotion')}
                                         icon={GraduationCap}
                                         onClick={() => handlePrintDoc('CERTIFICAT_PROMOTION', student)}
                                         color="text-green-600"
                                     />
                                     <div className="h-px bg-gray-50 my-2 mx-6"></div>
                                     <DocOption
-                                        label="Reçu Global de l'Année"
+                                        label={t('students.documents.year_receipt')}
                                         icon={FileText}
                                         onClick={() => handlePrintDoc('YEAR_RECEIPT', student)}
                                         color="text-accent"
                                     />
                                     <DocOption
-                                        label="Historique Global (A4)"
+                                        label={t('students.documents.global_history')}
                                         icon={History}
                                         onClick={() => handlePrintDoc('GLOBAL_RECEIPT_HISTORY', student)}
                                         color="text-violet-600"
@@ -227,14 +229,14 @@ const StudentDocumentsPage: React.FC = () => {
             {loading && (
                 <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-[100] flex flex-col items-center justify-center space-y-4">
                     <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
-                    <p className="font-black uppercase text-[10px] tracking-widest text-black">Mise à jour de la liste...</p>
+                    <p className="font-black uppercase text-[10px] tracking-widest text-black">{t('students.documents.updating_list')}</p>
                 </div>
             )}
 
             {!loading && students.length === 0 && (
                 <div className="p-32 text-center border-4 border-dashed border-gray-100 rounded-[56px] opacity-30">
                     <Search size={48} className="mx-auto mb-4" />
-                    <p className="font-black uppercase tracking-widest">Aucun élève ne correspond à vos critères</p>
+                    <p className="font-black uppercase tracking-widest">{t('students.documents.no_results')}</p>
                 </div>
             )}
         </div>

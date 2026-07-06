@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import AuthButton from '../../../../components/ui/AuthButton';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 interface SaisieMatiereViewProps {
     salle?: any;
@@ -29,6 +30,8 @@ interface SaisieMatiereViewProps {
 }
 
 const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle, sequence: propSequence, matiere: propMatiere, refreshTrigger }) => {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const { selectedYear } = useSchoolYear();
   const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
@@ -100,7 +103,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
       });
       setSequences(allSequences);
     } catch (err) {
-      setError("Erreur lors du chargement des données");
+      setError(t('grades.status.error_loading_data', { defaultValue: "Erreur lors du chargement des données" }));
     }
   };
 
@@ -157,7 +160,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
       const gridNotes: any[] = [];
       roomStudents.forEach((s: any) => {
           const idInscription = Number(s.idInscription || s.idEleve || s.id);
-          const studentName = s.nomComplet || `${s.nom || ''} ${s.prenom || ''}`.trim() || "Élève inconnu";
+          const studentName = s.nomComplet || `${s.nom || ''} ${s.prenom || ''}`.trim() || t('grades.selection.none');
 
           // Match notes using Number conversion for safety
           const studentNotes = existingNotes.filter((n: any) => Number(n.idInscription) === idInscription);
@@ -209,7 +212,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
 
       setNotes(gridNotes);
     } catch (err) {
-      setError("Erreur lors du chargement des notes");
+      setError(t('grades.status.error_loading_grades', { defaultValue: "Erreur lors du chargement des notes" }));
     } finally {
       setLoading(false);
     }
@@ -246,7 +249,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
         // Validation: idRepartitionCompetence is mandatory
         const invalidNotes = notes.filter(n => n.idCompetence && !n.idRepartitionCompetence);
         if (invalidNotes.length > 0) {
-            throw new Error("Erreur de configuration: ID Répartition Compétence manquant.");
+            throw new Error(t('grades.errors.missing_comp_id', { defaultValue: "Erreur de configuration: ID Répartition Compétence manquant." }));
         }
 
       const payload = {
@@ -267,11 +270,11 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
       };
 
       await gradeService.saveNotes(payload as any);
-      setSuccess("Notes enregistrées !");
+      setSuccess(t('grades.status.success'));
       setTimeout(() => setSuccess(null), 3000);
       handleLoadNotes();
     } catch (err: any) {
-      setError(err.message || "Erreur lors de l'enregistrement");
+      setError(err.message || t('grades.status.error'));
     } finally {
       setSaving(false);
     }
@@ -325,7 +328,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
       {/* Selection Summary (Breadcrumbs) */}
       <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 flex flex-wrap items-center gap-4">
           <SelectionSummaryItem
-            label="Salle"
+            label={t('grades.selection.room')}
             value={selectedSalle?.nomSalle}
             isActive={step === 'SALLE'}
             onClick={() => { setStep('SALLE'); setSelectedRepartitionId(null); setSelectedSequenceId(null); }}
@@ -333,7 +336,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
           {selectedSalle && <ChevronRight size={14} className="text-gray-300" />}
 
           <SelectionSummaryItem
-            label="Matière"
+            label={t('grades.selection.subject')}
             value={selectedRepartition?.Matiere?.libelleFr || selectedRepartition?.Matiere?.libelle}
             isActive={step === 'REPARTITION'}
             isVisible={!!selectedSalle}
@@ -342,7 +345,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
           {selectedRepartition && <ChevronRight size={14} className="text-gray-300" />}
 
           <SelectionSummaryItem
-            label="Évaluation"
+            label={t('grades.selection.sequence')}
             value={selectedSequence?.libelleSousPeriodeFr}
             isActive={step === 'SEQUENCE'}
             isVisible={!!selectedRepartition}
@@ -385,7 +388,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
                     <SelectionCard
                         key={s.idSousPeriode}
                         title={s.libelleSousPeriodeFr}
-                        subtitle="Période d'évaluation"
+                        subtitle={t('grades.selection.choose')}
                         icon={Calendar}
                         onClick={() => { setSelectedSequenceId(s.idSousPeriode!); setStep('SAISIE'); }}
                     />
@@ -419,7 +422,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
                         <button
                             onClick={() => { setSequentialIndex(0); setShowSequential(true); }}
                             className="p-3 bg-accent/10 text-accent hover:bg-accent hover:text-white rounded-2xl transition-all shadow-sm"
-                            title="Saisie Rapide"
+                            title={t('grades.entry.quick_entry')}
                         >
                             <Zap size={20} />
                         </button>
@@ -430,7 +433,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
                         >
                             <div className="flex items-center space-x-2">
                                 <Save size={18} />
-                                <span>{saving ? "..." : "Enregistrer"}</span>
+                                <span>{saving ? "..." : t('common.save')}</span>
                             </div>
                         </AuthButton>
                     </div>
@@ -440,20 +443,20 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
                     {loading ? (
                         <div className="py-20 flex flex-col items-center justify-center space-y-4">
                              <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
-                             <p className="text-[10px] font-black uppercase tracking-widest text-black">Chargement...</p>
+                             <p className="text-[10px] font-black uppercase tracking-widest text-black">{t('common.loading')}</p>
                         </div>
                     ) : notes.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-gray-300">
                            <SearchX size={48} className="mb-4" />
-                           <p className="text-[10px] font-black uppercase tracking-widest">Aucun élève trouvé</p>
+                           <p className="text-[10px] font-black uppercase tracking-widest">{lang === 'fr' ? 'Aucun élève trouvé' : 'No students found'}</p>
                         </div>
                     ) : (
                         <table className="w-full">
                             <thead className="sticky top-0 bg-white z-[5] shadow-sm">
                                 <tr className="bg-gray-50/50">
-                                    <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Élève</th>
-                                    <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 w-48">Note (/20)</th>
-                                    <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Options</th>
+                                    <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{t('grades.selection.student')}</th>
+                                    <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 w-48">{t('grades.entry.note_sur', { max: 20 })}</th>
+                                    <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{t('grades.entry.options')}</th>
                                     <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Cote</th>
                                 </tr>
                             </thead>
@@ -511,7 +514,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
                                                         n.nonClasse ? "bg-orange-500 border-orange-500 text-white" : "border-gray-100 text-gray-400 hover:border-orange-200"
                                                     )}
                                                 >
-                                                    Non Classé
+                                                    {t('grades.entry.non_classe')}
                                                 </button>
                                                 {n.nonClasse && (
                                                     <select
@@ -519,7 +522,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
                                                         value={n.idJustification || ""}
                                                         onChange={(e) => handleJustificationChange(idx, e.target.value)}
                                                     >
-                                                        <option value="">Motif...</option>
+                                                        <option value="">{t('grades.entry.justification')}</option>
                                                         {justifications.map(j => (
                                                             <option key={j.idJustification} value={j.idJustification}>{j.libelle}</option>
                                                         ))}

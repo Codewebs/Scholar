@@ -6,8 +6,10 @@ import AuthInput from '../components/ui/AuthInput';
 import { authService } from '../api/authService';
 import { useAuth } from '../context/AuthContext';
 import ServerConfigModal from '../components/ServerConfigModal';
+import { useTranslation } from 'react-i18next';
 
 const Login: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { login, isAuthenticated, isInitialized } = useAuth();
   const [identifiant, setIdentifiant] = useState('');
@@ -26,7 +28,7 @@ const Login: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifiant || !mdp) {
-      setError("Veuillez remplir tous les champs");
+      setError(t('login.errors.fill_fields'));
       return;
     }
 
@@ -44,10 +46,10 @@ const Login: React.FC = () => {
         }, res.data.token);
         navigate('/waiting-room');
       } else {
-        setError("Identifiants invalides");
+        setError(t('login.errors.invalid_credentials'));
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || "Erreur de connexion au serveur. Vérifiez l'URL de l'API.");
+      setError(err.response?.data?.error || t('login.errors.server_error'));
     } finally {
       setLoading(false);
     }
@@ -75,23 +77,24 @@ const Login: React.FC = () => {
         </button>
 
         <div className="mb-10">
-          <h1 className="text-4xl font-black text-black mb-2 tracking-tighter uppercase">Let's Sign you in.</h1>
-          <p className="text-lg text-[#9E9E9E] font-medium leading-tight">
-            Welcome back.<br />You've been missed!
-          </p>
+          <h1 className="text-4xl font-black text-black mb-2 tracking-tighter uppercase">{t('login.title')}</h1>
+          <p
+            className="text-lg text-[#9E9E9E] font-medium leading-tight"
+            dangerouslySetInnerHTML={{ __html: t('login.welcome_back') }}
+          />
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6 flex-1">
           <AuthInput
-            label="Username or Email"
-            placeholder="example@scholar.com"
+            label={t('login.label_email')}
+            placeholder={t('login.placeholder_email')}
             value={identifiant}
             onChange={(e) => setIdentifiant(e.target.value)}
           />
           <AuthInput
-            label="Password"
+            label={t('login.label_password')}
             type={showPassword ? "text" : "password"}
-            placeholder="••••••••"
+            placeholder={t('login.placeholder_password')}
             value={mdp}
             onChange={(e) => setMdp(e.target.value)}
             suffix={
@@ -110,7 +113,7 @@ const Login: React.FC = () => {
           <div className="pt-4 flex flex-col items-center">
             <div className="w-full flex items-center mb-8">
               <div className="flex-1 h-[1px] bg-gray-100"></div>
-              <span className="px-4 text-[10px] font-black text-gray-300 uppercase tracking-widest">Ou continuer avec</span>
+              <span className="px-4 text-[10px] font-black text-gray-300 uppercase tracking-widest">{t('login.or_continue')}</span>
               <div className="flex-1 h-[1px] bg-gray-100"></div>
             </div>
 
@@ -123,16 +126,16 @@ const Login: React.FC = () => {
             </div>
 
             <p className="text-xs font-black text-[#9E9E9E] uppercase tracking-widest">
-              Don't have an account?{' '}
+              {t('login.no_account')}{' '}
               <Link to="/register" className="text-black hover:text-accent transition-colors">
-                Register
+                {t('login.register_link')}
               </Link>
             </p>
           </div>
 
           <div className="mt-8">
             <AuthButton type="submit" disabled={loading}>
-              {loading ? "Chargement..." : "Login"}
+              {loading ? t('login.loading') : t('login.login_button')}
             </AuthButton>
           </div>
         </form>

@@ -36,11 +36,11 @@ const TeacherTeamPrintPage: React.FC = () => {
     if (loading) return (
         <div className="h-screen flex flex-col items-center justify-center gap-4">
             <Loader2 className="w-10 h-10 animate-spin text-accent" />
-            <p className="font-black uppercase text-[10px] tracking-widest">Génération de la liste...</p>
+            <p className="font-black uppercase text-[10px] tracking-widest">Generating list...</p>
         </div>
     );
 
-    if (!data) return <div>Erreur de chargement des données.</div>;
+    if (!data) return <div>Error loading data.</div>;
 
     const principal = data.assignments.find((a: any) => a.isPrincipal);
     const team = data.assignments.filter((a: any) => a.idRepartitionMatiere);
@@ -54,14 +54,14 @@ const TeacherTeamPrintPage: React.FC = () => {
                     <div className="flex flex-col items-start gap-2">
                         <img src="/logo.png" alt="Logo" className="h-16 w-16 object-contain" />
                         <div className="text-[10px] font-black uppercase tracking-tight">
-                            <p>Ministère des Enseignements Secondaires</p>
-                            <p className="text-gray-400">Délégation Régionale du Centre</p>
+                            <p>Ministry of Secondary Education</p>
+                            <p className="text-gray-400">Regional Delegation of the Center</p>
                         </div>
                     </div>
 
                     <div className="text-center flex flex-col justify-center">
                         <h1 className="text-[10px] font-black uppercase tracking-[0.3em] bg-black text-white px-4 py-1.5 rounded-full mb-3">
-                            Année Scolaire {selectedYear?.libelleAnneeScolaire}
+                            School Year {selectedYear?.libelleAnneeScolaire}
                         </h1>
                     </div>
 
@@ -74,13 +74,13 @@ const TeacherTeamPrintPage: React.FC = () => {
                 </header>
 
                 <div className="text-center space-y-2 mb-12">
-                    <h2 className="text-3xl font-black uppercase tracking-tighter">Équipe Pédagogique & Répartition</h2>
+                    <h2 className="text-3xl font-black uppercase tracking-tighter">Pedagogical Team & Distribution</h2>
                     <div className="flex justify-center items-center gap-4">
                         <span className="px-6 py-2 bg-gray-100 rounded-full text-xs font-black uppercase tracking-widest border border-gray-200">
-                           Classe : {data.salle.Classe?.libelleClasseFr}
+                           Class : {data.salle.Classe?.libelleClasseFr}
                         </span>
                         <span className="px-6 py-2 bg-accent text-white rounded-full text-xs font-black uppercase tracking-widest shadow-lg shadow-accent/20">
-                           Salle : {data.salle.nomSalle}
+                           Room : {data.salle.nomSalle}
                         </span>
                     </div>
                 </div>
@@ -96,9 +96,9 @@ const TeacherTeamPrintPage: React.FC = () => {
                            {principal?.InscriptionPersonnel?.photo ? <img src={principal.InscriptionPersonnel.photo} className="w-full h-full object-cover" /> : <User size={40} className="text-gray-200 mt-4 mx-auto" />}
                         </div>
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent mb-1">Enseignant Principal de la Salle</p>
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent mb-1">Head Teacher of the Room</p>
                             <h3 className="text-2xl font-black uppercase tracking-tighter">
-                                {principal ? `${principal.InscriptionPersonnel?.nom} ${principal.InscriptionPersonnel?.prenom || ''}` : 'Non désigné'}
+                                {principal ? `${principal.InscriptionPersonnel?.nom} ${principal.InscriptionPersonnel?.prenom || ''}` : 'Not assigned'}
                             </h3>
                         </div>
                     </div>
@@ -113,10 +113,10 @@ const TeacherTeamPrintPage: React.FC = () => {
                     <thead>
                         <tr className="bg-black text-white">
                             <th className="p-4 text-[10px] font-black uppercase tracking-widest text-left w-12 border border-black">N°</th>
-                            <th className="p-4 text-[10px] font-black uppercase tracking-widest text-left border border-black">Enseignant</th>
-                            <th className="p-4 text-[10px] font-black uppercase tracking-widest text-left border border-black">Discipline / Matière</th>
+                            <th className="p-4 text-[10px] font-black uppercase tracking-widest text-left border border-black">Teacher</th>
+                            <th className="p-4 text-[10px] font-black uppercase tracking-widest text-left border border-black">Discipline / Subject</th>
                             {withEmargement && (
-                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-center w-40 border border-black">Émargement / Visa</th>
+                                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-center w-40 border border-black">Signature / Visa</th>
                             )}
                         </tr>
                     </thead>
@@ -137,7 +137,7 @@ const TeacherTeamPrintPage: React.FC = () => {
                         )) : (
                             <tr>
                                 <td colSpan={withEmargement ? 4 : 3} className="p-20 text-center text-gray-300 font-black uppercase tracking-widest italic">
-                                    Aucune affectation enregistrée
+                                    No assignments recorded
                                 </td>
                             </tr>
                         )}
@@ -147,18 +147,18 @@ const TeacherTeamPrintPage: React.FC = () => {
                 {/* SIGNATURES */}
                 <div className="mt-auto pt-20 grid grid-cols-2 gap-20">
                     <div className="text-center space-y-20">
-                        <p className="text-[10px] font-black uppercase underline">Le Professeur Principal</p>
+                        <p className="text-[10px] font-black uppercase underline">Head Teacher</p>
                         <div className="w-40 h-px bg-gray-300 mx-auto" />
                     </div>
                     <div className="text-center space-y-20">
-                        <p className="text-[10px] font-black uppercase underline">Le Chef d'Établissement</p>
+                        <p className="text-[10px] font-black uppercase underline">School Head</p>
                         <div className="w-40 h-px bg-gray-300 mx-auto" />
                     </div>
                 </div>
 
                 <footer className="mt-20 pt-8 border-t border-gray-100 flex justify-between items-center opacity-30">
                     <p className="text-[8px] font-black uppercase tracking-widest">Scholar Pedagogy Management System — v3.1</p>
-                    <p className="text-[8px] font-bold uppercase">Généré le {new Date().toLocaleDateString()}</p>
+                    <p className="text-[8px] font-bold uppercase">Generated on {new Date().toLocaleDateString()}</p>
                 </footer>
             </div>
 
