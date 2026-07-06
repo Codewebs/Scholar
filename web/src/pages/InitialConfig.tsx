@@ -40,7 +40,7 @@ const InitialConfig: React.FC = () => {
   const [language, setLanguage] = useState<'Français' | 'English'>('Français');
   const [schools, setSchools] = useState<School[]>([]);
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
-  const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<string | null>('ENSEIGNANT');
   const [selectedMatieres] = useState<string[]>([]);
   const [availableProfiles, setAvailableProfiles] = useState<string[]>([]);
   const [tempSelectedYear, setTempSelectedYear] = useState<SchoolYear | null>(null);
@@ -267,13 +267,24 @@ const InitialConfig: React.FC = () => {
 
               <div
                 onClick={() => { setSelectedProfile('ENSEIGNANT'); setStep(SetupStep.SELECT_LANGUAGE); }}
-                className="bg-white p-6 cursor-pointer border-2 border-purple-50 hover:border-purple-500 shadow-sm hover:shadow-purple-100 hover:shadow-xl group transition-all rounded-[24px]"
+                className={clsx(
+                    "p-6 cursor-pointer border-2 transition-all rounded-[24px] group",
+                    selectedProfile === 'ENSEIGNANT'
+                      ? "bg-purple-50 border-purple-500 shadow-xl shadow-purple-100"
+                      : "bg-white border-purple-50 hover:border-purple-500 shadow-sm"
+                )}
               >
-                <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-sharp flex items-center justify-center mb-4 group-hover:bg-purple-600 group-hover:text-white transition-colors shadow-inner">
+                <div className={clsx(
+                    "w-12 h-12 rounded-sharp flex items-center justify-center mb-4 transition-colors shadow-inner",
+                    selectedProfile === 'ENSEIGNANT' ? "bg-purple-600 text-white" : "bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white"
+                )}>
                   <Users size={24} />
                 </div>
-                <h3 className="font-black text-black uppercase text-sm tracking-tight">Rejoindre le personnel</h3>
-                <p className="text-[10px] text-[#9E9E9E] font-black uppercase tracking-widest">Enseignant / Administratif</p>
+                <h3 className="font-black text-black uppercase text-sm tracking-tight">Accès Staff & Enseignant</h3>
+                <p className={clsx(
+                    "text-[10px] font-black uppercase tracking-widest",
+                    selectedProfile === 'ENSEIGNANT' ? "text-purple-600" : "text-[#9E9E9E]"
+                )}>Espace Professionnel</p>
               </div>
 
               <div
