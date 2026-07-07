@@ -318,6 +318,7 @@ const SelectionSummaryItem: React.FC<{
     isVisible?: boolean;
     onClick: () => void;
 }> = ({ label, value, isActive, isVisible = true, onClick }) => {
+    const { t } = useTranslation();
     if (!isVisible) return null;
     return (
         <div

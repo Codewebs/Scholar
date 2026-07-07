@@ -697,5 +697,96 @@
       "schoolReceipt": "Reçu établissement",
       "generating": "Génération du reçu de paiement..."
     }
+  },
+  "staff": {
+    "title": "Utilisateurs & Personnel",
+    "subtitle": "Effectifs de l'année {{year}}",
+    "active_members": "Membres Actifs",
+    "pending_requests": "Demandes en attente",
+    "search_placeholder": "Filtrer par nom ou fonction...",
+    "no_request": "Aucune demande",
+    "no_request_desc": "Le personnel n'a pas encore envoyé de demande",
+    "recruit": "Recruter",
+    "permissions_title": "Permissions & Accès",
+    "save_rights": "Enregistrer les Droits",
+    "recruitment_tunnel": "Recrutement Personnel",
+    "finalize_registration": "Finaliser l'inscription",
+    "confirm_recruitment": "Confirmer le Recrutement",
+    "edit_profile": "Modifier Profil",
+    "edit_profile_desc": "Mise à jour des informations du personnel",
+    "status": {
+      "blocked": "Bloqué",
+      "active": "Actif"
+    }
+  },
+  "apc": {
+    "title": "Configuration APC",
+    "subtitle": "Planification des Évaluations & Programme par Compétences",
+    "expert_mode": "Mode Expert APC",
+    "classes": "Classes",
+    "groups": "Groupes",
+    "manage_library": "Gérer la Bibliothèque",
+    "subjects": "Matières",
+    "no_subject_in_group": "Aucune matière dans ce groupe",
+    "competencies": "Compétences",
+    "select_subject_hint": "Sélectionnez une matière pour gérer ses compétences",
+    "all": "TOUTES",
+    "seq_short": "SEQ",
+    "subject_library": "Bibliothèque des Matières",
+    "add_to_class": "Ajouter des matières à la classe {{className}}",
+    "search_subject": "RECHERCHER UNE MATIÈRE...",
+    "already_registered": "DÉJÀ ENREGISTRÉE",
+    "save_to_class": "Enregistrer dans la classe",
+    "apc_library": "Bibliothèque APC",
+    "new_competency": "NOUVELLE COMPÉTENCE...",
+    "already_used": "Déjà utilisé",
+    "assign_to_sequences": "Affecter aux séquences",
+    "all_short": "Tout",
+    "none_short": "Aucun",
+    "guide_title": "Guide de répartition",
+    "guide_desc": "Sélectionnez une compétence à gauche, puis cochez les séquences durant lesquelles elle sera évaluée. Les séquences en bleu indiquent que la compétence y est déjà assignée.",
+    "save_distribution": "Enregistrer la répartition",
+    "confirm_delete_group": "Supprimer le groupe",
+    "confirm_delete_group_desc": "Voulez-vous vraiment supprimer ce groupe ? Cette action est irréversible.",
+    "confirm_remove_comp": "Retirer la compétence",
+    "confirm_remove_comp_desc": "Voulez-vous vraiment retirer cette compétence de cette matière ?",
+    "group_modal": {
+      "edit": "Modifier Groupe",
+      "new": "Nouveau Groupe",
+      "subtitle": "Classification des matières de l'établissement",
+      "label": "Libellé du groupe (ex: Sciences)"
+    },
+    "group_library": {
+      "title": "Bibliothèque des Groupes",
+      "subtitle": "Sélectionnez les catégories à utiliser pour cette classe",
+      "active_tag": "Actif (Contient des matières)",
+      "create_new": "Créer un nouveau groupe",
+      "finish": "Terminer la sélection"
+    }
+  },
+  "server_config": {
+    "title": "Personnalisation",
+    "subtitle": "Ajustez votre interface",
+    "reset": "Réinitialiser",
+    "connection_settings": "Paramètres de Connexion",
+    "server_url": "URL du Serveur",
+    "global_interface": "Interface Globale",
+    "general_size": "Taille Générale",
+    "sidebar_width": "Largeur Sidebar",
+    "menu_elements": "Éléments de Menu",
+    "card_size": "Taille des Cartes",
+    "text_size": "Titres & Textes",
+    "config_applied": "Configuration Appliquée",
+    "save_changes": "Enregistrer les modifications"
+  },
+  "session": {
+    "verifying": "Vérification de session...",
+    "init_required": "Initialisation Requise",
+    "choose_school": "Choisir un Établissement",
+    "choose_year": "Choisir l'Année Active",
+    "init_desc": "Nous avons besoin de ces informations pour synchroniser vos données sécurisées.",
+    "academic_session": "Session Académique",
+    "logout": "Se Déconnecter",
+    "security_flow": "Scholar Security Flow"
   }
 }

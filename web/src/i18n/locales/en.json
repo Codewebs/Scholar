@@ -697,5 +697,96 @@
       "schoolReceipt": "School Receipt",
       "generating": "Generating payment receipt..."
     }
+  },
+  "staff": {
+    "title": "Users & Personnel",
+    "subtitle": "Headcount for the year {{year}}",
+    "active_members": "Active Members",
+    "pending_requests": "Pending Requests",
+    "search_placeholder": "Filter by name or function...",
+    "no_request": "No request",
+    "no_request_desc": "Staff members haven't sent any requests yet",
+    "recruit": "Recruit",
+    "permissions_title": "Permissions & Access",
+    "save_rights": "Save Rights",
+    "recruitment_tunnel": "Staff Recruitment",
+    "finalize_registration": "Finalize Registration",
+    "confirm_recruitment": "Confirm Recruitment",
+    "edit_profile": "Edit Profile",
+    "edit_profile_desc": "Updating staff information",
+    "status": {
+      "blocked": "Blocked",
+      "active": "Active"
+    }
+  },
+  "apc": {
+    "title": "APC Configuration",
+    "subtitle": "Evaluation Planning & Competency-based Program",
+    "expert_mode": "APC Expert Mode",
+    "classes": "Classes",
+    "groups": "Groups",
+    "manage_library": "Manage Library",
+    "subjects": "Subjects",
+    "no_subject_in_group": "No subject in this group",
+    "competencies": "Competencies",
+    "select_subject_hint": "Select a subject to manage its competencies",
+    "all": "ALL",
+    "seq_short": "SEQ",
+    "subject_library": "Subject Library",
+    "add_to_class": "Add subjects to class {{className}}",
+    "search_subject": "SEARCH FOR A SUBJECT...",
+    "already_registered": "ALREADY REGISTERED",
+    "save_to_class": "Save to class",
+    "apc_library": "APC Library",
+    "new_competency": "NEW COMPETENCY...",
+    "already_used": "Already used",
+    "assign_to_sequences": "Assign to sequences",
+    "all_short": "All",
+    "none_short": "None",
+    "guide_title": "Distribution Guide",
+    "guide_desc": "Select a competency on the left, then check the sequences during which it will be evaluated. Blue sequences indicate the competency is already assigned.",
+    "save_distribution": "Save distribution",
+    "confirm_delete_group": "Delete group",
+    "confirm_delete_group_desc": "Are you sure you want to delete this group? This action is irreversible.",
+    "confirm_remove_comp": "Remove competency",
+    "confirm_remove_comp_desc": "Are you sure you want to remove this competency from this subject?",
+    "group_modal": {
+      "edit": "Edit Group",
+      "new": "New Group",
+      "subtitle": "Institution's subject classification",
+      "label": "Group label (ex: Sciences)"
+    },
+    "group_library": {
+      "title": "Group Library",
+      "subtitle": "Select the categories to use for this class",
+      "active_tag": "Active (Contains subjects)",
+      "create_new": "Create new group",
+      "finish": "Finish selection"
+    }
+  },
+  "server_config": {
+    "title": "Personalization",
+    "subtitle": "Adjust your interface",
+    "reset": "Reset",
+    "connection_settings": "Connection Settings",
+    "server_url": "Server URL",
+    "global_interface": "Global Interface",
+    "general_size": "General Size",
+    "sidebar_width": "Sidebar Width",
+    "menu_elements": "Menu Elements",
+    "card_size": "Card Size",
+    "text_size": "Titles & Texts",
+    "config_applied": "Configuration Applied",
+    "save_changes": "Save changes"
+  },
+  "session": {
+    "verifying": "Verifying session...",
+    "init_required": "Initialization Required",
+    "choose_school": "Choose an Institution",
+    "choose_year": "Choose Active Year",
+    "init_desc": "We need this information to synchronize your secure data.",
+    "academic_session": "Academic Session",
+    "logout": "Log Out",
+    "security_flow": "Scholar Security Flow"
   }
 }

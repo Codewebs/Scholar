@@ -3,6 +3,7 @@ import { useSchoolYear } from '../../context/SchoolYearContext';
 import { matiereService } from '../../api/matiereService';
 import { pedagogyService } from '../../api/pedagogyService';
 import api from '../../api/axios';
+import { useTranslation } from 'react-i18next';
 import {
   Building2,
   Users,
@@ -33,6 +34,7 @@ import {
 } from '../../types/pedagogy';
 
 const ApcConfigurationPage: React.FC = () => {
+  const { t } = useTranslation();
   const { selectedYear } = useSchoolYear();
   const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
@@ -293,7 +295,7 @@ const ApcConfigurationPage: React.FC = () => {
         await Promise.all(promises);
 
         console.log("✅ [APC] Enregistrement réussi pour toutes les compétences");
-        notify("Répartition enregistrée", `${selectedCompetenceIds.length} compétence(s) assignée(s) avec succès.`);
+        notify(t('common.success'), `${selectedCompetenceIds.length} ${t('apc.competencies').toLowerCase()} ${t('common.success').toLowerCase()}.`);
 
         // Reset & Refresh
         setSelectedCompetenceIds([]);
@@ -336,7 +338,7 @@ const ApcConfigurationPage: React.FC = () => {
         const groupsRes = await matiereService.getGroups(idEtablissement);
         setGroups(groupsRes.data);
     } catch (error) {
-        alert("Erreur lors de l'enregistrement du groupe");
+        alert(t('common.error'));
     } finally {
         setLoading(false);
     }
@@ -344,8 +346,8 @@ const ApcConfigurationPage: React.FC = () => {
 
   const handleDeleteGroup = async (id: number) => {
     confirm(
-        "Supprimer le groupe",
-        "Voulez-vous vraiment supprimer ce groupe ? Cette action est irréversible.",
+        t('apc.confirm_delete_group'),
+        t('apc.confirm_delete_group_desc'),
         async () => {
             setLoading(true);
             try {
@@ -355,7 +357,7 @@ const ApcConfigurationPage: React.FC = () => {
                 setGroups(groupsRes.data);
                 if (selectedGroupId === id) setSelectedGroupId(groupsRes.data[0]?.idGroupeMatiere || null);
             } catch (error: any) {
-                alert(error.response?.data?.error || "Erreur lors de la suppression");
+                alert(error.response?.data?.error || t('common.error'));
             } finally {
                 setLoading(false);
             }
@@ -379,7 +381,7 @@ const ApcConfigurationPage: React.FC = () => {
           setSelectedMatieresToAssign([]);
           loadRepartition();
       } catch (error) {
-          alert("Erreur lors de l'assignation");
+          alert(t('common.error'));
       } finally {
           setLoading(false);
       }
@@ -409,7 +411,7 @@ const ApcConfigurationPage: React.FC = () => {
 
               targetId = res.data.idCompetence;
               setGlobalCompetences([...globalCompetences, res.data]);
-              notify("Compétence créée", `"${newCompetenceLibelle}" est maintenant disponible.`);
+              notify(t('common.success'), `"${newCompetenceLibelle}" ${t('common.success').toLowerCase()}.`);
           }
 
           if (targetId) {
@@ -421,7 +423,7 @@ const ApcConfigurationPage: React.FC = () => {
           }
       } catch (error: any) {
           console.error("❌ [APC] Erreur ajout compétence:", error);
-          notify("Erreur", "Impossible de créer la compétence.", 'error');
+          notify(t('common.error'), t('common.error'), 'error');
       } finally {
           setLoading(false);
       }
@@ -429,14 +431,14 @@ const ApcConfigurationPage: React.FC = () => {
 
   const removeCompetence = async (id: number) => {
       confirm(
-          "Retirer la compétence",
-          "Voulez-vous vraiment retirer cette compétence de cette matière ?",
+          t('apc.confirm_remove_comp'),
+          t('apc.confirm_remove_comp_desc'),
           async () => {
               try {
                   await matiereService.deleteRepartitionCompetence(id);
                   loadCompetencesForMatiere();
               } catch (error) {
-                  alert("Erreur lors du retrait");
+                  alert(t('common.error'));
               }
           },
           'danger'
@@ -458,15 +460,15 @@ const ApcConfigurationPage: React.FC = () => {
                 <ArrowLeft size={28} />
             </button>
             <div>
-                <h1 className="text-4xl font-black uppercase tracking-tighter text-black">Configuration APC</h1>
-                <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] mt-2">Planification des Évaluations & Programme par Compétences</p>
+                <h1 className="text-4xl font-black uppercase tracking-tighter text-black">{t('apc.title')}</h1>
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] mt-2">{t('apc.subtitle')}</p>
             </div>
         </div>
 
         <div className="flex items-center space-x-4 relative z-10">
             <div className="bg-accent text-white px-6 py-4 rounded-sharp border border-accent/20 flex items-center space-x-3 shadow-xl shadow-accent/20">
                 <ShieldCheck size={20} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Mode Expert APC</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">{t('apc.expert_mode')}</span>
             </div>
         </div>
       </div>
@@ -479,7 +481,7 @@ const ApcConfigurationPage: React.FC = () => {
                     <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm">
                         <Building2 size={20} />
                     </div>
-                    <h2 className="font-black uppercase tracking-tight text-black text-sm">1. Classes</h2>
+                    <h2 className="font-black uppercase tracking-tight text-black text-sm">1. {t('apc.classes')}</h2>
                 </div>
                 <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-2 py-1 rounded-full">{classes.length}</span>
             </div>
@@ -516,7 +518,7 @@ const ApcConfigurationPage: React.FC = () => {
                         <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shadow-sm">
                             <Layers size={20} />
                         </div>
-                        <h2 className="font-black uppercase tracking-tight text-black text-sm">2. Groupes</h2>
+                        <h2 className="font-black uppercase tracking-tight text-black text-sm">2. {t('apc.groups')}</h2>
                     </div>
                     <button onClick={() => setShowGroupLibraryModal(true)} className="p-2 bg-orange-600 text-white rounded-full hover:scale-110 active:scale-95 transition-all shadow-md">
                         <PlusCircle size={20}/>
@@ -527,7 +529,7 @@ const ApcConfigurationPage: React.FC = () => {
                     className="w-full py-3 bg-orange-50 text-orange-600 border border-orange-100 rounded-[15px] font-black uppercase text-[8px] tracking-[0.2em] flex items-center justify-center space-x-2 hover:bg-orange-100 transition-all"
                 >
                     <PlusCircle size={12}/>
-                    <span>Gérer la Bibliothèque</span>
+                    <span>{t('apc.manage_library')}</span>
                 </button>
             </div>
 
@@ -584,7 +586,7 @@ const ApcConfigurationPage: React.FC = () => {
                         <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shadow-sm">
                             <BookOpen size={20} />
                         </div>
-                        <h2 className="font-black uppercase tracking-tight text-black text-sm">3. Matières</h2>
+                        <h2 className="font-black uppercase tracking-tight text-black text-sm">3. {t('apc.subjects')}</h2>
                     </div>
                     <button onClick={() => setShowSubjectModal(true)} className="p-2 bg-violet-600 text-white rounded-full hover:scale-110 active:scale-95 transition-all shadow-md">
                         <Plus size={20}/>
@@ -650,7 +652,7 @@ const ApcConfigurationPage: React.FC = () => {
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full text-center opacity-30 p-10">
                         <BookOpen size={48} className="mb-4 text-gray-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Aucune matière dans ce groupe</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('apc.no_subject_in_group')}</p>
                     </div>
                 )}
             </div>
@@ -664,7 +666,7 @@ const ApcConfigurationPage: React.FC = () => {
                         <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shadow-sm">
                             <ShieldCheck size={20} />
                         </div>
-                        <h2 className="font-black uppercase tracking-tight text-black text-sm">4. Compétences</h2>
+                        <h2 className="font-black uppercase tracking-tight text-black text-sm">4. {t('apc.competencies')}</h2>
                     </div>
                     <button
                         disabled={!selectedMatiere}
@@ -688,7 +690,7 @@ const ApcConfigurationPage: React.FC = () => {
                             block4SequenceFilter === null ? "bg-black text-white" : "bg-gray-50 text-gray-400 hover:bg-gray-100"
                         )}
                     >
-                        TOUTES
+                        {t('apc.all')}
                     </button>
                     {sequences.map(s => {
                         const hasCompetences = repartitionCompetences.some(rc => rc.idSousPeriode === s.idSousPeriode);
@@ -705,7 +707,7 @@ const ApcConfigurationPage: React.FC = () => {
                                             : "bg-gray-50 border-transparent text-gray-400 hover:bg-gray-100"
                                 )}
                             >
-                                SEQ {s.ordreSousPeriode}
+                                {t('apc.seq_short')} {s.ordreSousPeriode}
                             </button>
                         );
                     })}
@@ -716,7 +718,7 @@ const ApcConfigurationPage: React.FC = () => {
                 {!selectedMatiere ? (
                     <div className="flex flex-col items-center justify-center h-full text-center opacity-30 p-10">
                         <ShieldCheck size={48} className="mb-4 text-gray-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 italic">Sélectionnez une matière pour gérer ses compétences</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 italic">{t('apc.select_subject_hint')}</p>
                     </div>
                 ) : (
                     <div className="space-y-4">
@@ -785,8 +787,8 @@ const ApcConfigurationPage: React.FC = () => {
              <div className="w-full max-w-4xl bg-white rounded-[56px] p-12 shadow-2xl relative overflow-hidden border border-gray-100 h-[80vh] flex flex-col">
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h2 className="text-3xl font-black uppercase tracking-tighter text-black">Bibliothèque des Matières</h2>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] mt-1">Ajouter des matières à la classe {classes.find(c => c.idClasse === selectedClassId)?.libelleClasseFr}</p>
+                        <h2 className="text-3xl font-black uppercase tracking-tighter text-black">{t('apc.subject_library')}</h2>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] mt-1">{t('apc.add_to_class', { className: classes.find(c => c.idClasse === selectedClassId)?.libelleClasseFr })}</p>
                     </div>
                     <button onClick={() => {
                         console.log("🔓 [APC] Ouverture Bibliothèque des Matières...");
@@ -800,7 +802,7 @@ const ApcConfigurationPage: React.FC = () => {
                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-[#9E9E9E]" size={20} />
                     <input
                         type="text"
-                        placeholder="RECHERCHER UNE MATIÈRE..."
+                        placeholder={t('apc.search_subject')}
                         className="w-full pl-16 pr-8 py-5 bg-gray-50 rounded-[24px] text-xs font-black uppercase tracking-widest outline-none focus:bg-white transition-all border border-transparent focus:border-black"
                         value={subjectSearch}
                         onChange={e => setSubjectSearch(e.target.value)}
@@ -842,7 +844,7 @@ const ApcConfigurationPage: React.FC = () => {
                                 <div className="flex-1">
                                     <p className="text-xs font-black uppercase tracking-tight text-black">{m.libelleFr}</p>
                                     <p className="text-[9px] font-bold text-[#9E9E9E] uppercase tracking-widest">
-                                        {isAlreadyInClass ? "DÉJÀ ENREGISTRÉE" : m.codeMatiere}
+                                        {isAlreadyInClass ? t('apc.already_registered') : m.codeMatiere}
                                     </p>
                                 </div>
                                 {isSelected && !isAlreadyInClass && (
@@ -863,13 +865,13 @@ const ApcConfigurationPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between pt-8 border-t border-gray-100">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">{selectedMatieresToAssign.length} matières sélectionnées</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">{selectedMatieresToAssign.length} {t('apc.subjects').toLowerCase()} sélectionnées</p>
                     <button
                         disabled={selectedMatieresToAssign.length === 0 || loading}
                         onClick={handleAddMatieres}
                         className="bg-black text-white px-12 py-5 rounded-sharp font-black uppercase text-xs tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-30"
                     >
-                        {loading ? "Chargement..." : "Enregistrer dans la classe"}
+                        {loading ? t('common.loading') : t('apc.save_to_class')}
                     </button>
                 </div>
              </div>
@@ -882,8 +884,8 @@ const ApcConfigurationPage: React.FC = () => {
              <div className="w-full max-w-4xl bg-white rounded-[56px] p-12 shadow-2xl relative overflow-hidden border border-gray-100 h-[85vh] flex flex-col">
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h2 className="text-3xl font-black uppercase tracking-tighter text-black">Bibliothèque APC</h2>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] mt-1">Matière: {selectedMatiere.Matiere?.libelleFr}</p>
+                        <h2 className="text-3xl font-black uppercase tracking-tighter text-black">{t('apc.apc_library')}</h2>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] mt-1">{t('pedagogy.subjects.title').slice(0, -1)}: {selectedMatiere.Matiere?.libelleFr}</p>
                     </div>
                     <button onClick={() => {
                         console.log("🔓 [APC] Ouverture Bibliothèque APC (Compétences)...");
@@ -896,7 +898,7 @@ const ApcConfigurationPage: React.FC = () => {
                 {/* MODAL FILTERS */}
                 <div className="flex items-center space-x-2 mb-6 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
                     {[
-                        { id: 'ALL', label: 'Toutes', icon: LayoutGrid },
+                        { id: 'ALL', label: t('common.all_classes'), icon: LayoutGrid },
                         { id: 'SAME_SUBJECT', label: 'Même Matière', icon: BookOpen },
                         { id: 'SAME_CLASS', label: 'Même Classe', icon: Building2 },
                         { id: 'SAME_GROUP', label: 'Même Groupe', icon: Layers },
@@ -920,13 +922,13 @@ const ApcConfigurationPage: React.FC = () => {
                     {/* 1. Sélection / Ajout Compétence */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] mb-4 block ml-4">Sélectionner une compétence</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] mb-4 block ml-4">{t('apc.competencies')}</label>
 
                             <div className="flex gap-2 mb-4">
                                 <input
                                     type="text"
                                     className="flex-1 px-8 py-5 bg-gray-50 rounded-[24px] text-xs font-bold outline-none focus:bg-white transition-all border border-transparent focus:border-green-600"
-                                    placeholder="NOUVELLE COMPÉTENCE..."
+                                    placeholder={t('apc.new_competency')}
                                     value={newCompetenceLibelle}
                                     onChange={e => setNewCompetenceLibelle(e.target.value)}
                                 />
@@ -981,7 +983,7 @@ const ApcConfigurationPage: React.FC = () => {
                                                 <div className="flex-1 pr-4">
                                                     <p className="text-[11px] font-bold text-gray-700 leading-relaxed">{c.libelle}</p>
                                                     {isUsedInSubject && (
-                                                        <span className="text-[7px] font-black uppercase tracking-widest text-blue-500 mt-1 block">Déjà utilisé</span>
+                                                        <span className="text-[7px] font-black uppercase tracking-widest text-blue-500 mt-1 block">{t('apc.already_used')}</span>
                                                     )}
                                                 </div>
                                                 <div className={clsx(
@@ -998,10 +1000,10 @@ const ApcConfigurationPage: React.FC = () => {
 
                         <div>
                             <div className="flex justify-between items-center mb-6 px-4">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Affecter aux séquences</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">{t('apc.assign_to_sequences')}</label>
                                 <div className="space-x-4">
-                                    <button onClick={selectAllSequences} className="text-[9px] font-black uppercase text-green-600 hover:underline">Tout</button>
-                                    <button onClick={deselectAllSequences} className="text-[9px] font-black uppercase text-red-600 hover:underline">Aucun</button>
+                                    <button onClick={selectAllSequences} className="text-[9px] font-black uppercase text-green-600 hover:underline">{t('apc.all_short')}</button>
+                                    <button onClick={deselectAllSequences} className="text-[9px] font-black uppercase text-red-600 hover:underline">{t('apc.none_short')}</button>
                                 </div>
                             </div>
 
@@ -1024,7 +1026,7 @@ const ApcConfigurationPage: React.FC = () => {
                                             )}
                                         >
                                             <Zap size={16} />
-                                            <span>SEQ {seq.ordreSousPeriode}</span>
+                                            <span>{t('apc.seq_short')} {seq.ordreSousPeriode}</span>
                                             {isAlreadyConfiguredForComp && (
                                                 <span className="text-[6px] font-black opacity-60">Actif</span>
                                             )}
@@ -1039,10 +1041,9 @@ const ApcConfigurationPage: React.FC = () => {
                                         <Zap size={16} />
                                     </div>
                                     <div>
-                                        <h4 className="text-[10px] font-black uppercase text-blue-900 tracking-widest mb-1">Guide de répartition</h4>
+                                        <h4 className="text-[10px] font-black uppercase text-blue-900 tracking-widest mb-1">{t('apc.guide_title')}</h4>
                                         <p className="text-[9px] font-medium text-blue-700/80 leading-relaxed">
-                                            Sélectionnez une compétence à gauche, puis cochez les séquences durant lesquelles elle sera évaluée.
-                                            Les séquences en <span className="text-blue-600 font-bold uppercase">Bleu</span> indiquent que la compétence y est déjà assignée.
+                                            {t('apc.guide_desc')}
                                         </p>
                                     </div>
                                 </div>
@@ -1053,14 +1054,14 @@ const ApcConfigurationPage: React.FC = () => {
 
                 <div className="mt-8 pt-8 border-t border-gray-100 flex items-center justify-between">
                     <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">
-                        {selectedCompetenceIds.length} compétence(s) | {selectedSousPeriodes.length} séquence(s)
+                        {selectedCompetenceIds.length} {t('apc.competencies').toLowerCase()} | {selectedSousPeriodes.length} {t('grades.selection.sequence').toLowerCase()}(s)
                     </p>
                     <button
                         onClick={saveRepartition}
                         disabled={selectedCompetenceIds.length === 0 || selectedSousPeriodes.length === 0}
                         className="bg-black text-white px-12 py-5 rounded-sharp font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-30 shadow-xl"
                     >
-                        {loading ? "Chargement..." : "Enregistrer la répartition"}
+                        {loading ? t('common.loading') : t('apc.save_distribution')}
                     </button>
                 </div>
              </div>
@@ -1084,7 +1085,7 @@ const ApcConfigurationPage: React.FC = () => {
                           onClick={() => setConfirmConfig(prev => ({ ...prev, show: false }))}
                           className="flex-1 py-4 bg-gray-50 text-black rounded-sharp font-black uppercase text-[10px] tracking-widest hover:bg-gray-100 transition-all"
                       >
-                          Annuler
+                          {t('common.cancel')}
                       </button>
                       <button
                           onClick={() => { confirmConfig.onConfirm(); setConfirmConfig(prev => ({ ...prev, show: false })); }}
@@ -1093,7 +1094,7 @@ const ApcConfigurationPage: React.FC = () => {
                               confirmConfig.type === 'danger' ? "bg-red-600 shadow-red-100" : "bg-black shadow-gray-100"
                           )}
                       >
-                          Confirmer
+                          {t('common.save')}
                       </button>
                   </div>
               </div>
@@ -1106,8 +1107,8 @@ const ApcConfigurationPage: React.FC = () => {
              <div className="w-full max-w-md bg-white rounded-[56px] p-12 shadow-2xl relative overflow-hidden border border-gray-100">
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h2 className="text-3xl font-black uppercase tracking-tighter text-black">{editingGroup ? "Modifier Groupe" : "Nouveau Groupe"}</h2>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] mt-1">Classification des matières de l'établissement</p>
+                        <h2 className="text-3xl font-black uppercase tracking-tighter text-black">{editingGroup ? t('apc.group_modal.edit') : t('apc.group_modal.new')}</h2>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] mt-1">{t('apc.group_modal.subtitle')}</p>
                     </div>
                     <button onClick={() => setShowGroupModal(false)} className="p-3 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
                         <X size={24} />
@@ -1116,7 +1117,7 @@ const ApcConfigurationPage: React.FC = () => {
 
                 <div className="space-y-6">
                     <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] mb-2 block ml-4">Libellé du groupe (ex: Sciences)</label>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] mb-2 block ml-4">{t('apc.group_modal.label')}</label>
                         <input
                             type="text"
                             className="w-full px-8 py-5 bg-gray-50 rounded-[24px] text-xs font-bold outline-none focus:bg-white transition-all border border-transparent focus:border-orange-600"
@@ -1132,14 +1133,14 @@ const ApcConfigurationPage: React.FC = () => {
                         onClick={() => setShowGroupModal(false)}
                         className="flex-1 py-5 bg-gray-50 text-black rounded-sharp font-black uppercase text-[10px] tracking-widest hover:bg-gray-100 transition-all"
                     >
-                        Annuler
+                        {t('common.cancel')}
                     </button>
                     <button
                         onClick={handleSaveGroup}
                         disabled={!newGroupLibelle.trim() || loading}
                         className="flex-1 py-5 bg-orange-600 text-white rounded-sharp font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-30"
                     >
-                        {loading ? "Chargement..." : "Enregistrer"}
+                        {loading ? t('common.loading') : t('common.save')}
                     </button>
                 </div>
              </div>
@@ -1152,8 +1153,8 @@ const ApcConfigurationPage: React.FC = () => {
              <div className="w-full max-w-2xl bg-white rounded-[56px] p-12 shadow-2xl relative overflow-hidden border border-gray-100 h-[70vh] flex flex-col">
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h2 className="text-3xl font-black uppercase tracking-tighter text-black">Bibliothèque des Groupes</h2>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] mt-1">Sélectionnez les catégories à utiliser pour cette classe</p>
+                        <h2 className="text-3xl font-black uppercase tracking-tighter text-black">{t('apc.group_library.title')}</h2>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] mt-1">{t('apc.group_library.subtitle')}</p>
                     </div>
                     <button onClick={() => setShowGroupLibraryModal(false)} className="p-3 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
                         <X size={24} />
@@ -1187,7 +1188,7 @@ const ApcConfigurationPage: React.FC = () => {
                                     </div>
                                     <div>
                                         <p className="text-xs font-black uppercase tracking-tight text-black">{g.libelleFr}</p>
-                                        {hasSubjects && <p className="text-[8px] font-black text-orange-600 uppercase tracking-widest mt-0.5">Actif (Contient des matières)</p>}
+                                        {hasSubjects && <p className="text-[8px] font-black text-orange-600 uppercase tracking-widest mt-0.5">{t('apc.group_library.active_tag')}</p>}
                                     </div>
                                 </div>
 
@@ -1216,13 +1217,13 @@ const ApcConfigurationPage: React.FC = () => {
                         className="flex items-center space-x-2 text-orange-600 font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-transform"
                     >
                         <PlusCircle size={18} />
-                        <span>Créer un nouveau groupe</span>
+                        <span>{t('apc.group_library.create_new')}</span>
                     </button>
                     <button
                         onClick={() => setShowGroupLibraryModal(false)}
                         className="bg-black text-white px-12 py-5 rounded-sharp font-black uppercase text-xs tracking-widest hover:scale-105 active:scale-95 transition-all"
                     >
-                        Terminer la sélection
+                        {t('apc.group_library.finish')}
                     </button>
                 </div>
              </div>
@@ -1252,7 +1253,7 @@ const ApcConfigurationPage: React.FC = () => {
       {loading && (
         <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-[100] flex flex-col items-center justify-center space-y-4">
              <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
-             <p className="font-black uppercase text-[10px] tracking-widest text-black">Mise à jour...</p>
+             <p className="font-black uppercase text-[10px] tracking-widest text-black">{t('common.processing')}</p>
         </div>
       )}
     </div>
