@@ -45,8 +45,10 @@ import TransportSettingsPage from './pages/finance/TransportSettingsPage';
 import ReportingCockpitPage from './pages/reports/ReportingCockpitPage';
 import FinancialReportsPage from './pages/finance/FinancialReportsPage';
 import StudentDocumentsPage from './pages/students/StudentDocumentsPage';
+import { useTracking } from './hooks/useTracking';
 
 function App() {
+  useTracking();
   return (
     <AuthProvider>
       <SchoolYearProvider>

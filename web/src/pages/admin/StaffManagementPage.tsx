@@ -22,6 +22,7 @@ import { clsx } from 'clsx';
 import { PermissionGrouping } from '../../components/admin/PermissionGrouping';
 import AuthInput from '../../components/ui/AuthInput';
 import AuthButton from '../../components/ui/AuthButton';
+import { useTranslation } from 'react-i18next';
 
 export const permissionGroups = {
     "Dashboard & Statistiques": [
@@ -169,6 +170,7 @@ export const permissionGroups = {
 const roles = ["DIRECTEUR", "DIRECTEUR_DES_ETUDES", "SURVEILLANT_GENERAL", "ENSEIGNANT", "INTENDANT", "SECRETAIRE", "ADMINISTRATEUR"];
 
 const StaffManagementPage: React.FC = () => {
+  const { t } = useTranslation();
   const { selectedYear } = useSchoolYear();
   const schoolId = Number(localStorage.getItem('school_id'));
   const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
@@ -269,20 +271,20 @@ const StaffManagementPage: React.FC = () => {
           setShowValModal(false);
           loadData();
       } catch (err) {
-          alert("Erreur lors de la validation");
+          alert(t('common.error'));
       } finally {
           setLoading(false);
       }
   };
 
   const handleRejectRequest = async (idDemande: number) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir rejeter cette demande ?")) return;
+    if (!window.confirm(t('common.confirm_delete'))) return;
     setLoading(true);
     try {
         await staffService.rejeterDemande(idDemande);
         loadData();
     } catch (err) {
-        alert("Erreur lors du rejet");
+        alert(t('common.error'));
     } finally {
         setLoading(false);
     }
@@ -294,7 +296,7 @@ const StaffManagementPage: React.FC = () => {
       await staffService.setBloque(member.idUtilisateur, schoolId, !member.bloque);
       loadData();
     } catch (err) {
-      alert("Erreur");
+      alert(t('common.error'));
     } finally {
         setLoading(false);
     }
@@ -331,7 +333,7 @@ const StaffManagementPage: React.FC = () => {
         setShowPermModal(false);
         loadData();
     } catch (err) {
-        alert("Erreur lors de la mise à jour");
+        alert(t('common.error'));
     } finally {
         setLoading(false);
     }
@@ -362,7 +364,7 @@ const StaffManagementPage: React.FC = () => {
         setShowEditModal(false);
         loadData();
     } catch (err) {
-        alert("Erreur lors de la mise à jour");
+        alert(t('common.error'));
     } finally {
         setLoading(false);
     }
@@ -412,12 +414,12 @@ const StaffManagementPage: React.FC = () => {
                 <ArrowLeft size={28} />
             </button>
             <div>
-                <h1 className="text-4xl font-black uppercase tracking-tighter text-black">Utilisateurs & Personnel</h1>
+                <h1 className="text-4xl font-black uppercase tracking-tighter text-black">{t('staff.title')}</h1>
                 <div className="flex items-center space-x-3 mt-2">
                     <div className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center">
-                        <Zap size={12} className="mr-1.5" /> Administration
+                        <Zap size={12} className="mr-1.5" /> {t('menu.groups.admin')}
                     </div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Effectifs de l'année {selectedYear?.libelleAnneeScolaire}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">{t('staff.subtitle', { year: selectedYear?.libelleAnneeScolaire })}</p>
                 </div>
             </div>
         </div>
@@ -430,7 +432,7 @@ const StaffManagementPage: React.FC = () => {
                     activeTab === 'staff' ? "bg-white text-black shadow-lg" : "text-gray-400 hover:text-black"
                 )}
             >
-                Membres Actifs ({staff.length})
+                {t('staff.active_members')} ({staff.length})
             </button>
             <button
                 onClick={() => setActiveTab('requests')}
@@ -439,7 +441,7 @@ const StaffManagementPage: React.FC = () => {
                     activeTab === 'requests' ? "bg-white text-black shadow-lg" : "text-gray-400 hover:text-black"
                 )}
             >
-                Demandes en attente ({requests.length})
+                {t('staff.pending_requests')} ({requests.length})
             </button>
         </div>
       </div>
@@ -449,7 +451,7 @@ const StaffManagementPage: React.FC = () => {
             <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
             <input
                 type="text"
-                placeholder="Filtrer par nom ou fonction..."
+                placeholder={t('staff.search_placeholder')}
                 className="w-full pl-16 pr-8 py-5 bg-white border border-gray-100 rounded-[24px] text-sm font-bold focus:border-yellow-500 transition-all outline-none shadow-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -478,7 +480,7 @@ const StaffManagementPage: React.FC = () => {
                                         "px-2.5 py-1 rounded-full text-[7px] font-black uppercase tracking-widest",
                                         member.bloque ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
                                     )}>
-                                        {member.bloque ? "Bloqué" : "Actif"}
+                                        {member.bloque ? t('staff.status.blocked') : t('staff.status.active')}
                                     </div>
                                     <button
                                         onClick={() => openEditModal(member)}
@@ -513,7 +515,7 @@ const StaffManagementPage: React.FC = () => {
                                 className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors"
                             >
                                 <ShieldCheck size={18} />
-                                <span className="text-[9px] font-black uppercase tracking-widest">Droits</span>
+                                <span className="text-[9px] font-black uppercase tracking-widest">{t('staff.permissions_title').split(' ')[0]}</span>
                             </button>
 
                             <button
@@ -534,8 +536,8 @@ const StaffManagementPage: React.FC = () => {
                 {requests.length === 0 ? (
                     <div className="p-32 text-center border-4 border-dashed border-gray-50 rounded-[56px] bg-white/50">
                         <Clock size={64} className="text-gray-200 mx-auto mb-8" />
-                        <h3 className="text-2xl font-black uppercase text-black mb-2">Aucune demande</h3>
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#9E9E9E]">Le personnel n'a pas encore envoyé de demande</p>
+                        <h3 className="text-2xl font-black uppercase text-black mb-2">{t('staff.no_request')}</h3>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#9E9E9E]">{t('staff.no_request_desc')}</p>
                     </div>
                 ) : (
                     requests.map((req) => (
@@ -562,7 +564,7 @@ const StaffManagementPage: React.FC = () => {
                                     className="px-10 py-5 bg-black text-white rounded-sharp font-black uppercase text-[11px] tracking-[0.2em] flex items-center space-x-3 hover:scale-105 transition-all shadow-2xl shadow-gray-200"
                                 >
                                     <Check size={20} className="text-yellow-500" />
-                                    <span>Recruter</span>
+                                    <span>{t('staff.recruit')}</span>
                                 </button>
                                 <button
                                     onClick={() => handleRejectRequest(req.idDemande)}
@@ -589,7 +591,7 @@ const StaffManagementPage: React.FC = () => {
                                 <Shield size={32} />
                             </div>
                             <div>
-                                <h2 className="text-3xl font-black uppercase tracking-tighter text-black">Permissions & Accès</h2>
+                                <h2 className="text-3xl font-black uppercase tracking-tighter text-black">{t('staff.permissions_title')}</h2>
                                 <p className="text-[11px] font-black text-blue-600 uppercase tracking-[0.3em] mt-1">{selectedStaff.utilisateur?.nom || selectedStaff.nom}</p>
                             </div>
                         </div>
@@ -632,7 +634,7 @@ const StaffManagementPage: React.FC = () => {
                         >
                             <div className="flex items-center space-x-3">
                                 <Check size={20} />
-                                <span>Enregistrer les Droits</span>
+                                <span>{t('staff.save_rights')}</span>
                             </div>
                         </AuthButton>
                   </div>
@@ -647,9 +649,9 @@ const StaffManagementPage: React.FC = () => {
                   <div className="p-12 border-b border-gray-50">
                         <div className="flex items-center space-x-4 text-green-600 mb-4">
                             <BadgeCheck size={28} />
-                            <span className="text-[11px] font-black uppercase tracking-[0.5em]">Recrutement Personnel</span>
+                            <span className="text-[11px] font-black uppercase tracking-[0.5em]">{t('staff.recruitment_tunnel')}</span>
                         </div>
-                        <h2 className="text-4xl font-black uppercase tracking-tighter text-black">Finaliser l'inscription</h2>
+                        <h2 className="text-4xl font-black uppercase tracking-tighter text-black">{t('staff.finalize_registration')}</h2>
                         <p className="text-xs font-bold text-gray-400 mt-2">{selectedRequest.nom} {selectedRequest.prenom}</p>
                   </div>
 
@@ -683,7 +685,7 @@ const StaffManagementPage: React.FC = () => {
                         />
 
                         <div className="space-y-3">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">Rôle</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">{t('common.status')}</label>
                             <div className="grid grid-cols-2 gap-2">
                                 {roles.map(role => (
                                     <button
@@ -702,7 +704,7 @@ const StaffManagementPage: React.FC = () => {
                         </div>
 
                         <div className="space-y-3 border-t pt-6">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Ajustement Permissions</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">{t('staff.permissions_title')}</label>
                             <PermissionGrouping
                                 role={valForm.role}
                                 addedPerms={valForm.addedPerms}
@@ -740,13 +742,13 @@ const StaffManagementPage: React.FC = () => {
 
                         <div className="pt-8">
                             <AuthButton onClick={handleConfirmValidation} disabled={!valForm.matricule || !valForm.role || loading}>
-                                {loading ? "Traitement..." : "Confirmer le Recrutement"}
+                                {loading ? t('common.processing') : t('staff.confirm_recruitment')}
                             </AuthButton>
                             <button
                                 onClick={() => setShowValModal(false)}
                                 className="w-full mt-4 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-black transition-colors"
                             >
-                                Annuler
+                                {t('common.cancel')}
                             </button>
                         </div>
                   </div>
@@ -759,19 +761,19 @@ const StaffManagementPage: React.FC = () => {
           <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-xl flex items-center justify-center p-6">
               <div className="max-w-xl w-full bg-white rounded-[56px] shadow-2xl border border-gray-100 overflow-hidden">
                   <div className="p-12 border-b border-gray-50">
-                        <h2 className="text-4xl font-black uppercase tracking-tighter text-black">Modifier Profil</h2>
-                        <p className="text-xs font-bold text-gray-400 mt-2">Mise à jour des informations du personnel</p>
+                        <h2 className="text-4xl font-black uppercase tracking-tighter text-black">{t('staff.edit_profile')}</h2>
+                        <p className="text-xs font-bold text-gray-400 mt-2">{t('staff.edit_profile_desc')}</p>
                   </div>
 
                   <div className="p-12 space-y-8">
                         <div className="grid grid-cols-2 gap-4">
                             <AuthInput
-                                label="Nom"
+                                label={t('students.register.last_name')}
                                 value={editForm.nom}
                                 onChange={e => setEditForm({...editForm, nom: e.target.value})}
                             />
                             <AuthInput
-                                label="Prénom"
+                                label={t('students.register.first_name')}
                                 value={editForm.prenom}
                                 onChange={e => setEditForm({...editForm, prenom: e.target.value})}
                             />
@@ -786,12 +788,12 @@ const StaffManagementPage: React.FC = () => {
 
                         <div className="grid grid-cols-2 gap-4">
                             <AuthInput
-                                label="Email"
+                                label={t('login.label_email')}
                                 value={editForm.email}
                                 onChange={e => setEditForm({...editForm, email: e.target.value})}
                             />
                             <AuthInput
-                                label="Téléphone"
+                                label={t('school.profile.phone1')}
                                 value={editForm.telephone}
                                 onChange={e => setEditForm({...editForm, telephone: e.target.value})}
                             />
@@ -799,13 +801,13 @@ const StaffManagementPage: React.FC = () => {
 
                         <div className="pt-8 flex gap-4">
                             <AuthButton onClick={handleUpdateStaff} disabled={loading} className="flex-1">
-                                Sauvegarder
+                                {t('common.save')}
                             </AuthButton>
                             <button
                                 onClick={() => setShowEditModal(false)}
                                 className="px-10 py-5 bg-gray-50 text-gray-400 rounded-sharp font-black uppercase text-[11px] tracking-widest hover:text-black transition-all"
                             >
-                                Annuler
+                                {t('common.cancel')}
                             </button>
                         </div>
                   </div>
@@ -816,7 +818,7 @@ const StaffManagementPage: React.FC = () => {
       {loading && !showPermModal && !showValModal && !showEditModal && (
         <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-[200] flex flex-col items-center justify-center space-y-4">
              <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
-             <p className="font-black uppercase text-[10px] tracking-widest text-black">Mise à jour...</p>
+             <p className="font-black uppercase text-[10px] tracking-widest text-black">{t('common.processing')}</p>
         </div>
       )}
     </div>

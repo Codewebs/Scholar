@@ -28,6 +28,7 @@ const Annonce = require("./Annonce");
 const Specialite = require("./Specialite");
 const UtilisateurSpecialite = require("./UtilisateurSpecialite");
 const EnteteInstitutionnel = require("./enteteInstitutionnel");
+const UserSession = require("./UserSession");
 
 // Personnel Models
 const InscriptionPersonnel = require("./inscriptionPersonnel");
@@ -332,5 +333,6 @@ module.exports = {
   EleveTransport,
   EcheancierTransport,
   PaiementTransport,
-  EnteteInstitutionnel
+  EnteteInstitutionnel,
+  UserSession
 };

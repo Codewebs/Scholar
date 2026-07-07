@@ -306,7 +306,7 @@ const ApcConfigurationPage: React.FC = () => {
         setShowCompetenceModal(false);
     } catch (error: any) {
         console.error("❌ [APC] Erreur lors de l'enregistrement:", error);
-        notify("Erreur", "Un problème est survenu lors de l'enregistrement.", 'error');
+        notify(t('common.error'), t('common.error'), 'error');
     } finally {
         setLoading(false);
     }
@@ -772,7 +772,7 @@ const ApcConfigurationPage: React.FC = () => {
                                 ))
                         ) : (
                             <div className="text-center py-10 opacity-50">
-                                <p className="text-[10px] font-black uppercase text-gray-400">Aucune compétence associée</p>
+                                <p className="text-[10px] font-black uppercase text-gray-400">{t('apc.no_competency_associated')}</p>
                             </div>
                         )}
                     </div>
@@ -898,11 +898,11 @@ const ApcConfigurationPage: React.FC = () => {
                 {/* MODAL FILTERS */}
                 <div className="flex items-center space-x-2 mb-6 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
                     {[
-                        { id: 'ALL', label: t('common.all_classes'), icon: LayoutGrid },
-                        { id: 'SAME_SUBJECT', label: 'Même Matière', icon: BookOpen },
-                        { id: 'SAME_CLASS', label: 'Même Classe', icon: Building2 },
-                        { id: 'SAME_GROUP', label: 'Même Groupe', icon: Layers },
-                        { id: 'OTHER_GROUPS', label: 'Autres Groupes', icon: Users }
+                        { id: 'ALL', label: t('apc.all'), icon: LayoutGrid },
+                        { id: 'SAME_SUBJECT', label: t('apc.filters.same_subject'), icon: BookOpen },
+                        { id: 'SAME_CLASS', label: t('apc.filters.same_class'), icon: Building2 },
+                        { id: 'SAME_GROUP', label: t('apc.filters.same_group'), icon: Layers },
+                        { id: 'OTHER_GROUPS', label: t('apc.filters.other_groups'), icon: Users }
                     ].map(f => (
                         <button
                             key={f.id}
@@ -1071,7 +1071,7 @@ const ApcConfigurationPage: React.FC = () => {
       {/* Modern Confirmation Modal */}
       {confirmConfig.show && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-              <div className="w-full max-w-sm bg-white rounded-[40px] p-10 shadow-2xl border border-gray-100 text-center">
+              <div className="w-full max-sm bg-white rounded-[40px] p-10 shadow-2xl border border-gray-100 text-center">
                   <div className={clsx(
                       "w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6",
                       confirmConfig.type === 'danger' ? "bg-red-50 text-red-600" : "bg-orange-50 text-orange-600"

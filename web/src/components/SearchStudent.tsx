@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, User, ChevronRight } from 'lucide-react';
 import { financeService } from '../api/financeService';
 import { EleveUiModel } from '../types/student';
+import { useTranslation } from 'react-i18next';
 
 interface SearchStudentProps {
   yearId: number;
@@ -9,6 +10,7 @@ interface SearchStudentProps {
 }
 
 const SearchStudent: React.FC<SearchStudentProps> = ({ yearId, onSelect }) => {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<EleveUiModel[]>([]);
   const [loading, setLoading] = useState(false);
@@ -34,7 +36,7 @@ const SearchStudent: React.FC<SearchStudentProps> = ({ yearId, onSelect }) => {
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary" size={20} />
         <input
           type="text"
-          placeholder="Rechercher un élève (Nom ou Matricule)..."
+          placeholder={t('students.documents.search_placeholder')}
           className="w-full h-14 pl-12 pr-4 bg-surface border border-border rounded-sharp focus:border-black focus:ring-1 focus:ring-black outline-none transition-all font-medium"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -68,7 +70,7 @@ const SearchStudent: React.FC<SearchStudentProps> = ({ yearId, onSelect }) => {
 
       {loading && (
         <div className="p-8 text-center text-secondary text-xs font-bold uppercase tracking-widest animate-pulse">
-          Recherche en cours...
+          {t('students.documents.updating_list')}
         </div>
       )}
     </div>

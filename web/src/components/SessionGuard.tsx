@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSchoolYear } from '../context/SchoolYearContext';
 import { setupService, UserAssociation } from '../api/setupService';
 import { School, SchoolYear } from '../types/models';
+import { useTranslation } from 'react-i18next';
 import {
     Calendar,
     CheckCircle2,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 
 const SessionGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { t } = useTranslation();
     const { user, isAuthenticated, isInitialized, logout, updateUser } = useAuth();
     const { selectedYear, fetchYears, selectYear, years, loading: yearsLoading } = useSchoolYear();
 
@@ -136,7 +138,7 @@ const SessionGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         return (
             <div className="h-screen w-full bg-black flex flex-col items-center justify-center space-y-6">
                 <div className="w-20 h-20 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-                <p className="font-black uppercase tracking-[0.4em] text-white text-[10px] animate-pulse">Vérification de session...</p>
+                <p className="font-black uppercase tracking-[0.4em] text-white text-[10px] animate-pulse">{t('session.verifying')}</p>
             </div>
         );
     }
@@ -151,14 +153,14 @@ const SessionGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => 
                     <div className="relative z-10">
                         <div className="flex items-center space-x-3 text-accent mb-4">
                             <ShieldAlert size={28} />
-                            <span className="text-[11px] font-black uppercase tracking-[0.5em]">Initialisation Requise</span>
+                            <span className="text-[11px] font-black uppercase tracking-[0.5em]">{t('session.init_required')}</span>
                         </div>
 
                         <h2 className="text-4xl font-black uppercase tracking-tighter text-black mb-4">
-                            {needsSchool ? "Choisir un Établissement" : "Choisir l'Année Active"}
+                            {needsSchool ? t('session.choose_school') : t('session.choose_year')}
                         </h2>
                         <p className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-10 leading-relaxed">
-                            Nous avons besoin de ces informations pour synchroniser vos données sécurisées.
+                            {t('session.init_desc')}
                         </p>
 
                         <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
@@ -200,7 +202,7 @@ const SessionGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => 
                                                 </div>
                                                 <div>
                                                     <h4 className="font-black text-xl uppercase tracking-tight text-black">{year.libelleAnneeScolaire}</h4>
-                                                    <p className="text-[10px] font-black text-[#9E9E9E] uppercase tracking-widest mt-1">Session Académique</p>
+                                                    <p className="text-[10px] font-black text-[#9E9E9E] uppercase tracking-widest mt-1">{t('session.academic_session')}</p>
                                                 </div>
                                             </div>
                                             <CheckCircle2 size={24} className="text-gray-100 group-hover:text-blue-600 transition-all" />
@@ -216,11 +218,11 @@ const SessionGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => 
                                 className="flex items-center space-x-2 text-red-500 font-black uppercase text-[10px] tracking-widest hover:bg-red-50 px-6 py-3 rounded-full transition-all"
                             >
                                 <LogOut size={16} />
-                                <span>Se Déconnecter</span>
+                                <span>{t('session.logout')}</span>
                             </button>
                             <div className="flex items-center space-x-2 bg-gray-50 px-6 py-3 rounded-full border border-gray-100">
                                 <Zap size={14} className="text-yellow-500" />
-                                <span className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Scholar Security Flow</span>
+                                <span className="text-[9px] font-black uppercase text-gray-400 tracking-widest">{t('session.security_flow')}</span>
                             </div>
                         </div>
                     </div>

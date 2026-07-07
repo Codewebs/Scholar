@@ -24,6 +24,7 @@ const repartitionEnseignant = require("./repartitionEnseignant");
 const annonces = require("./annonces");
 const reports = require("./reportRoutes");
 const institutionalHeader = require("./institutionalHeader");
+const trackingRoutes = require("./tracking");
 
 // Montage des endpoints
 app.use((req, res, next) => {
@@ -54,6 +55,7 @@ app.use("/pedagogy/teachers-repartition", repartitionEnseignant);
 app.use("/pedagogy/reports", reports);
 app.use("/config/institutional-headers", institutionalHeader);
 app.use("/annonces", annonces);
+app.use("/tracking", trackingRoutes);
 
 // Routes montées sur la racine
 app.use("/qualites", qualitesRoutes);

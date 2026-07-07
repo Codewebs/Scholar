@@ -740,6 +740,12 @@
     "apc_library": "Bibliothèque APC",
     "new_competency": "NOUVELLE COMPÉTENCE...",
     "already_used": "Déjà utilisé",
+    "filters": {
+      "same_subject": "Même Matière",
+      "same_class": "Même Classe",
+      "same_group": "Même Groupe",
+      "other_groups": "Autres Groupes"
+    },
     "assign_to_sequences": "Affecter aux séquences",
     "all_short": "Tout",
     "none_short": "Aucun",
@@ -750,6 +756,7 @@
     "confirm_delete_group_desc": "Voulez-vous vraiment supprimer ce groupe ? Cette action est irréversible.",
     "confirm_remove_comp": "Retirer la compétence",
     "confirm_remove_comp_desc": "Voulez-vous vraiment retirer cette compétence de cette matière ?",
+    "no_competency_associated": "Aucune compétence associée",
     "group_modal": {
       "edit": "Modifier Groupe",
       "new": "Nouveau Groupe",
