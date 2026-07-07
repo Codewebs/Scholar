@@ -16,8 +16,10 @@ import {
 } from 'lucide-react';
 import AuthButton from '../../../../components/ui/AuthButton';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 const AbsenceView: React.FC = () => {
+  const { t } = useTranslation();
   const { selectedYear } = useSchoolYear();
   const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
@@ -66,7 +68,7 @@ const AbsenceView: React.FC = () => {
       });
       setSequences(allSequences);
     } catch (err) {
-      setError("Erreur lors du chargement des données");
+      setError(t('grades.absences.error_load'));
     }
   };
 
@@ -98,7 +100,7 @@ const AbsenceView: React.FC = () => {
       );
       setAbsences(res.data);
     } catch (err) {
-      setError("Erreur lors du chargement des absences");
+      setError(t('grades.absences.error_load_abs'));
     } finally {
       setLoading(false);
     }
@@ -127,10 +129,10 @@ const AbsenceView: React.FC = () => {
         idAnneeScolaire: yearId!
       };
       await (gradeService as any).saveAbsences(payload);
-      setSuccess("Absences enregistrées !");
+      setSuccess(t('grades.absences.success'));
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError("Erreur lors de l'enregistrement");
+      setError(t('grades.absences.error_save'));
     } finally {
       setSaving(false);
     }
@@ -144,7 +146,7 @@ const AbsenceView: React.FC = () => {
       {/* Selection Summary (Breadcrumbs) */}
       <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 flex flex-wrap items-center gap-4">
           <SelectionSummaryItem
-            label="Salle"
+            label={t('grades.absences.step_salle')}
             value={selectedSalle?.nomSalle}
             isActive={step === 'SALLE'}
             onClick={() => { setStep('SALLE'); setSelectedSequenceId(null); }}
@@ -152,7 +154,7 @@ const AbsenceView: React.FC = () => {
           {selectedSalle && <ChevronRight size={14} className="text-gray-300" />}
 
           <SelectionSummaryItem
-            label="Évaluation"
+            label={t('grades.absences.step_sequence')}
             value={selectedSequence?.libelleSousPeriodeFr}
             isActive={step === 'SEQUENCE'}
             isVisible={!!selectedSalle}
@@ -181,7 +183,7 @@ const AbsenceView: React.FC = () => {
                     <SelectionCard
                         key={s.idSousPeriode}
                         title={s.libelleSousPeriodeFr}
-                        subtitle="Période d'évaluation"
+                        subtitle={t('grades.absences.step_sequence')}
                         icon={Calendar}
                         onClick={() => { setSelectedSequenceId(s.idSousPeriode!); setStep('SAISIE'); }}
                     />
@@ -197,9 +199,9 @@ const AbsenceView: React.FC = () => {
                             <Clock size={24} />
                         </div>
                         <div>
-                            <h3 className="font-black uppercase tracking-tight text-lg">Registre d'Absences</h3>
+                            <h3 className="font-black uppercase tracking-tight text-lg">{t('grades.absences.register_title')}</h3>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                {selectedSalle?.nomSalle} — {absences.length} Élèves
+                                {selectedSalle?.nomSalle} — {t('grades.absences.student_count', { count: absences.length })}
                             </p>
                         </div>
                     </div>
@@ -211,7 +213,7 @@ const AbsenceView: React.FC = () => {
                     >
                         <div className="flex items-center space-x-2">
                             <Save size={18} />
-                            <span>{saving ? "Sauvegarde..." : "Enregistrer Absences"}</span>
+                            <span>{saving ? t('grades.absences.saving') : t('grades.absences.save_button')}</span>
                         </div>
                     </AuthButton>
                 </div>
@@ -220,21 +222,21 @@ const AbsenceView: React.FC = () => {
                     {loading ? (
                         <div className="py-20 flex flex-col items-center justify-center space-y-4">
                              <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
-                             <p className="text-[10px] font-black uppercase tracking-widest text-black">Récupération...</p>
+                             <p className="text-[10px] font-black uppercase tracking-widest text-black">{t('grades.absences.loading')}</p>
                         </div>
                     ) : absences.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-gray-300">
                            <UserX size={48} className="mb-4" />
-                           <p className="text-[10px] font-black uppercase tracking-widest">Aucun élève trouvé</p>
+                           <p className="text-[10px] font-black uppercase tracking-widest">{t('grades.absences.no_student_found')}</p>
                         </div>
                     ) : (
                         <table className="w-full">
                             <thead className="sticky top-0 bg-white z-[5] shadow-sm">
                                 <tr className="bg-gray-50/50">
-                                    <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Élève</th>
-                                    <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Heures Justifiées</th>
-                                    <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Non Justifiées</th>
-                                    <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Total</th>
+                                    <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{t('grades.absences.col_student')}</th>
+                                    <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{t('grades.absences.col_aj')}</th>
+                                    <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{t('grades.absences.col_anj')}</th>
+                                    <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{t('grades.absences.col_total')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -326,7 +328,7 @@ const SelectionSummaryItem: React.FC<{
             )}
         >
             <span className={clsx("text-[8px] font-black uppercase tracking-widest", isActive ? "text-gray-400" : "text-gray-300")}>{label}</span>
-            <span className="text-[11px] font-black uppercase tracking-tight">{value || "Choisir..."}</span>
+            <span className="text-[11px] font-black uppercase tracking-tight">{value || t('grades.absences.choose')}</span>
         </div>
     );
 };

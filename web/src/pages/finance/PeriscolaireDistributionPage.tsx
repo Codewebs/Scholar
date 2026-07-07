@@ -16,8 +16,10 @@ import { clsx } from 'clsx';
 import AuthButton from '../../components/ui/AuthButton';
 import AuthInput from '../../components/ui/AuthInput';
 import api from '../../api/axios';
+import { useTranslation } from 'react-i18next';
 
 const PeriscolaireDistributionPage: React.FC = () => {
+    const { t } = useTranslation();
     const { selectedYear } = useSchoolYear();
     const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
@@ -73,22 +75,22 @@ const PeriscolaireDistributionPage: React.FC = () => {
 
     const handleSave = async () => {
         if (!yearId) {
-            setError("Session scolaire introuvable.");
+            setError(t('finance.periscolaire_distribution.errors.no_year'));
             return;
         }
 
         if (selectedClasses.length === 0) {
-            setError("Veuillez sélectionner au moins une classe.");
+            setError(t('finance.periscolaire_distribution.errors.no_classes'));
             return;
         }
 
         if (!selectedActivityId) {
-            setError("Veuillez sélectionner une activité périscolaire.");
+            setError(t('finance.periscolaire_distribution.errors.no_activity'));
             return;
         }
 
         if (!amount || Number(amount) <= 0) {
-            setError("Veuillez entrer un montant valide supérieur à 0.");
+            setError(t('finance.periscolaire_distribution.errors.invalid_amount'));
             return;
         }
 
@@ -103,14 +105,14 @@ const PeriscolaireDistributionPage: React.FC = () => {
                 classIds: selectedClasses
             });
 
-            setSuccess("Frais périscolaires appliqués avec succès !");
+            setSuccess(t('finance.periscolaire_distribution.success'));
             setSelectedClasses([]);
             setAmount('');
             setSelectedActivityId(0);
             setTimeout(() => setSuccess(null), 3000);
         } catch (err: any) {
             console.error("❌ Erreur bulk assign:", err.response?.data || err.message);
-            setError(err.response?.data?.error || "Erreur lors de l'enregistrement.");
+            setError(err.response?.data?.error || t('finance.periscolaire_distribution.errors.save_error'));
         } finally {
             setSaving(false);
         }
@@ -128,12 +130,12 @@ const PeriscolaireDistributionPage: React.FC = () => {
                         <ArrowLeft size={28} />
                     </button>
                     <div>
-                        <h1 className="text-4xl font-black uppercase tracking-tighter text-black">Répartition Périscolaire</h1>
+                        <h1 className="text-4xl font-black uppercase tracking-tighter text-black">{t('finance.periscolaire_distribution.title')}</h1>
                         <div className="flex items-center space-x-3 mt-2">
                             <div className="bg-green-50 text-green-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center">
-                                <Sparkles size={12} className="mr-1.5" /> Affectation de masse
+                                <Sparkles size={12} className="mr-1.5" /> {t('finance.periscolaire_distribution.bulk_assignment')}
                             </div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Attribuez des activités aux classes</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">{t('finance.periscolaire_distribution.assign_subtitle')}</p>
                         </div>
                     </div>
                 </div>
@@ -141,7 +143,7 @@ const PeriscolaireDistributionPage: React.FC = () => {
                 <AuthButton onClick={handleSave} disabled={saving || selectedClasses.length === 0} className="md:w-auto px-12 bg-black shadow-2xl shadow-gray-200">
                     <div className="flex items-center space-x-3">
                         <Save size={20} />
-                        <span>{saving ? "Application..." : "Enregistrer la Répartition"}</span>
+                        <span>{saving ? t('finance.periscolaire_distribution.saving') : t('finance.periscolaire_distribution.save_button')}</span>
                     </div>
                 </AuthButton>
             </div>
@@ -156,22 +158,22 @@ const PeriscolaireDistributionPage: React.FC = () => {
                                     <Building2 size={24} />
                                 </div>
                                 <div>
-                                    <h3 className="font-black uppercase tracking-tight text-lg">Classes Cibles</h3>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{selectedClasses.length} Sélectionnée(s)</p>
+                                    <h3 className="font-black uppercase tracking-tight text-lg">{t('finance.periscolaire_distribution.target_classes')}</h3>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('finance.periscolaire_distribution.selected_count', { count: selectedClasses.length })}</p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setSelectedClasses(selectedClasses.length === classes.length ? [] : classes.map(c => c.idClasse))}
                                 className="text-[10px] font-black uppercase text-accent hover:underline"
                             >
-                                {selectedClasses.length === classes.length ? 'Désélectionner tout' : 'Tout sélectionner'}
+                                {selectedClasses.length === classes.length ? t('finance.periscolaire_distribution.deselect_all') : t('finance.periscolaire_distribution.select_all')}
                             </button>
                         </div>
                         <div className="relative">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                             <input
                                 type="text"
-                                placeholder="Filtrer les classes..."
+                                placeholder={t('finance.periscolaire_distribution.filter_placeholder')}
                                 className="w-full pl-12 pr-4 py-3 bg-white border border-gray-100 rounded-xl text-xs font-bold outline-none focus:border-black transition-all"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
@@ -206,7 +208,7 @@ const PeriscolaireDistributionPage: React.FC = () => {
                                                     "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter",
                                                     isSelected ? "bg-white/20 text-white" : "bg-orange-100 text-orange-600"
                                                 )}>
-                                                    {count} activités
+                                                    {t('finance.periscolaire_distribution.activities_tag', { count: count })}
                                                 </span>
                                             )}
                                         </div>
@@ -225,15 +227,15 @@ const PeriscolaireDistributionPage: React.FC = () => {
                                 <Sparkles size={24} />
                             </div>
                             <div>
-                                <h3 className="font-black uppercase tracking-tight text-lg">Activité & Montant</h3>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Configurer le frais à appliquer</p>
+                                <h3 className="font-black uppercase tracking-tight text-lg">{t('finance.periscolaire_distribution.activity_amount')}</h3>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('finance.periscolaire_distribution.configure_subtitle')}</p>
                             </div>
                         </div>
                     </div>
 
                     <div className="p-10 space-y-10">
                         <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Sélectionner l'activité</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">{t('finance.periscolaire_distribution.select_activity')}</label>
                             <div className="grid grid-cols-1 gap-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                                 {activities.map(act => (
                                     <div
@@ -252,9 +254,9 @@ const PeriscolaireDistributionPage: React.FC = () => {
                         </div>
 
                         <AuthInput
-                            label="Montant du frais (FCFA) *"
+                            label={t('finance.periscolaire_distribution.amount_label')}
                             type="number"
-                            placeholder="Entrez le montant"
+                            placeholder={t('finance.periscolaire_distribution.amount_placeholder')}
                             value={amount}
                             onChange={e => setAmount(e.target.value)}
                             required

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { gradeService } from '../../../../api/gradeService';
+import { useTranslation } from 'react-i18next';
 import {
     Plus,
     Trash2,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react';
 
 const JustificationManagement: React.FC = () => {
+    const { t } = useTranslation();
     const [justifications, setJustifications] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -28,7 +30,7 @@ const JustificationManagement: React.FC = () => {
             const res = await gradeService.getJustifications();
             setJustifications(res.data);
         } catch (err) {
-            setError("Erreur chargement motifs");
+            setError(t('grades.justification.error_load'));
         } finally {
             setLoading(false);
         }
@@ -41,7 +43,7 @@ const JustificationManagement: React.FC = () => {
             setNewValue('');
             loadJustifications();
         } catch (err) {
-            setError("Erreur lors de l'ajout");
+            setError(t('grades.justification.error_add'));
         }
     };
 
@@ -52,17 +54,17 @@ const JustificationManagement: React.FC = () => {
             setEditingId(null);
             loadJustifications();
         } catch (err) {
-            setError("Erreur lors de la modification");
+            setError(t('grades.justification.error_update'));
         }
     };
 
     const handleDelete = async (id: number) => {
-        if (!window.confirm("Supprimer ce motif ?")) return;
+        if (!window.confirm(t('grades.justification.confirm_delete'))) return;
         try {
             await gradeService.deleteJustification(id);
             loadJustifications();
         } catch (err) {
-            setError("Erreur lors de la suppression");
+            setError(t('grades.justification.error_delete'));
         }
     };
 
@@ -74,8 +76,8 @@ const JustificationManagement: React.FC = () => {
                         <Clock size={24} />
                     </div>
                     <div>
-                        <h3 className="font-black uppercase tracking-tight text-lg">Motifs de Justification</h3>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Configuration des absences</p>
+                        <h3 className="font-black uppercase tracking-tight text-lg">{t('grades.justification.title')}</h3>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('grades.justification.subtitle')}</p>
                     </div>
                 </div>
             </div>
@@ -87,7 +89,7 @@ const JustificationManagement: React.FC = () => {
                         type="text"
                         value={newValue}
                         onChange={(e) => setNewValue(e.target.value)}
-                        placeholder="Nouveau motif (ex: Maladie, Voyage...)"
+                        placeholder={t('grades.justification.placeholder')}
                         className="flex-1 bg-gray-50 border-2 border-transparent focus:border-black rounded-2xl px-6 py-4 font-bold outline-none transition-all"
                     />
                     <button
@@ -110,7 +112,7 @@ const JustificationManagement: React.FC = () => {
                     {loading ? (
                         <div className="py-10 flex justify-center"><div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin" /></div>
                     ) : justifications.length === 0 ? (
-                        <div className="py-10 text-center text-gray-300 text-[10px] font-black uppercase tracking-widest">Aucun motif configuré</div>
+                        <div className="py-10 text-center text-gray-300 text-[10px] font-black uppercase tracking-widest">{t('grades.justification.no_motif')}</div>
                     ) : justifications.map(j => (
                         <div key={j.idJustification} className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-gray-200 transition-all group">
                             {editingId === j.idJustification ? (

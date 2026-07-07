@@ -23,9 +23,10 @@ export interface MenuItem {
   permission?: AcademicPermission;
 }
 
-export const menuGroups: { group: string, items: MenuItem[] }[] = [
+export const menuGroups: { group: string, translationKey: string, items: MenuItem[] }[] = [
   {
     group: "Général",
+    translationKey: "menu.groups.general",
     items: [
       {
         title: "Tableau de Bord",
@@ -52,6 +53,7 @@ export const menuGroups: { group: string, items: MenuItem[] }[] = [
   },
   {
     group: "Gestion Académique",
+    translationKey: "menu.groups.academic",
     items: [
       {
         title: "Structure Scolaire",
@@ -113,6 +115,7 @@ export const menuGroups: { group: string, items: MenuItem[] }[] = [
   },
   {
     group: "Finance",
+    translationKey: "menu.groups.finance",
     items: [
       {
         title: "Encaissements",
@@ -132,6 +135,7 @@ export const menuGroups: { group: string, items: MenuItem[] }[] = [
   },
   {
     group: "Administration",
+    translationKey: "menu.groups.admin",
     items: [
       {
         title: "Mon Établissement",

@@ -60,10 +60,10 @@ const FinancialReportsPage: React.FC = () => {
                         <ArrowLeft size={24} />
                     </button>
                     <div>
-                        <h1 className="text-4xl font-black uppercase tracking-tighter text-black">États Financiers</h1>
+                        <h1 className="text-4xl font-black uppercase tracking-tighter text-black">Financial Statements</h1>
                         <div className="flex items-center gap-2 mt-1">
                             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Bordereaux de caisse et listes de contrôle</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Cash vouchers and checklists</p>
                         </div>
                     </div>
                 </div>
@@ -71,9 +71,9 @@ const FinancialReportsPage: React.FC = () => {
                 <div className="flex items-center gap-3">
                     <div className="flex p-1.5 bg-gray-100 rounded-2xl">
                         {[
-                            { id: 'DAILY', label: 'Journalier', icon: Calendar },
-                            { id: 'MONTHLY', label: 'Mensuel', icon: TrendingUp },
-                            { id: 'INSOLVABLES', label: 'Insolvables', icon: AlertCircle },
+                            { id: 'DAILY', label: 'Daily', icon: Calendar },
+                            { id: 'MONTHLY', label: 'Monthly', icon: TrendingUp },
+                            { id: 'INSOLVABLES', label: 'Insolvent', icon: AlertCircle },
                         ].map(t => (
                             <button
                                 key={t.id}
@@ -96,12 +96,12 @@ const FinancialReportsPage: React.FC = () => {
                 <div className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-sm space-y-10">
                     <div>
                         <h3 className="text-xs font-black uppercase tracking-[0.3em] mb-6 text-accent flex items-center gap-3">
-                            <Search size={16} /> Filtres du rapport
+                            <Search size={16} /> Report Filters
                         </h3>
                         <div className="space-y-6">
                             {reportType === 'DAILY' && (
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-2">Sélectionner le jour</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-2">Select the day</label>
                                     <input
                                         type="date"
                                         className="w-full h-14 px-6 bg-gray-50 border border-transparent rounded-[20px] font-bold text-sm focus:bg-white focus:border-black transition-all outline-none"
@@ -113,8 +113,8 @@ const FinancialReportsPage: React.FC = () => {
 
                             <div className="bg-gray-50 p-6 rounded-[28px] border border-gray-100 space-y-4">
                                 <div className="flex items-center justify-between text-[10px] font-black uppercase text-[#9E9E9E]">
-                                    <span>Total Encaissé</span>
-                                    <span className="text-black">{reportType === 'DAILY' ? 'Aujourd\'hui' : 'Ce mois'}</span>
+                                    <span>Total Collected</span>
+                                    <span className="text-black">{reportType === 'DAILY' ? 'Today' : 'This month'}</span>
                                 </div>
                                 <p className="text-3xl font-black text-black">
                                     {(data?.totalRecouvre ?? data?.transactions?.reduce((sum: number, t: any) => sum + (t.montantTotal || 0), 0) ?? 0).toLocaleString()} FCFA
@@ -128,10 +128,10 @@ const FinancialReportsPage: React.FC = () => {
 
                     <div className="space-y-4">
                         <AuthButton className="w-full py-5 rounded-[24px]">
-                            <Printer size={20} className="mr-3" /> Imprimer le Bordereau
+                            <Printer size={20} className="mr-3" /> Print Voucher
                         </AuthButton>
                         <button className="w-full py-5 border-2 border-gray-100 rounded-[24px] font-black uppercase text-[10px] tracking-widest text-secondary hover:border-black hover:text-black transition-all">
-                            Exporter en Excel
+                            Export to Excel
                         </button>
                     </div>
                 </div>
@@ -143,10 +143,10 @@ const FinancialReportsPage: React.FC = () => {
                             <div className="w-10 h-10 bg-black text-white rounded-xl flex items-center justify-center">
                                 <FileText size={20} />
                             </div>
-                            <h2 className="font-black uppercase tracking-tight text-lg">Détails des transactions</h2>
+                            <h2 className="font-black uppercase tracking-tight text-lg">Transaction details</h2>
                         </div>
                         <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-[9px] font-black uppercase tracking-widest">
-                            {(data?.transactions || data?.paiements || []).length} Opérations
+                            {(data?.transactions || data?.paiements || []).length} Operations
                         </span>
                     </div>
 
@@ -154,23 +154,23 @@ const FinancialReportsPage: React.FC = () => {
                         {loading ? (
                             <div className="p-20 text-center animate-pulse">
                                 <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                                <p className="text-[10px] font-black uppercase text-secondary tracking-widest">Calcul du bilan...</p>
+                                <p className="text-[10px] font-black uppercase text-secondary tracking-widest">Calculating balance...</p>
                             </div>
                         ) : (data?.transactions || data?.paiements || []).length === 0 ? (
                             <div className="p-32 text-center opacity-30">
                                 <Banknote size={64} className="mx-auto mb-6" />
-                                <p className="font-black uppercase text-xl">Aucune donnée</p>
-                                <p className="text-[10px] font-black uppercase tracking-widest mt-2">Aucune transaction enregistrée pour cette période</p>
+                                <p className="font-black uppercase text-xl">No data</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest mt-2">No transaction recorded for this period</p>
                             </div>
                         ) : (
                             <table className="w-full text-left">
                                 <thead className="bg-gray-50/50">
                                     <tr className="text-[9px] font-black uppercase tracking-[0.2em] text-[#9E9E9E]">
-                                        <th className="px-8 py-6">Réf.</th>
-                                        <th className="px-8 py-6">Élève</th>
-                                        <th className="px-8 py-6">Classe</th>
+                                        <th className="px-8 py-6">Ref.</th>
+                                        <th className="px-8 py-6">Student</th>
+                                        <th className="px-8 py-6">Class</th>
                                         <th className="px-8 py-6">Mode</th>
-                                        <th className="px-8 py-6 text-right">Montant</th>
+                                        <th className="px-8 py-6 text-right">Amount</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
@@ -214,10 +214,10 @@ const FinancialReportsPage: React.FC = () => {
                      <div className="bg-red-600 p-8 rounded-[48px] text-white space-y-6">
                          <div className="flex items-center justify-between">
                             <Users size={32} />
-                            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Élèves concernés</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Concerned students</p>
                          </div>
                          <h4 className="text-4xl font-black">{data?.insolvables?.length || 0}</h4>
-                         <p className="text-[11px] font-bold uppercase opacity-80">Élèves ayant un reliquat sur la tranche sélectionnée</p>
+                         <p className="text-[11px] font-bold uppercase opacity-80">Students with a balance on the selected installment</p>
                      </div>
                      {/* More insolvency details cards... */}
                 </div>

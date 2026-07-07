@@ -131,26 +131,26 @@ const ExigibleDistributionPage: React.FC = () => {
 
     const handleSave = async () => {
         if (!selectedClassId || !yearId) {
-            setError("Session ou classe manquante.");
+            setError("Session or class missing.");
             return;
         }
 
-        // Validation basique
+        // Basic validation
         if (tarifs.length === 0) {
-            setError("Veuillez ajouter au moins un frais à configurer.");
+            setError("Please add at least one fee to configure.");
             return;
         }
 
         const hasInvalidMontant = tarifs.some(t => t.montant === undefined || t.montant < 0);
         if (hasInvalidMontant) {
-            setError("Certains montants sont invalides.");
+            setError("Some amounts are invalid.");
             return;
         }
 
         setSaving(true);
         setError(null);
         try {
-            console.log("💾 Enregistrement des tarifs pour la classe:", selectedClassId);
+            console.log("💾 Saving rates for class:", selectedClassId);
             const res = await api.post('/finance/tarifs/save', {
                 idClasse: selectedClassId,
                 idAnneeScolaire: yearId,
@@ -163,13 +163,13 @@ const ExigibleDistributionPage: React.FC = () => {
                 }))
             });
 
-            console.log("✅ Réponse serveur:", res.data);
-            setSuccess("Configuration enregistrée avec succès !");
-            await loadClassTarifs(selectedClassId); // Recharger pour confirmer
+            console.log("✅ Server response:", res.data);
+            setSuccess("Configuration saved successfully!");
+            await loadClassTarifs(selectedClassId); // Reload to confirm
             setTimeout(() => setSuccess(null), 3000);
         } catch (err: any) {
-            console.error("❌ Erreur lors de l'enregistrement:", err.response?.data || err.message);
-            setError(err.response?.data?.error || "Erreur lors de l'enregistrement.");
+            console.error("❌ Error during save:", err.response?.data || err.message);
+            setError(err.response?.data?.error || "Error during save.");
         } finally {
             setSaving(false);
         }
@@ -183,12 +183,12 @@ const ExigibleDistributionPage: React.FC = () => {
                         <ArrowLeft size={28} />
                     </button>
                     <div>
-                        <h1 className="text-4xl font-black uppercase tracking-tighter text-black">Répartition des Frais</h1>
+                        <h1 className="text-4xl font-black uppercase tracking-tighter text-black">Fees Distribution</h1>
                         <div className="flex items-center space-x-3 mt-2">
                             <div className="bg-accent/10 text-accent px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center">
-                                <Wallet size={12} className="mr-1.5" /> Frais Exigibles
+                                <Wallet size={12} className="mr-1.5" /> Compulsory Fees
                             </div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Définissez les montants et échéances par classe</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Define amounts and deadlines per class</p>
                         </div>
                     </div>
                 </div>
@@ -196,7 +196,7 @@ const ExigibleDistributionPage: React.FC = () => {
                 <AuthButton onClick={handleSave} disabled={saving || !selectedClassId} className="md:w-auto px-12 bg-black shadow-2xl">
                     <div className="flex items-center space-x-3">
                         <Save size={20} />
-                        <span>{saving ? "Enregistrement..." : "Enregistrer les Tarifs"}</span>
+                        <span>{saving ? "Saving..." : "Save Rates"}</span>
                     </div>
                 </AuthButton>
             </div>
@@ -232,7 +232,7 @@ const ExigibleDistributionPage: React.FC = () => {
                                                     "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter",
                                                     selectedClassId === c.idClasse ? "bg-white/20 text-white" : "bg-orange-100 text-orange-600"
                                                 )}>
-                                                    {classTarifsCount} frais
+                                                    {classTarifsCount} fees
                                                 </span>
                                             )}
                                         </div>
@@ -249,7 +249,7 @@ const ExigibleDistributionPage: React.FC = () => {
                                 <div className="w-12 h-12 bg-accent text-white rounded-2xl flex items-center justify-center shadow-lg shadow-accent/20">
                                     <Plus size={24} />
                                 </div>
-                                <h3 className="font-black uppercase tracking-tight text-lg">Ajouter des frais</h3>
+                                <h3 className="font-black uppercase tracking-tight text-lg">Add fees</h3>
                             </div>
                         </div>
                         <div className="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar">
@@ -281,7 +281,7 @@ const ExigibleDistributionPage: React.FC = () => {
                                 <Wallet size={24} />
                             </div>
                             <div>
-                                <h3 className="font-black uppercase tracking-tight text-lg">Configuration des Tarifs</h3>
+                                <h3 className="font-black uppercase tracking-tight text-lg">Rates Configuration</h3>
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                                     {classes.find(c => c.idClasse === selectedClassId)?.libelleClasseFr}
                                 </p>
@@ -296,8 +296,8 @@ const ExigibleDistributionPage: React.FC = () => {
                                     <Wallet size={48} />
                                 </div>
                                 <div>
-                                    <p className="font-black uppercase text-lg">Aucun frais configuré</p>
-                                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] mt-2">Utilisez la colonne de gauche pour ajouter des frais à cette classe</p>
+                                    <p className="font-black uppercase text-lg">No fees configured</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] mt-2">Use the left column to add fees to this class</p>
                                 </div>
                             </div>
                         ) : (
@@ -312,7 +312,7 @@ const ExigibleDistributionPage: React.FC = () => {
                                                 <h4 className="font-black uppercase text-sm tracking-tight text-black">{row.libelle}</h4>
                                                 {row.hasPayments && (
                                                     <span className="text-[8px] font-black text-red-500 uppercase tracking-widest mt-0.5 flex items-center gap-1">
-                                                        <AlertCircle size={10} /> Verrouillé (Paiements existants)
+                                                        <AlertCircle size={10} /> Locked (Existing payments)
                                                     </span>
                                                 )}
                                             </div>
@@ -327,7 +327,7 @@ const ExigibleDistributionPage: React.FC = () => {
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                         <div className="space-y-1.5">
-                                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">Montant (FCFA)</label>
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">Amount (FCFA)</label>
                                             <div className="relative">
                                                 <input
                                                     type="number"
@@ -342,7 +342,7 @@ const ExigibleDistributionPage: React.FC = () => {
                                             </div>
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">Ordre</label>
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">Order</label>
                                             <div className="relative">
                                                 <input
                                                     type="number"
@@ -357,7 +357,7 @@ const ExigibleDistributionPage: React.FC = () => {
                                             </div>
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">Date Limite</label>
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">Deadline</label>
                                             <input
                                                 type="date"
                                                 className="w-full bg-white border border-transparent rounded-2xl px-4 py-3 text-[10px] font-bold outline-none focus:border-accent transition-all shadow-inner"
@@ -366,7 +366,7 @@ const ExigibleDistributionPage: React.FC = () => {
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">Alerte</label>
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">Alert</label>
                                             <input
                                                 type="date"
                                                 className="w-full bg-white border border-transparent rounded-2xl px-4 py-3 text-[10px] font-bold outline-none focus:border-accent transition-all shadow-inner"
@@ -383,8 +383,8 @@ const ExigibleDistributionPage: React.FC = () => {
                     <div className="p-8 bg-gray-50 border-t border-gray-100 flex items-start space-x-4">
                         <Info className="text-accent shrink-0" size={20} />
                         <p className="text-[10px] font-bold text-gray-500 leading-relaxed uppercase tracking-tight">
-                            L'ordre de paiement détermine la priorité d'affectation des versements automatiques.
-                            Le frais avec l'ordre le plus bas est soldé en premier.
+                            The payment order determines the priority of automatic payment allocation.
+                            The fee with the lowest order is settled first.
                         </p>
                     </div>
                 </div>

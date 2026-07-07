@@ -17,8 +17,10 @@ import {
 import { clsx } from 'clsx';
 import AuthButton from '../../components/ui/AuthButton';
 import AuthInput from '../../components/ui/AuthInput';
+import { useTranslation } from 'react-i18next';
 
 const MatiereListPage: React.FC = () => {
+  const { t } = useTranslation();
   const { selectedYear } = useSchoolYear();
   const [matieres, setMatieres] = useState<MatiereEntity[]>([]);
   const [kpis, setKPIs] = useState<MatiereKPIs | null>(null);
@@ -86,20 +88,20 @@ const MatiereListPage: React.FC = () => {
       setShowModal(false);
       loadData();
     } catch (error) {
-      alert("Erreur lors de l'enregistrement");
+      alert(t('pedagogy.subjects.save_error'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette matière de la bibliothèque globale ?")) {
+    if (window.confirm(t('pedagogy.subjects.confirm_delete'))) {
       setLoading(true);
       try {
         await matiereService.deleteMatiere(id);
         loadData();
       } catch (error) {
-        alert("Erreur lors de la suppression. Cette matière est peut-être utilisée dans des classes.");
+        alert(t('pedagogy.subjects.delete_error'));
       } finally {
         setLoading(false);
       }
@@ -122,12 +124,12 @@ const MatiereListPage: React.FC = () => {
                 <BookOpen size={32} />
             </div>
             <div>
-                <h1 className="text-4xl font-black uppercase tracking-tighter text-black">Matières</h1>
+                <h1 className="text-4xl font-black uppercase tracking-tighter text-black">{t('pedagogy.subjects.title')}</h1>
                 <div className="flex items-center space-x-3 mt-2">
                     <div className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center">
-                        <LayoutGrid size={12} className="mr-1.5" /> Catalogue Global
+                        <LayoutGrid size={12} className="mr-1.5" /> {t('pedagogy.subjects.global_catalog')}
                     </div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Référentiel des enseignements</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">{t('pedagogy.subjects.subtitle')}</p>
                 </div>
             </div>
         </div>
@@ -137,7 +139,7 @@ const MatiereListPage: React.FC = () => {
           className="bg-black text-white py-4 px-10 rounded-sharp flex items-center space-x-3 shadow-2xl hover:scale-105 active:scale-95 transition-all font-black uppercase text-xs tracking-[0.2em]"
         >
           <Plus size={20} className="text-indigo-400" />
-          <span>Nouvelle Matière</span>
+          <span>{t('pedagogy.subjects.new_subject')}</span>
         </button>
       </div>
 
@@ -146,19 +148,19 @@ const MatiereListPage: React.FC = () => {
         <KPICard
             icon={BookOpen}
             color="bg-black"
-            label="Total Matières"
+            label={t('pedagogy.subjects.total_subjects')}
             value={matieres.length.toString()}
         />
         <KPICard
             icon={TrendingUp}
             color="bg-indigo-600"
-            label="Taux Répartition"
+            label={t('pedagogy.subjects.distribution_rate')}
             value={`${kpis?.tauxRepartition || 0}%`}
         />
         <KPICard
             icon={RotateCcw}
             color="bg-green-600"
-            label="Session Active"
+            label={t('pedagogy.subjects.active_session')}
             value={selectedYear?.libelleAnneeScolaire || '---'}
         />
       </div>
@@ -169,7 +171,7 @@ const MatiereListPage: React.FC = () => {
           <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
           <input
             type="text"
-            placeholder="Rechercher une matière (Nom ou Code)..."
+            placeholder={t('pedagogy.subjects.search_placeholder')}
             className="w-full pl-16 pr-8 py-6 bg-gray-50 border border-transparent rounded-[24px] text-sm font-bold focus:bg-white focus:border-indigo-600 transition-all outline-none shadow-inner"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -180,10 +182,10 @@ const MatiereListPage: React.FC = () => {
             <table className="w-full">
               <thead>
                 <tr className="text-[10px] font-black uppercase tracking-[0.2em] text-[#9E9E9E] border-b border-gray-50">
-                  <th className="px-8 py-6 text-left">Code</th>
-                  <th className="px-8 py-6 text-left">Dénomination (FR)</th>
-                  <th className="px-8 py-6 text-left">Dénomination (EN)</th>
-                  <th className="px-8 py-6 text-right">Opérations</th>
+                  <th className="px-8 py-6 text-left">{t('pedagogy.subjects.code')}</th>
+                  <th className="px-8 py-6 text-left">{t('pedagogy.subjects.label_fr')}</th>
+                  <th className="px-8 py-6 text-left">{t('pedagogy.subjects.label_en')}</th>
+                  <th className="px-8 py-6 text-right">{t('pedagogy.subjects.operations')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -227,7 +229,7 @@ const MatiereListPage: React.FC = () => {
                 <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto text-gray-200">
                     <BookOpen size={40} />
                 </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#9E9E9E]">Aucune matière trouvée</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#9E9E9E]">{t('pedagogy.subjects.no_subject_found')}</p>
             </div>
         )}
       </div>
@@ -244,16 +246,16 @@ const MatiereListPage: React.FC = () => {
 
               <div className="flex items-center space-x-4 text-indigo-600 mb-4">
                   <BookOpen size={28} />
-                  <span className="text-[11px] font-black uppercase tracking-[0.5em]">Configuration Matière</span>
+                  <span className="text-[11px] font-black uppercase tracking-[0.5em]">{t('pedagogy.subjects.modal_config')}</span>
               </div>
 
               <h2 className="text-4xl font-black uppercase tracking-tighter text-black mb-10">
-                {isEditing ? "Modifier Matière" : "Nouvelle Matière"}
+                {isEditing ? t('pedagogy.subjects.modal_edit') : t('pedagogy.subjects.modal_add')}
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-8">
                 <AuthInput
-                  label="Code Identifiant (ex: MATH-01)"
+                  label={t('pedagogy.subjects.field_code')}
                   value={currentMatiere.codeMatiere}
                   onChange={e => setCurrentMatiere({...currentMatiere, codeMatiere: e.target.value.toUpperCase()})}
                   placeholder="CODE"
@@ -262,7 +264,7 @@ const MatiereListPage: React.FC = () => {
                 />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <AuthInput
-                        label="Nom Français"
+                        label={t('pedagogy.subjects.field_name_fr')}
                         value={currentMatiere.libelleFr}
                         onChange={e => setCurrentMatiere({...currentMatiere, libelleFr: e.target.value})}
                         placeholder="Libellé FR"
@@ -270,7 +272,7 @@ const MatiereListPage: React.FC = () => {
                         disabled={loading}
                     />
                     <AuthInput
-                        label="Nom Anglais"
+                        label={t('pedagogy.subjects.field_name_en')}
                         value={currentMatiere.libelleEn}
                         onChange={e => setCurrentMatiere({...currentMatiere, libelleEn: e.target.value})}
                         placeholder="Libellé EN"
@@ -283,12 +285,12 @@ const MatiereListPage: React.FC = () => {
                     {loading ? (
                         <div className="flex items-center space-x-3">
                             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            <span>Traitement...</span>
+                            <span>{t('pedagogy.subjects.processing')}</span>
                         </div>
                     ) : (
                         <div className="flex items-center space-x-3">
                             <Save size={20} />
-                            <span>{isEditing ? "Enregistrer les modifications" : "Ajouter au catalogue"}</span>
+                            <span>{isEditing ? t('pedagogy.subjects.save_changes') : t('pedagogy.subjects.save_to_catalog')}</span>
                         </div>
                     )}
                   </AuthButton>

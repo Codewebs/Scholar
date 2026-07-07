@@ -66,9 +66,9 @@ const TransportSettingsPage: React.FC = () => {
         <div className="p-8 space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-4xl font-black uppercase tracking-tighter">Zones de Transport</h1>
+                    <h1 className="text-4xl font-black uppercase tracking-tighter">Transport Zones</h1>
                     <p className="text-[10px] font-black uppercase tracking-widest text-secondary mt-1">
-                        Configuration des tarifs par quartier pour {selectedYear?.libelleAnneeScolaire}
+                        Configuration of rates by neighborhood for {selectedYear?.libelleAnneeScolaire}
                     </p>
                 </div>
                 <button
@@ -76,14 +76,14 @@ const TransportSettingsPage: React.FC = () => {
                     className="flex items-center space-x-3 bg-black text-white px-8 py-4 rounded-[20px] shadow-xl hover:scale-105 transition-all w-fit"
                 >
                     <Plus size={20} />
-                    <span className="text-[11px] font-black uppercase tracking-widest">Ajouter un quartier</span>
+                    <span className="text-[11px] font-black uppercase tracking-widest">Add a neighborhood</span>
                 </button>
             </div>
 
             {loading ? (
                 <div className="h-64 flex flex-col items-center justify-center space-y-4 animate-pulse">
                     <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-secondary">Chargement...</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-secondary">Loading...</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -97,12 +97,12 @@ const TransportSettingsPage: React.FC = () => {
                                     </div>
                                     <div>
                                         <h3 className="font-black uppercase text-sm tracking-tight">{q.libelle}</h3>
-                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{q.ville || 'Toutes villes'}</p>
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{q.ville || 'All cities'}</p>
                                     </div>
                                 </div>
 
                                 <div className="space-y-4">
-                                    <label className="text-[9px] font-black uppercase tracking-widest text-secondary ml-2">Tarif Annuel (FCFA)</label>
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-secondary ml-2">Annual Rate (FCFA)</label>
                                     <div className="flex gap-2">
                                         <input
                                             type="number"
@@ -125,7 +125,7 @@ const TransportSettingsPage: React.FC = () => {
             {quartiers.length === 0 && !loading && (
                 <div className="h-64 flex flex-col items-center justify-center text-center space-y-4 bg-gray-50/50 rounded-[40px] border-2 border-dashed border-gray-100">
                     <Bus size={48} className="text-gray-100" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">Aucun quartier configuré</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">No neighborhood configured</p>
                 </div>
             )}
 
@@ -133,21 +133,21 @@ const TransportSettingsPage: React.FC = () => {
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-in zoom-in-95 duration-300">
                     <div className="bg-white rounded-[48px] p-12 max-w-md w-full shadow-2xl relative">
                         <button onClick={() => setShowQuartierModal(false)} className="absolute top-8 right-8 p-3 hover:bg-gray-100 rounded-full transition-all"><X size={24}/></button>
-                        <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 text-black">Nouveau Quartier</h3>
+                        <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 text-black">New Neighborhood</h3>
                         <form onSubmit={handleCreateQuartier} className="space-y-8">
                             <AuthInput
-                                label="Nom du quartier"
+                                label="Neighborhood name"
                                 value={newQuartier.libelle}
                                 onChange={e => setNewQuartier({...newQuartier, libelle: e.target.value})}
                                 required
                             />
                             <AuthInput
-                                label="Ville (Optionnel)"
+                                label="City (Optional)"
                                 value={newQuartier.ville}
                                 onChange={e => setNewQuartier({...newQuartier, ville: e.target.value})}
                             />
                             <AuthButton type="submit" className="w-full py-6">
-                                Enregistrer
+                                Save
                             </AuthButton>
                         </form>
                     </div>

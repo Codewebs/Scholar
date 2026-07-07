@@ -69,18 +69,18 @@ const FinanceLibraryPage: React.FC = () => {
       setFormData({ fr: '', en: '', desc: '' });
       loadData();
     } catch (err) {
-      alert("Erreur lors de l'enregistrement");
+      alert("Error during recording");
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm("Supprimer cet élément de la bibliothèque ?")) {
+    if (window.confirm("Delete this item from the library?")) {
       try {
         if (tab === 'EXIGIBLE') await financeService.deleteExigible(id);
         else await financeService.deletePeriscolaire(id);
         loadData();
       } catch (err) {
-        alert("Erreur lors de la suppression");
+        alert("Error during deletion");
       }
     }
   };
@@ -93,10 +93,10 @@ const FinanceLibraryPage: React.FC = () => {
             <ArrowLeft size={28} className="text-black" />
           </button>
           <div>
-            <h1 className="text-4xl font-black uppercase tracking-tighter text-black">Bibliothèques des Frais</h1>
+            <h1 className="text-4xl font-black uppercase tracking-tighter text-black">Fees Libraries</h1>
             <div className="flex items-center space-x-2 mt-1">
                 <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
-                <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Référentiel de tarification scolaire</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">School pricing repository</p>
             </div>
           </div>
         </div>
@@ -109,7 +109,7 @@ const FinanceLibraryPage: React.FC = () => {
               )}
             >
               <LayoutGrid size={18} />
-              <span>Répartition par Classe</span>
+              <span>Distribution by Class</span>
             </button>
             <button
               onClick={() => { setEditingId(null); setFormData({ fr: '', en: '', desc: '' }); setIsModalOpen(true); }}
@@ -121,7 +121,7 @@ const FinanceLibraryPage: React.FC = () => {
               <div className="bg-white/20 p-1 rounded-sm">
                 <Plus size={18} />
               </div>
-              <span>Nouveau {tab === 'EXIGIBLE' ? 'Frais' : 'Activité'}</span>
+              <span>New {tab === 'EXIGIBLE' ? 'Fee' : 'Activity'}</span>
             </button>
         </div>
       </div>
@@ -137,7 +137,7 @@ const FinanceLibraryPage: React.FC = () => {
         >
           <div className="flex items-center justify-center space-x-2">
             <Wallet size={14} />
-            <span>Frais Exigibles</span>
+            <span>Compulsory Fees</span>
           </div>
         </button>
         <button
@@ -149,7 +149,7 @@ const FinanceLibraryPage: React.FC = () => {
         >
           <div className="flex items-center justify-center space-x-2">
             <Sparkles size={14} />
-            <span>Périscolaires</span>
+            <span>Extracurricular</span>
           </div>
         </button>
       </div>
@@ -158,15 +158,15 @@ const FinanceLibraryPage: React.FC = () => {
         {loading ? (
           <div className="p-20 text-center animate-pulse flex flex-col items-center space-y-4">
              <div className={clsx("w-12 h-12 border-4 border-t-transparent rounded-full animate-spin", tab === 'EXIGIBLE' ? "border-accent" : "border-green-600")}></div>
-             <p className="font-black uppercase text-[10px] tracking-widest text-[#9E9E9E]">Synchronisation...</p>
+             <p className="font-black uppercase text-[10px] tracking-widest text-[#9E9E9E]">Syncing...</p>
           </div>
         ) : (tab === 'EXIGIBLE' ? exigibles : periscolaires).length === 0 ? (
           <div className="p-24 text-center border-4 border-dashed border-gray-100 rounded-[48px] bg-gray-50/50">
              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm border border-gray-100">
                 <AlertCircle size={40} className="text-gray-200" />
              </div>
-             <h3 className="font-black uppercase text-xl text-black mb-2">Bibliothèque vide</h3>
-             <p className="font-bold text-[10px] uppercase text-[#9E9E9E] tracking-widest">Commencez par ajouter votre premier type de frais</p>
+             <h3 className="font-black uppercase text-xl text-black mb-2">Empty Library</h3>
+             <p className="font-bold text-[10px] uppercase text-[#9E9E9E] tracking-widest">Start by adding your first type of fee</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -225,7 +225,7 @@ const FinanceLibraryPage: React.FC = () => {
                     <span className="text-[10px] font-black uppercase tracking-[0.3em]">{tab} CONFIGURATION</span>
                 </div>
                 <h2 className="text-4xl font-black uppercase tracking-tighter text-black">
-                    {editingId ? "Modifier" : "Ajouter"}
+                    {editingId ? "Edit" : "Add"}
                 </h2>
               </div>
               <button type="button" onClick={() => setIsModalOpen(false)} className="p-3 hover:bg-gray-100 rounded-full transition-all text-black"><X size={28}/></button>
@@ -233,14 +233,14 @@ const FinanceLibraryPage: React.FC = () => {
 
             <div className="space-y-8">
               <AuthInput
-                label="Libellé Français *"
-                placeholder="Ex: Inscription, Scolarité..."
+                label="French Label *"
+                placeholder="Ex: Registration, Tuition..."
                 value={formData.fr}
                 onChange={e => setFormData({ ...formData, fr: e.target.value })}
                 required
               />
               <AuthInput
-                label="Libellé Anglais *"
+                label="English Label *"
                 placeholder="Ex: Registration, Tuition..."
                 value={formData.en}
                 onChange={e => setFormData({ ...formData, en: e.target.value })}
@@ -248,8 +248,8 @@ const FinanceLibraryPage: React.FC = () => {
               />
               {tab === 'EXIGIBLE' && (
                 <AuthInput
-                    label="Description Additionnelle"
-                    placeholder="Précisions sur ce type de frais..."
+                    label="Additional Description"
+                    placeholder="Details about this type of fee..."
                     value={formData.desc}
                     onChange={e => setFormData({ ...formData, desc: e.target.value })}
                 />
@@ -259,7 +259,7 @@ const FinanceLibraryPage: React.FC = () => {
                   <AuthButton type="submit" className={clsx("w-full py-6 rounded-sharp text-sm font-black tracking-[0.2em]", tab === 'EXIGIBLE' ? "bg-accent" : "bg-green-600")}>
                     <span className="flex items-center justify-center uppercase">
                       <Save size={22} className="mr-4" />
-                      ENREGISTRER LE RÉFÉRENTIEL
+                      SAVE REPOSITORY
                     </span>
                   </AuthButton>
               </div>

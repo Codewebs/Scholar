@@ -48,7 +48,7 @@ const TransportReceiptPrintPage: React.FC = () => {
         return (
             <div className="h-screen flex flex-col items-center justify-center bg-gray-50">
                 <Loader2 className="w-12 h-12 animate-spin text-accent mb-4" />
-                <p className="font-black uppercase tracking-widest text-xs text-gray-400">Génération du reçu de transport...</p>
+                <p className="font-black uppercase tracking-widest text-xs text-gray-400">Generating transport receipt...</p>
             </div>
         );
     }
@@ -110,7 +110,7 @@ const TransportReceiptPrintPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <p className="text-[10px] font-black uppercase whitespace-nowrap">
-                            Année Scolaire : <span className="underline">{data.receiptInfo.schoolYear}</span>
+                            School Year : <span className="underline">{data.receiptInfo.schoolYear}</span>
                         </p>
                     </div>
                 </header>
@@ -118,38 +118,38 @@ const TransportReceiptPrintPage: React.FC = () => {
                 <div className="flex justify-center mb-4">
                     <div className="px-10 py-1.5 bg-gray-100 border border-black rounded-full shadow-sm">
                         <h2 className="text-xs font-black uppercase tracking-widest">
-                            REÇU DE TRANSPORT N° : <span className="text-red-600">{data.receiptInfo.receiptNo}</span>
+                            TRANSPORT RECEIPT No : <span className="text-red-600">{data.receiptInfo.receiptNo}</span>
                         </h2>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-12 gap-y-2 gap-x-4 mb-4 text-[9px]">
                     <div className="col-span-8">
-                        <span className="font-black underline">Noms et Prénoms :</span> <span className="font-bold uppercase">{data.studentInfo.fullName}</span>
+                        <span className="font-black underline">Full Names :</span> <span className="font-bold uppercase">{data.studentInfo.fullName}</span>
                     </div>
                     <div className="col-span-4">
-                        <span className="font-black underline">Matricule :</span> <span className="font-bold">{data.studentInfo.matricule}</span>
+                        <span className="font-black underline">Student ID :</span> <span className="font-bold">{data.studentInfo.matricule}</span>
                     </div>
                     <div className="col-span-6">
-                        <span className="font-black underline">Date du paiement :</span> <span className="font-bold">{new Date(data.receiptInfo.dateTime).toLocaleDateString('fr-FR')}</span>
+                        <span className="font-black underline">Payment Date :</span> <span className="font-bold">{new Date(data.receiptInfo.dateTime).toLocaleDateString('en-US')}</span>
                     </div>
                     <div className="col-span-6 text-right">
-                        <span className="font-black underline">Montant total versé :</span> <span className="font-black text-red-600">{totalTransportToday.toLocaleString()} FCFA</span>
+                        <span className="font-black underline">Total amount paid :</span> <span className="font-black text-red-600">{totalTransportToday.toLocaleString()} FCFA</span>
                     </div>
                 </div>
 
                 <div className="flex-1">
-                    <h3 className="text-[8px] font-black uppercase bg-gray-600 text-white p-0.5 text-center">Détail de l'affectation du versement (Par Mois)</h3>
+                    <h3 className="text-[8px] font-black uppercase bg-gray-600 text-white p-0.5 text-center">Breakdown of payment allocation (By Month)</h3>
                     <table className="w-full border-collapse border border-black text-[7.5px]">
                         <thead>
                             <tr className="bg-gray-50 font-black text-center">
-                                <th className="border border-black px-1 py-[1px] w-8">Ordre</th>
-                                <th className="border border-black px-1 py-[1px] text-left">Mois / Période</th>
-                                <th className="border border-black px-1 py-[1px] bg-yellow-50">Versé ce jour</th>
-                                <th className="border border-black px-1 py-[1px]">Montant Dû</th>
-                                <th className="border border-black px-1 py-[1px]">Aug/Red</th>
-                                <th className="border border-black px-1 py-[1px]">Cumul Payé</th>
-                                <th className="border border-black px-1 py-[1px]">Reste à payer</th>
+                                <th className="border border-black px-1 py-[1px] w-8">Order</th>
+                                <th className="border border-black px-1 py-[1px] text-left">Month / Period</th>
+                                <th className="border border-black px-1 py-[1px] bg-yellow-50">Paid today</th>
+                                <th className="border border-black px-1 py-[1px]">Amount Due</th>
+                                <th className="border border-black px-1 py-[1px]">Inc/Red</th>
+                                <th className="border border-black px-1 py-[1px]">Cumulative Paid</th>
+                                <th className="border border-black px-1 py-[1px]">Balance</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -170,7 +170,7 @@ const TransportReceiptPrintPage: React.FC = () => {
                                             <div className="flex flex-col items-center leading-tight">
                                                 <span>{item.dejaPaye.toLocaleString()}</span>
                                                 <span className="text-[5px] uppercase font-black">
-                                                    {isAvance ? "Avance" : "Soldé"}
+                                                    {isAvance ? "Advance" : "Settled"}
                                                 </span>
                                             </div>
                                         </td>
@@ -178,7 +178,7 @@ const TransportReceiptPrintPage: React.FC = () => {
                                             {item.reste > 0 ? (
                                                 <div className="flex flex-col items-center leading-tight">
                                                     <span>{item.reste.toLocaleString()}</span>
-                                                    <span className="text-[5px] uppercase font-black">Reste</span>
+                                                    <span className="text-[5px] uppercase font-black">Balance</span>
                                                 </div>
                                             ) : (
                                                 "0"
@@ -189,14 +189,14 @@ const TransportReceiptPrintPage: React.FC = () => {
                             }) : (
                                 <tr>
                                     <td colSpan={7} className="border border-black p-2 text-center text-gray-400 italic font-bold">
-                                        Aucun versement de transport enregistré.
+                                        No transport payment recorded.
                                     </td>
                                 </tr>
                             )}
                         </tbody>
                         <tfoot>
                             <tr className="font-black bg-gray-100">
-                                <td colSpan={2} className="border border-black px-1 py-[1px] text-right uppercase">TOTAUX</td>
+                                <td colSpan={2} className="border border-black px-1 py-[1px] text-right uppercase">TOTALS</td>
                                 <td className="border border-black px-1 py-[1px] text-center bg-yellow-100">{totalTransportToday.toLocaleString()}</td>
                                 <td className="border border-black px-1 py-[1px] text-center">{transportRows.reduce((s: number, h: any) => s + h.montantTotal, 0).toLocaleString()}</td>
                                 <td className="border border-black px-1 py-[1px] text-center">—</td>
@@ -210,21 +210,21 @@ const TransportReceiptPrintPage: React.FC = () => {
                 <div className="flex justify-between items-start mt-4">
                     <div className="flex flex-col gap-2">
                          <div className="flex items-center space-x-2">
-                            <span className="text-[10px] font-black uppercase text-gray-500">Net versé ce jour (Transport) :</span>
+                            <span className="text-[10px] font-black uppercase text-gray-500">Net paid today (Transport) :</span>
                             <div className="bg-lime-400 px-4 py-1 rounded-md border border-black font-black text-xs">
                                 {totalTransportToday.toLocaleString()} FCFA
                             </div>
                         </div>
                     </div>
                     <div className="w-48 h-16 border-2 border-dashed border-black rounded-lg flex flex-col items-center justify-start p-1">
-                        <span className="text-[8px] font-black italic">Signature et cachet</span>
+                        <span className="text-[8px] font-black italic">Signature and stamp</span>
                     </div>
                 </div>
 
                 <div className="mt-auto flex justify-between items-end text-[7px] font-bold text-gray-500 italic border-t border-gray-100 pt-1">
-                    <p>{new Date().toLocaleString('fr-FR')}</p>
-                    <p>NB : Ce document ne concerne que le service de transport scolaire.</p>
-                    <p>Imprimé par : {data.financialDetail.printedBy}</p>
+                    <p>{new Date().toLocaleString('en-US')}</p>
+                    <p>NB: This document only concerns the school transport service.</p>
+                    <p>Printed by : {data.financialDetail.printedBy}</p>
                 </div>
             </div>
         );
@@ -245,7 +245,7 @@ const TransportReceiptPrintPage: React.FC = () => {
                     className="ml-4 px-6 py-2 bg-black text-white rounded-full font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-all flex items-center space-x-2"
                 >
                     <Printer size={16} />
-                    <span>Imprimer (A4)</span>
+                    <span>Print (A4)</span>
                 </button>
             </div>
 

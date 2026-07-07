@@ -6,6 +6,7 @@ import { gradeService } from '../../../../api/gradeService';
 import { PeriodeEntity, SousPeriodeEntity } from '../../../../types/pedagogy';
 import { FileText, Download, Printer, Filter, Layers, Zap, CheckCircle2 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 interface PVViewProps {
     salle?: any;
@@ -13,6 +14,7 @@ interface PVViewProps {
 }
 
 const PVView: React.FC<PVViewProps> = ({ salle: propSalle, sequence: propSequence }) => {
+  const { t } = useTranslation();
   const { selectedYear } = useSchoolYear();
   const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
@@ -106,35 +108,35 @@ const PVView: React.FC<PVViewProps> = ({ salle: propSalle, sequence: propSequenc
                 <div className="space-y-4">
                     <div className="flex items-center space-x-3 text-black">
                         <Filter size={18} />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Configuration</h3>
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">{t('grades.pv.configuration')}</h3>
                     </div>
 
                     <div className="space-y-3">
-                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">Type de Rapport</label>
+                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('grades.pv.report_type')}</label>
                         <div className="grid grid-cols-1 gap-2">
-                            {['SEQUENCE', 'TRIMESTRE', 'ANNUEL'].map(t => (
+                            {['SEQUENCE', 'TRIMESTRE', 'ANNUEL'].map(tType => (
                                 <button
-                                    key={t}
-                                    onClick={() => setType(t as any)}
+                                    key={tType}
+                                    onClick={() => setType(tType as any)}
                                     className={clsx(
                                         "w-full p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all text-left",
-                                        type === t ? "bg-black text-white shadow-lg shadow-gray-200" : "bg-gray-50 text-gray-400 hover:bg-gray-100"
+                                        type === tType ? "bg-black text-white shadow-lg shadow-gray-200" : "bg-gray-50 text-gray-400 hover:bg-gray-100"
                                     )}
                                 >
-                                    {t === 'SEQUENCE' ? 'Séquentiel' : t === 'TRIMESTRE' ? 'Trimestriel' : 'Annuel'}
+                                    {tType === 'SEQUENCE' ? t('grades.pv.type_sequence') : tType === 'TRIMESTRE' ? t('grades.pv.type_trimestre') : t('grades.pv.type_annuel')}
                                 </button>
                             ))}
                         </div>
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">Salle</label>
+                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('grades.selection.room')}</label>
                         <select
                             className="w-full bg-gray-50 border-none rounded-2xl p-4 text-xs font-bold outline-none"
                             value={selectedSalle}
                             onChange={(e) => setSelectedSalle(Number(e.target.value))}
                         >
-                            <option value="">Toutes les salles</option>
+                            <option value="">{t('grades.pv.all_salles')}</option>
                             {salles.map(s => (
                                 <option key={s.idSalle} value={s.idSalle}>{s.nomComplet || s.nomSalle}</option>
                             ))}
@@ -143,13 +145,13 @@ const PVView: React.FC<PVViewProps> = ({ salle: propSalle, sequence: propSequenc
 
                     {type === 'TRIMESTRE' && (
                         <div className="space-y-2 animate-in slide-in-from-top-2">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">Trimestre / Période</label>
+                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('grades.pv.select_periode')}</label>
                             <select
                                 className="w-full bg-gray-50 border-none rounded-2xl p-4 text-xs font-bold outline-none"
                                 value={selectedPeriode}
                                 onChange={(e) => setSelectedPeriode(Number(e.target.value))}
                             >
-                                <option value="">Sélectionner...</option>
+                                <option value="">{t('grades.selection.choose')}</option>
                                 {periodes.map(p => (
                                     <option key={p.idPeriode} value={p.idPeriode}>{p.libellePeriodeFr}</option>
                                 ))}
@@ -159,13 +161,13 @@ const PVView: React.FC<PVViewProps> = ({ salle: propSalle, sequence: propSequenc
 
                     {type === 'SEQUENCE' && (
                         <div className="space-y-2 animate-in slide-in-from-top-2">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">Séquence</label>
+                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('grades.pv.select_sequence')}</label>
                             <select
                                 className="w-full bg-gray-50 border-none rounded-2xl p-4 text-xs font-bold outline-none"
                                 value={selectedSequence}
                                 onChange={(e) => setSelectedSequence(Number(e.target.value))}
                             >
-                                <option value="">Sélectionner...</option>
+                                <option value="">{t('grades.selection.choose')}</option>
                                 {filteredSequences.map(s => (
                                     <option key={s.idSousPeriode} value={s.idSousPeriode}>{s.libelleSousPeriodeFr}</option>
                                 ))}
@@ -184,7 +186,7 @@ const PVView: React.FC<PVViewProps> = ({ salle: propSalle, sequence: propSequenc
                     ) : (
                         <FileText size={18} />
                     )}
-                    <span>Générer PV</span>
+                    <span>{t('grades.pv.generate_button')}</span>
                 </button>
             </div>
         </div>
@@ -196,8 +198,8 @@ const PVView: React.FC<PVViewProps> = ({ salle: propSalle, sequence: propSequenc
                     <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center text-gray-200 mb-6">
                         <FileText size={40} />
                     </div>
-                    <h4 className="text-xl font-black uppercase tracking-tight text-gray-300">Aperçu du Procès Verbal</h4>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-2 max-w-[300px]">Utilisez les filtres à gauche pour charger les statistiques de réussite.</p>
+                    <h4 className="text-xl font-black uppercase tracking-tight text-gray-300">{t('grades.pv.placeholder_title')}</h4>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-2 max-w-[300px]">{t('grades.pv.placeholder_subtitle')}</p>
                 </div>
             ) : (
                 <div className="bg-white rounded-[56px] shadow-2xl border border-gray-100 overflow-hidden animate-in zoom-in-95 duration-500 min-h-[600px] flex flex-col">
@@ -205,7 +207,7 @@ const PVView: React.FC<PVViewProps> = ({ salle: propSalle, sequence: propSequenc
                         <div>
                             <div className="flex items-center space-x-3 text-accent mb-2">
                                 <Layers size={18} />
-                                <span className="text-[10px] font-black uppercase tracking-[0.4em]">PV de Délibération</span>
+                                <span className="text-[10px] font-black uppercase tracking-[0.4em]">{t('grades.pv.deliberation_title')}</span>
                             </div>
                             <h2 className="text-3xl font-black uppercase tracking-tighter text-black">
                                 {type} - {selectedYear?.libelleAnneeScolaire}
@@ -215,7 +217,7 @@ const PVView: React.FC<PVViewProps> = ({ salle: propSalle, sequence: propSequenc
                             <button className="p-4 bg-white border border-gray-100 rounded-2xl text-black hover:bg-gray-50 transition-all shadow-sm"><Printer size={20}/></button>
                             <button className="p-4 bg-black text-white rounded-2xl hover:opacity-90 transition-all shadow-xl flex items-center space-x-3">
                                 <Download size={20} className="text-accent" />
-                                <span className="text-[10px] font-black uppercase tracking-widest px-2">Export PDF</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest px-2">{t('grades.pv.export_pdf')}</span>
                             </button>
                         </div>
                     </div>
@@ -224,14 +226,14 @@ const PVView: React.FC<PVViewProps> = ({ salle: propSalle, sequence: propSequenc
                         <div className="w-24 h-24 bg-green-50 text-green-600 rounded-full flex items-center justify-center mb-8">
                             <CheckCircle2 size={48} />
                         </div>
-                        <h3 className="text-2xl font-black uppercase tracking-tighter mb-4 text-black">Statistiques Prêtes</h3>
-                        <p className="text-sm text-gray-500 max-w-md">Le procès verbal a été généré avec succès. Vous pouvez maintenant consulter le taux de réussite, les moyennes générales et imprimer les rapports officiels.</p>
+                        <h3 className="text-2xl font-black uppercase tracking-tighter mb-4 text-black">{t('grades.pv.stats_ready')}</h3>
+                        <p className="text-sm text-gray-500 max-w-md">{t('grades.pv.stats_desc')}</p>
 
                         <div className="grid grid-cols-3 gap-8 w-full mt-16">
                             {[
-                                { label: 'Inscrits', val: '45', color: 'bg-blue-50 text-blue-600' },
-                                { label: 'Moyenne G.', val: '12.45', color: 'bg-accent/10 text-accent' },
-                                { label: 'Taux Succès', val: '78%', color: 'bg-green-50 text-green-600' }
+                                { label: t('grades.pv.stat_inscribed'), val: '45', color: 'bg-blue-50 text-blue-600' },
+                                { label: t('grades.pv.stat_average'), val: '12.45', color: 'bg-accent/10 text-accent' },
+                                { label: t('grades.pv.stat_success'), val: '78%', color: 'bg-green-50 text-green-600' }
                             ].map((stat, i) => (
                                 <div key={i} className="p-8 rounded-[32px] bg-gray-50/50 border border-gray-100">
                                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">{stat.label}</p>

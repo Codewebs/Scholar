@@ -104,7 +104,7 @@ const PaymentReceipt: React.FC<Props> = ({ data, onClose }) => {
 
                 <div className="text-right">
                     <p className="text-[10px] font-black uppercase whitespace-nowrap">
-                        Année Scolaire : <span className="underline">{data.receiptInfo.schoolYear}</span>
+                        School Year : <span className="underline">{data.receiptInfo.schoolYear}</span>
                     </p>
                 </div>
             </header>
@@ -113,7 +113,7 @@ const PaymentReceipt: React.FC<Props> = ({ data, onClose }) => {
             <div className="flex justify-center mb-4">
                 <div className="px-10 py-1.5 bg-gray-100 border border-black rounded-full shadow-sm">
                     <h2 className="text-xs font-black uppercase tracking-widest">
-                        {data.receiptInfo.title} N° : <span className="text-red-600">{data.receiptInfo.receiptNo}</span>
+                        {data.receiptInfo.title} No : <span className="text-red-600">{data.receiptInfo.receiptNo}</span>
                     </h2>
                 </div>
             </div>
@@ -121,40 +121,40 @@ const PaymentReceipt: React.FC<Props> = ({ data, onClose }) => {
             {/* 3. Infos Elève & Opération */}
             <div className="grid grid-cols-12 gap-y-2 gap-x-4 mb-4 text-[9px]">
                 <div className="col-span-8">
-                    <span className="font-black underline">Noms et Prénoms :</span> <span className="font-bold uppercase">{data.studentInfo.fullName}</span>
+                    <span className="font-black underline">Full Names :</span> <span className="font-bold uppercase">{data.studentInfo.fullName}</span>
                 </div>
                 <div className="col-span-4">
-                    <span className="font-black underline">Matricule :</span> <span className="font-bold">{data.studentInfo.matricule}</span>
+                    <span className="font-black underline">Student ID :</span> <span className="font-bold">{data.studentInfo.matricule}</span>
                 </div>
 
                 <div className="col-span-6">
-                    <span className="font-black underline">Date et Lieu de naissance :</span> <span className="font-bold">{data.studentInfo.dateNaissance} à {data.studentInfo.lieuNaissance}</span>
+                    <span className="font-black underline">Date and Place of Birth :</span> <span className="font-bold">{data.studentInfo.dateNaissance} at {data.studentInfo.lieuNaissance}</span>
                 </div>
                 <div className="col-span-2 text-center">
-                    <span className="font-black underline">Sexe :</span> <span className="font-bold">{data.studentInfo.sexe}</span>
+                    <span className="font-black underline">Gender :</span> <span className="font-bold">{data.studentInfo.sexe}</span>
                 </div>
                 <div className="col-span-2 text-center">
-                    <span className="font-black underline">Classe :</span> <span className="font-bold">{data.studentInfo.classLabel}</span>
+                    <span className="font-black underline">Class :</span> <span className="font-bold">{data.studentInfo.classLabel}</span>
                 </div>
                 <div className="col-span-2 text-center">
-                    <span className="font-black underline">Redoublant :</span> <span className="font-bold">{data.studentInfo.redoublant}</span>
+                    <span className="font-black underline">Repeater :</span> <span className="font-bold">{data.studentInfo.redoublant}</span>
                 </div>
 
                 <div className="col-span-5">
-                    <span className="font-black underline">Motif :</span> <span className="font-bold">{data.financialDetail.nature}</span>
+                    <span className="font-black underline">Reason :</span> <span className="font-bold">{data.financialDetail.nature}</span>
                 </div>
                 <div className="col-span-4">
-                    <span className="font-black underline">La somme de :</span> <span className="font-black text-red-600">{data.financialDetail.amountDigits.toLocaleString()}</span> <span className="font-black">FCFA</span>
+                    <span className="font-black underline">The sum of :</span> <span className="font-black text-red-600">{data.financialDetail.amountDigits.toLocaleString()}</span> <span className="font-black">FCFA</span>
                 </div>
                 <div className="col-span-3 text-right">
-                    <span className="font-black underline">Pénalités :</span> <span className="font-bold">{data.financialDetail.penalties.toLocaleString()} FCFA</span>
+                    <span className="font-black underline">Penalties :</span> <span className="font-bold">{data.financialDetail.penalties.toLocaleString()} FCFA</span>
                 </div>
 
                 <div className="col-span-6">
-                    <span className="font-black underline">Date du paiement :</span> <span className="font-bold">{new Date(data.receiptInfo.dateTime).toLocaleDateString('fr-FR')}</span>
+                    <span className="font-black underline">Payment Date :</span> <span className="font-bold">{new Date(data.receiptInfo.dateTime).toLocaleDateString('en-US')}</span>
                 </div>
                 <div className="col-span-6 text-right">
-                    <span className="font-black underline">Date opération :</span> <span className="font-bold">{new Date(data.receiptInfo.operationTime).toLocaleString('fr-FR')}</span>
+                    <span className="font-black underline">Operation Date :</span> <span className="font-bold">{new Date(data.receiptInfo.operationTime).toLocaleString('en-US')}</span>
                 </div>
             </div>
 
@@ -162,12 +162,12 @@ const PaymentReceipt: React.FC<Props> = ({ data, onClose }) => {
             <div className="flex gap-4 mb-4 flex-1">
                 {/* Tableau A */}
                 <div className="w-[35%]">
-                    <h3 className="text-[8px] font-black uppercase bg-gray-600 text-white p-1 text-center">Répartition du montant reçu</h3>
+                    <h3 className="text-[8px] font-black uppercase bg-gray-600 text-white p-1 text-center">Breakdown of amount received</h3>
                     <table className="w-full border-collapse border border-black text-[8px]">
                         <thead>
                             <tr className="bg-gray-50 font-black">
-                                <th className="border border-black p-1 text-left">Frais scolaire</th>
-                                <th className="border border-black p-1 text-center">Montant alloué</th>
+                                <th className="border border-black p-1 text-left">School Fee</th>
+                                <th className="border border-black p-1 text-center">Amount Allocated</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -196,17 +196,17 @@ const PaymentReceipt: React.FC<Props> = ({ data, onClose }) => {
 
                 {/* Tableau B */}
                 <div className="flex-1">
-                    <h3 className="text-[8px] font-black uppercase bg-gray-600 text-white p-1 text-center">Etat actuel des frais de scolarité</h3>
+                    <h3 className="text-[8px] font-black uppercase bg-gray-600 text-white p-1 text-center">Current status of school fees</h3>
                     <table className="w-full border-collapse border border-black text-[7.5px]">
                         <thead>
                             <tr className="bg-gray-50 font-black">
-                                <th className="border border-black p-0.5">Ordre</th>
-                                <th className="border border-black p-0.5 text-left">Frais scolaire</th>
-                                <th className="border border-black p-0.5">Montant</th>
-                                <th className="border border-black p-0.5">Aug.</th>
-                                <th className="border border-black p-0.5">Réd.</th>
-                                <th className="border border-black p-0.5">Déjà payé</th>
-                                <th className="border border-black p-0.5">Reste à payé</th>
+                                <th className="border border-black p-0.5">Order</th>
+                                <th className="border border-black p-0.5 text-left">School Fee</th>
+                                <th className="border border-black p-0.5">Amount</th>
+                                <th className="border border-black p-0.5">Inc.</th>
+                                <th className="border border-black p-0.5">Red.</th>
+                                <th className="border border-black p-0.5">Already paid</th>
+                                <th className="border border-black p-0.5">Balance</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -244,13 +244,13 @@ const PaymentReceipt: React.FC<Props> = ({ data, onClose }) => {
             <div className="flex justify-between items-start mt-2">
                 <div className="flex items-center space-x-6">
                     <div className="flex items-center space-x-2">
-                        <span className="text-[10px] font-black uppercase">Total déjà payé :</span>
+                        <span className="text-[10px] font-black uppercase">Total already paid :</span>
                         <div className="bg-lime-400 px-4 py-1 rounded-md border border-black font-black text-xs">
                             {data.financialDetail.balance.toLocaleString()}
                         </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <span className="text-[10px] font-black uppercase">Total reste à payer :</span>
+                        <span className="text-[10px] font-black uppercase">Total balance :</span>
                         <div className="bg-gray-300 px-4 py-1 rounded-md border border-black font-black text-xs">
                             {data.financialDetail.remaining.toLocaleString()}
                         </div>
@@ -258,15 +258,15 @@ const PaymentReceipt: React.FC<Props> = ({ data, onClose }) => {
                 </div>
 
                 <div className="w-48 h-16 border-2 border-dashed border-black rounded-lg flex flex-col items-center justify-start p-1">
-                    <span className="text-[8px] font-black italic">Signature et cachet</span>
+                    <span className="text-[8px] font-black italic">Signature and stamp</span>
                 </div>
             </div>
 
             {/* 6. Métadonnées */}
             <div className="mt-auto flex justify-between items-end text-[7px] font-bold text-gray-500 italic border-t border-gray-100 pt-1">
-                <p>{new Date().toLocaleString('fr-FR')}</p>
-                <p>NB : Ce document n'est valable qu'avec le cachet et la signature de l'administration.</p>
-                <p>Imprimé par : {data.financialDetail.printedBy}</p>
+                <p>{new Date().toLocaleString('en-US')}</p>
+                <p>NB: This document is only valid with the school stamp and signature.</p>
+                <p>Printed by : {data.financialDetail.printedBy}</p>
             </div>
         </div>
     );
@@ -281,7 +281,7 @@ const PaymentReceipt: React.FC<Props> = ({ data, onClose }) => {
                         className="bg-black text-white px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center space-x-2 hover:scale-105 transition-all shadow-xl"
                     >
                         <Printer size={16} />
-                        <span>Imprimer</span>
+                        <span>Print</span>
                     </button>
                     <button
                         onClick={onClose}
@@ -292,8 +292,8 @@ const PaymentReceipt: React.FC<Props> = ({ data, onClose }) => {
                 </div>
 
                 <div className="flex-1 flex flex-col print:m-0 print:h-[297mm]">
-                    <ReceiptContent mention="Reçu parent" />
-                    <ReceiptContent mention="Reçu établissement" />
+                    <ReceiptContent mention="Parent receipt" />
+                    <ReceiptContent mention="School receipt" />
                 </div>
 
                 <style dangerouslySetInnerHTML={{ __html: `

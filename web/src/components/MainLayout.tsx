@@ -3,18 +3,22 @@ import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSchoolYear } from '../context/SchoolYearContext';
 import { menuGroups } from '../utils/menuStructure';
-import { LogOut, Menu, X, ChevronRight, Zap } from 'lucide-react';
+import { LogOut, Menu, X, ChevronRight, Zap, MessageCircle, Youtube, Twitter, Facebook, Mail, Info, Globe } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import SetupProgressWidget from './SetupProgressWidget';
 import { useUI } from '../context/UIContext';
+import { useTranslation } from 'react-i18next';
+import { contactInfo } from '../utils/contactInfo';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 const MainLayout: React.FC = () => {
+  const { t } = useTranslation();
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [showContactModal, setShowContactModal] = useState(false);
   const { user, logout, hasPermission } = useAuth();
   const { selectedYear } = useSchoolYear();
   const { settings } = useUI();
@@ -104,7 +108,7 @@ const MainLayout: React.FC = () => {
                         className="font-black text-[#9E9E9E] uppercase tracking-[0.4em]"
                         style={{ fontSize: `${10 * textScale}px` }}
                       >
-                        {group.group}
+                        {t(group.translationKey as any) || group.group}
                       </h3>
                   </div>
                 )}
@@ -133,7 +137,7 @@ const MainLayout: React.FC = () => {
                                 className="flex-1 font-black uppercase tracking-tight"
                                 style={{ fontSize: `${12 * textScale}px` }}
                             >
-                                {item.title}
+                                {t(item.translationKey as any) || item.title}
                             </span>
                           )}
                           {isSidebarOpen && isActive && <ChevronRight size={16 * sidebarScale} className="text-accent" />}
@@ -169,7 +173,7 @@ const MainLayout: React.FC = () => {
               className="w-full flex items-center p-4 text-red-600 hover:bg-red-50 rounded-[18px] transition-all group border border-transparent hover:border-red-100"
             >
               <LogOut size={22} className={cn(isSidebarOpen ? "mr-4" : "mx-auto", "group-hover:-translate-x-1 transition-transform")} />
-              {isSidebarOpen && <span className="font-black text-[10px] uppercase tracking-[0.2em]">Déconnexion</span>}
+              {isSidebarOpen && <span className="font-black text-[10px] uppercase tracking-[0.2em]">{t('sidebar.logout')}</span>}
             </button>
           </div>
         </div>
@@ -187,18 +191,27 @@ const MainLayout: React.FC = () => {
                 className="font-black uppercase tracking-tighter text-black"
                 style={{ fontSize: `${1.5 * textScale}rem` }}
               >
-                {location.pathname.split('/').pop()?.replace(/-/g, ' ') || 'Tableau de Bord'}
+                {location.pathname.split('/').pop()?.replace(/-/g, ' ') || t('dashboard.title')}
               </h1>
           </div>
 
           <div className="flex items-center space-x-8">
+            {/* Contact Support Header */}
+            <button
+                onClick={() => setShowContactModal(true)}
+                className="hidden lg:flex items-center space-x-3 hover:bg-gray-50 px-4 py-2 rounded-full transition-all"
+            >
+                <MessageCircle size={16} className="text-accent" />
+                <span className="text-[10px] font-black text-black uppercase tracking-widest">{t('contact.button')}</span>
+            </button>
+
             <div className="hidden md:flex items-center space-x-4 bg-gray-50 px-6 py-3 rounded-full border border-gray-100">
                 <Zap size={16} className="text-yellow-500" />
                 <span
                     className="font-black uppercase tracking-widest text-[#9E9E9E]"
                     style={{ fontSize: `${10 * textScale}px` }}
                 >
-                    Session Active
+                    {t('setup.year.active_title')}
                 </span>
                 <span
                     className="font-black uppercase tracking-widest text-black"
@@ -228,8 +241,125 @@ const MainLayout: React.FC = () => {
            </div>
         </div>
       </main>
+
+      {/* WhatsApp Floating Button */}
+      <a
+        href={`https://wa.me/${contactInfo.whatsapp.replace(/\s+/g, '')}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-10 right-10 z-[100] flex items-center space-x-4 bg-[#25D366] text-white px-6 py-4 rounded-full shadow-2xl hover:scale-105 transition-all group active:scale-95"
+      >
+        <MessageCircle size={24} fill="currentColor" />
+        <span className="font-black uppercase tracking-widest text-[10px]">
+          {t('common.contact_whatsapp')}
+        </span>
+      </a>
+
+      {/* Contact Modal */}
+      {showContactModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[150] p-6 animate-in fade-in duration-300">
+              <div className="bg-white rounded-[56px] p-12 max-w-2xl w-full shadow-2xl relative overflow-hidden border border-gray-100">
+                  <div className="absolute top-0 left-0 w-full h-2 bg-accent"></div>
+
+                  <button
+                    onClick={() => setShowContactModal(false)}
+                    className="absolute top-8 right-8 p-3 hover:bg-gray-100 rounded-full transition-all"
+                  ><X size={24}/></button>
+
+                  <div className="mb-10">
+                      <div className="flex items-center space-x-3 text-accent mb-2">
+                          <Info size={20} />
+                          <span className="text-[10px] font-black uppercase tracking-[0.4em]">{t('contact.title')}</span>
+                      </div>
+                      <h3 className="text-3xl font-black uppercase tracking-tighter text-black">Scholar Management Pro</h3>
+                  </div>
+
+                  <div className="space-y-8">
+                      {/* About Block */}
+                      <div className="bg-gray-50 p-8 rounded-[32px] border border-gray-100">
+                          <h4 className="text-[10px] font-black uppercase tracking-widest text-secondary mb-4 flex items-center gap-2">
+                              <Info size={14} /> {t('contact.about_title')}
+                          </h4>
+                          <p className="text-xs font-medium leading-relaxed text-gray-600">
+                              {contactInfo.about}
+                          </p>
+                      </div>
+
+                      {/* Social & Contact Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <ContactLink
+                            icon={Youtube}
+                            label={t('contact.youtube_label')}
+                            value="YouTube Channel"
+                            href={contactInfo.youtube}
+                            color="text-red-600"
+                          />
+                          <ContactLink
+                            icon={Mail}
+                            label={t('contact.email_label')}
+                            value={contactInfo.email}
+                            href={`mailto:${contactInfo.email}`}
+                            color="text-blue-600"
+                          />
+                          <ContactLink
+                            icon={MessageCircle}
+                            label={t('contact.whatsapp_label')}
+                            value={contactInfo.whatsapp}
+                            href={`https://wa.me/${contactInfo.whatsapp.replace(/\s+/g, '')}`}
+                            color="text-green-600"
+                          />
+                          <ContactLink
+                            icon={Twitter}
+                            label={t('contact.twitter_label')}
+                            value="@scholar_pro"
+                            href={contactInfo.twitter}
+                            color="text-black"
+                          />
+                          <ContactLink
+                            icon={Facebook}
+                            label={t('contact.facebook_label')}
+                            value="Scholar Management"
+                            href={contactInfo.facebook}
+                            color="text-blue-700"
+                          />
+                          <ContactLink
+                            icon={Globe}
+                            label={t('contact.bluesky_label')}
+                            value="scholar.bsky.social"
+                            href={contactInfo.bluesky}
+                            color="text-sky-500"
+                          />
+                      </div>
+                  </div>
+
+                  <div className="mt-10 pt-6 border-t border-gray-50 flex justify-center">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-gray-300">
+                          © {new Date().getFullYear()} Scholar Pro • Version 3.1.0
+                      </p>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };
+
+const ContactLink: React.FC<{ icon: any, label: string, value: string, href: string, color: string }> = ({ icon: Icon, label, value, href, color }) => (
+    <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center space-x-4 p-4 rounded-2xl border border-gray-50 hover:border-black hover:bg-gray-50 transition-all group"
+    >
+        <div className={clsx("w-10 h-10 rounded-xl flex items-center justify-center bg-white shadow-sm group-hover:scale-110 transition-transform", color)}>
+            <Icon size={20} />
+        </div>
+        <div className="flex-1 truncate">
+            <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">{label}</p>
+            <p className="text-[10px] font-black text-black truncate">{value}</p>
+        </div>
+        <ChevronRight size={14} className="text-gray-200 group-hover:text-black transition-colors" />
+    </a>
+);
 
 export default MainLayout;
