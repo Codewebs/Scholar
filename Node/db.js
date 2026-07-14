@@ -35,8 +35,8 @@ const sequelize = new Sequelize(
     },
     dialectOptions: {
       charset: 'utf8mb4',
-      ssl: (process.env.DB_SSL === 'REQUIRED' || process.env.DB_SSL === 'true') ? {
-        rejectUnauthorized: false
+      ssl: (process.env.DB_SSL === 'REQUIRED' || process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production') ? {
+        rejectUnauthorized: false // Permet de se connecter même si Render n'a pas le certificat physique d'Aiven
       } : false
     },
   }
