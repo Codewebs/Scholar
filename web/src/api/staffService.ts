@@ -53,7 +53,8 @@ export const staffService = {
         sexe?: string,
         diplomes?: string,
         permissionsAjoutees?: string[],
-        permissionsRetirees?: string[]
+        permissionsRetirees?: string[],
+        idEleveLinked?: number | null
     }) =>
         api.post(`/personnel/valider-demande`, payload),
 

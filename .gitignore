@@ -26,7 +26,7 @@ Node/.env.local
 Node/.env.development.local
 Node/.env.test.local
 Node/.env.production.local
-
+web/.env
 # Fichiers de log et uploads du backend
 Node/npm-debug.log*
 Node/yarn-debug.log*

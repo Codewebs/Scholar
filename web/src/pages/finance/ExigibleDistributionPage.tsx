@@ -17,13 +17,10 @@ import {
     Zap,
     X,
     LayoutGrid,
-    Calendar,
-    ChevronRight,
-    Search
+    Calendar
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import AuthButton from '../../components/ui/AuthButton';
-import AuthInput from '../../components/ui/AuthInput';
 import api from '../../api/axios';
 
 interface TarifRow {

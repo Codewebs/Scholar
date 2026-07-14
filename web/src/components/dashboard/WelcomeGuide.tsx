@@ -23,7 +23,6 @@ interface TourStep {
 }
 
 const WelcomeGuide: React.FC = () => {
-    const { t } = useTranslation();
     const { user } = useAuth();
     const [showModal, setShowModal] = useState(false);
     const [currentStep, setCurrentStep] = useState<number | null>(null);

@@ -17,7 +17,9 @@ import {
     Lock,
     Unlock,
     Shield,
-    BadgeCheck
+    BadgeCheck,
+    GraduationCap,
+    User as UserIcon
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { PermissionGrouping } from '../../components/admin/PermissionGrouping';
@@ -223,7 +225,7 @@ const StaffManagementPage: React.FC = () => {
   const handleSearchStudents = async () => {
       setSearchingStudents(true);
       try {
-          const res = await studentService.searchStudents(studentSearch, yearId!);
+          const res = await studentService.globalSearch(studentSearch, yearId!);
           setStudentResults(res.data);
       } catch (err) {
           console.error(err);
