@@ -11,8 +11,16 @@ const seedMatiereBibliotheque = require("./middleware/matiereBibliothequeSeeder"
 const seedQualites = require("./middleware/qualiteSeeder");
 const seedSpecialities = require("./middleware/specialitySeeder");
 
+const fs = require("fs");
 const path = require("path");
-dotenv.config({ path: path.join(__dirname, "..", "web", ".env") });
+
+// Chargement du .env uniquement s'il existe (local)
+const envPath = path.join(__dirname, "..", "web", ".env");
+if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+} else {
+    dotenv.config();
+}
 
 // Middlewares
 app.use(cors());

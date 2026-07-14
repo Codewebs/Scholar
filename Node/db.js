@@ -1,15 +1,16 @@
 const { Sequelize } = require("sequelize");
 const path = require("path");
+const fs = require("fs");
 const dotenv = require("dotenv");
 
+// Chargement facultatif du fichier .env (utile uniquement en local)
 const envPath = path.join(__dirname, "..", "web", ".env");
-const result = dotenv.config({ path: envPath });
-
-console.log("🔍 [DB Debug] Chemin .env :", envPath);
-if (result.error) {
-  console.error("❌ [DB Debug] Erreur chargement .env :", result.error.message);
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+  console.log("✅ [DB] .env local chargé depuis ../web/.env");
 } else {
-  console.log("✅ [DB Debug] .env chargé avec succès.");
+  // On tente le .env à la racine de Node si l'autre est absent
+  dotenv.config();
 }
 
 console.log("📊 [DB Debug] Configuration cible :");
@@ -17,6 +18,7 @@ console.log("   - HOST :", process.env.DB_HOST || "localhost (DEFAULT)");
 console.log("   - PORT :", process.env.DB_PORT || "3306 (DEFAULT)");
 console.log("   - DB   :", process.env.DB_NAME || "scholar_db (DEFAULT)");
 console.log("   - USER :", process.env.DB_USER || "root (DEFAULT)");
+console.log("   - SSL  :", process.env.DB_SSL || "DISABLED");
 
 const sequelize = new Sequelize(
   process.env.DB_NAME || "scholar_db",
@@ -24,7 +26,7 @@ const sequelize = new Sequelize(
   process.env.DB_PASS || "",
   {
     host: process.env.DB_HOST || "localhost",
-    port: process.env.DB_PORT || 3306,
+    port: parseInt(process.env.DB_PORT) || 3306,
     dialect: "mysql",
     logging: false,
     define: {
@@ -33,7 +35,7 @@ const sequelize = new Sequelize(
     },
     dialectOptions: {
       charset: 'utf8mb4',
-      ssl: process.env.DB_SSL === 'REQUIRED' ? {
+      ssl: (process.env.DB_SSL === 'REQUIRED' || process.env.DB_SSL === 'true') ? {
         rejectUnauthorized: false
       } : false
     },
