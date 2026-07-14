@@ -13,6 +13,10 @@ router.post("/exigibles/library", verifyToken, checkPermission("MANAGE_ACADEMIC_
 router.put("/exigibles/library/:id", verifyToken, checkPermission("MANAGE_ACADEMIC_CONFIG"), controller.updateFraisExigible);
 router.delete("/exigibles/library/:id", verifyToken, checkPermission("MANAGE_ACADEMIC_CONFIG"), controller.deleteFraisExigible);
 
+// Configuration Rapide & Import
+router.post("/setup/quick", verifyToken, checkPermission("MANAGE_ACADEMIC_CONFIG"), controller.quickSetupFraisAndSalles);
+router.post("/setup/import-previous", verifyToken, checkPermission("MANAGE_ACADEMIC_CONFIG"), controller.importFraisFromPreviousYear);
+
 // Frais Périscolaires
 router.get("/periscolaires/library", verifyToken, controller.getFraisPeriscolairesLibrary);
 router.post("/periscolaires/library", verifyToken, checkPermission("MANAGE_ACADEMIC_CONFIG"), controller.createFraisPeriscolaire);

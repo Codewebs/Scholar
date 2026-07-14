@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSchoolYear } from '../../context/SchoolYearContext';
 import { staffService, PersonnelEntity, DemandeInscription } from '../../api/staffService';
+import { studentService } from '../../api/studentService';
 import { AcademicPermission } from '../../types/permissions';
 import {
     ArrowLeft,
@@ -176,6 +177,7 @@ const StaffManagementPage: React.FC = () => {
   const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
   const [activeTab, setActiveTab] = useState<'staff' | 'requests'>('staff');
+  const [requestCategory, setRequestCategory] = useState<'STAFF' | 'ELEVE' | 'PARENT'>('STAFF');
   const [staff, setStaff] = useState<PersonnelEntity[]>([]);
   const [requests, setRequests] = useState<DemandeInscription[]>([]);
   const [loading, setLoading] = useState(false);
@@ -198,8 +200,37 @@ const StaffManagementPage: React.FC = () => {
       sexe: 'M',
       diplomes: '',
       addedPerms: [] as string[],
-      removedPerms: [] as string[]
+      removedPerms: [] as string[],
+      idEleveLinked: null as number | null
   });
+
+  // Student Search for Linking
+  const [studentSearch, setStudentSearch] = useState('');
+  const [studentResults, setStudentResults] = useState<any[]>([]);
+  const [searchingStudents, setSearchingStudents] = useState(false);
+
+  useEffect(() => {
+      const delayDebounce = setTimeout(() => {
+          if (studentSearch.length > 2) {
+              handleSearchStudents();
+          } else {
+              setStudentResults([]);
+          }
+      }, 500);
+      return () => clearTimeout(delayDebounce);
+  }, [studentSearch]);
+
+  const handleSearchStudents = async () => {
+      setSearchingStudents(true);
+      try {
+          const res = await studentService.searchStudents(studentSearch, yearId!);
+          setStudentResults(res.data);
+      } catch (err) {
+          console.error(err);
+      } finally {
+          setSearchingStudents(false);
+      }
+  };
 
   // Edit Modal State
   const [showEditModal, setShowEditModal] = useState(false);
@@ -223,11 +254,9 @@ const StaffManagementPage: React.FC = () => {
     try {
       if (activeTab === 'staff') {
         const res = await staffService.getStaffActif(schoolId, yearId!);
-        console.log("[StaffManagement] Loaded staff:", res.data);
         setStaff(res.data);
       } else {
         const res = await staffService.getDemandesEnAttente(schoolId);
-        console.log("[StaffManagement] Loaded requests:", res.data);
         setRequests(res.data);
       }
     } catch (error) {
@@ -236,6 +265,11 @@ const StaffManagementPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const filteredRequests = requests.filter(req => {
+      if (requestCategory === 'STAFF') return !['ELEVE', 'PARENT'].includes(req.profilDemande);
+      return req.profilDemande === requestCategory;
+  });
 
   const openValidationModal = (req: DemandeInscription) => {
       setSelectedRequest(req);
@@ -247,13 +281,23 @@ const StaffManagementPage: React.FC = () => {
           sexe: 'M',
           diplomes: '',
           addedPerms: [],
-          removedPerms: []
+          removedPerms: [],
+          idEleveLinked: null
       });
+      setStudentSearch('');
+      setStudentResults([]);
       setShowValModal(true);
   };
 
   const handleConfirmValidation = async () => {
-      if (!selectedRequest || !valForm.matricule || !valForm.role) return;
+      if (!selectedRequest || !valForm.role) return;
+      // Matricule is mandatory for Staff, optional for Parent/Student?
+      const isStaff = !['ELEVE', 'PARENT'].includes(valForm.role);
+      if (isStaff && !valForm.matricule) {
+          alert("Le matricule est obligatoire pour le personnel.");
+          return;
+      }
+
       setLoading(true);
       try {
           await staffService.validerDemande({
@@ -266,7 +310,8 @@ const StaffManagementPage: React.FC = () => {
               sexe: valForm.sexe,
               diplomes: valForm.diplomes,
               permissionsAjoutees: valForm.addedPerms,
-              permissionsRetirees: valForm.removedPerms
+              permissionsRetirees: valForm.removedPerms,
+              idEleveLinked: valForm.idEleveLinked
           });
           setShowValModal(false);
           loadData();
@@ -447,15 +492,39 @@ const StaffManagementPage: React.FC = () => {
       </div>
 
       <div className="space-y-8">
-        <div className="relative max-w-md">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
-            <input
-                type="text"
-                placeholder={t('staff.search_placeholder')}
-                className="w-full pl-16 pr-8 py-5 bg-white border border-gray-100 rounded-[24px] text-sm font-bold focus:border-yellow-500 transition-all outline-none shadow-sm"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-            />
+        <div className="flex flex-col md:flex-row justify-between gap-6">
+            <div className="relative max-w-md flex-1">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
+                <input
+                    type="text"
+                    placeholder={t('staff.search_placeholder')}
+                    className="w-full pl-16 pr-8 py-5 bg-white border border-gray-100 rounded-[24px] text-sm font-bold focus:border-yellow-500 transition-all outline-none shadow-sm"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+            </div>
+
+            {activeTab === 'requests' && (
+                <div className="flex bg-white p-1.5 rounded-[20px] border border-gray-100 shadow-sm">
+                    {[
+                        { id: 'STAFF', label: 'Personnel', icon: Shield },
+                        { id: 'ELEVE', label: 'Élèves', icon: GraduationCap },
+                        { id: 'PARENT', label: 'Parents', icon: UserIcon }
+                    ].map(cat => (
+                        <button
+                            key={cat.id}
+                            onClick={() => setRequestCategory(cat.id as any)}
+                            className={clsx(
+                                "flex items-center space-x-2 px-6 py-2.5 rounded-[16px] text-[9px] font-black uppercase tracking-widest transition-all",
+                                requestCategory === cat.id ? "bg-black text-white shadow-lg" : "text-gray-400 hover:text-black"
+                            )}
+                        >
+                            <cat.icon size={14} />
+                            <span>{cat.label}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
         </div>
 
         {activeTab === 'staff' ? (
@@ -533,14 +602,14 @@ const StaffManagementPage: React.FC = () => {
             </div>
         ) : (
             <div className="space-y-6">
-                {requests.length === 0 ? (
+                {filteredRequests.length === 0 ? (
                     <div className="p-32 text-center border-4 border-dashed border-gray-50 rounded-[56px] bg-white/50">
                         <Clock size={64} className="text-gray-200 mx-auto mb-8" />
                         <h3 className="text-2xl font-black uppercase text-black mb-2">{t('staff.no_request')}</h3>
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#9E9E9E]">{t('staff.no_request_desc')}</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#9E9E9E]">Aucune demande en attente pour cette catégorie</p>
                     </div>
                 ) : (
-                    requests.map((req) => (
+                    filteredRequests.map((req) => (
                         <div key={req.idDemande} className="bg-white border border-gray-100 rounded-[40px] p-10 flex flex-col md:flex-row items-center justify-between gap-10 hover:border-black transition-all shadow-sm">
                             <div className="flex items-center space-x-8">
                                 <div className="w-20 h-20 bg-gray-50 rounded-[24px] flex items-center justify-center text-black font-black text-2xl border-4 border-white shadow-xl">
@@ -684,6 +753,43 @@ const StaffManagementPage: React.FC = () => {
                             onChange={e => setValForm({...valForm, diplomes: e.target.value})}
                         />
 
+                        {['ELEVE', 'PARENT'].includes(valForm.role) && (
+                            <div className="space-y-4 p-6 bg-gray-50 rounded-[32px] border border-gray-100 animate-in slide-in-from-top-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">
+                                    {valForm.role === 'ELEVE' ? "Lier à quel élève ?" : "Lier à quel enfant (Élève) ?"}
+                                </label>
+                                <div className="relative">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+                                    <input
+                                        type="text"
+                                        className="w-full pl-12 pr-4 py-3 bg-white border-2 border-transparent focus:border-black rounded-xl text-xs font-bold outline-none transition-all"
+                                        placeholder="Rechercher par nom ou matricule..."
+                                        value={studentSearch}
+                                        onChange={e => setStudentSearch(e.target.value)}
+                                    />
+                                </div>
+                                {searchingStudents && <p className="text-[9px] font-bold text-gray-400 animate-pulse">Recherche...</p>}
+                                <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                                    {studentResults.map(s => (
+                                        <div
+                                            key={s.idEleve}
+                                            onClick={() => setValForm({...valForm, idEleveLinked: s.idEleve})}
+                                            className={clsx(
+                                                "p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between",
+                                                valForm.idEleveLinked === s.idEleve ? "border-black bg-black text-white" : "border-white bg-white hover:border-gray-100"
+                                            )}
+                                        >
+                                            <div className="flex flex-col">
+                                                <span className="font-black text-[10px] uppercase">{s.nom} {s.prenom}</span>
+                                                <span className="text-[8px] opacity-60 font-bold">{s.matricule}</span>
+                                            </div>
+                                            {valForm.idEleveLinked === s.idEleve && <Check size={14} />}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="space-y-3">
                             <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">{t('common.status')}</label>
                             <div className="grid grid-cols-2 gap-2">
@@ -741,7 +847,7 @@ const StaffManagementPage: React.FC = () => {
                         </div>
 
                         <div className="pt-8">
-                            <AuthButton onClick={handleConfirmValidation} disabled={!valForm.matricule || !valForm.role || loading}>
+                            <AuthButton onClick={handleConfirmValidation} disabled={!valForm.role || loading}>
                                 {loading ? t('common.processing') : t('staff.confirm_recruitment')}
                             </AuthButton>
                             <button

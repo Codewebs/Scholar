@@ -14,6 +14,7 @@ if (result.error) {
 
 console.log("📊 [DB Debug] Configuration cible :");
 console.log("   - HOST :", process.env.DB_HOST || "localhost (DEFAULT)");
+console.log("   - PORT :", process.env.DB_PORT || "3306 (DEFAULT)");
 console.log("   - DB   :", process.env.DB_NAME || "scholar_db (DEFAULT)");
 console.log("   - USER :", process.env.DB_USER || "root (DEFAULT)");
 
@@ -23,6 +24,7 @@ const sequelize = new Sequelize(
   process.env.DB_PASS || "",
   {
     host: process.env.DB_HOST || "localhost",
+    port: process.env.DB_PORT || 3306,
     dialect: "mysql",
     logging: false,
     define: {
@@ -31,6 +33,9 @@ const sequelize = new Sequelize(
     },
     dialectOptions: {
       charset: 'utf8mb4',
+      ssl: process.env.DB_SSL === 'REQUIRED' ? {
+        rejectUnauthorized: false
+      } : false
     },
   }
 );
@@ -46,8 +51,8 @@ const initDatabase = async () => {
     require("./models");
 
     // Une fois la structure stable, évitez { alter: true } en production
-    await sequelize.sync();
-    console.log("✅ Modèles synchronisés avec succès.");
+    await sequelize.sync({ alter: true });
+    console.log("✅ Modèles synchronisés avec succès (Alter: true).");
   } catch (error) {
     console.error("❌ Erreur d'initialisation de la base de données :", error);
     process.exit(1);

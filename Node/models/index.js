@@ -14,6 +14,7 @@ const Salle = require("./salle");
 const Eleve = require("./eleve");
 const Inscription = require("./inscription");
 const Matiere = require("./matiere");
+const MatiereBibliotheque = require("./matiereBibliotheque");
 const GroupeMatiere = require("./groupeMatiere");
 const Periode = require("./periode");
 const SousPeriode = require("./sousPeriode");
@@ -76,6 +77,18 @@ AnneeScolaire.belongsTo(Etablissement, { foreignKey: "idEtablissement" });
 
 Etablissement.hasMany(EtablissementStructure, { foreignKey: "idEtablissement" });
 EtablissementStructure.belongsTo(Etablissement, { foreignKey: "idEtablissement" });
+
+Etablissement.hasMany(FraisExigible, { foreignKey: "idEtablissement" });
+FraisExigible.belongsTo(Etablissement, { foreignKey: "idEtablissement" });
+
+Etablissement.hasMany(FraisActivitePeriscolaire, { foreignKey: "idEtablissement" });
+FraisActivitePeriscolaire.belongsTo(Etablissement, { foreignKey: "idEtablissement" });
+
+Etablissement.hasMany(Matiere, { foreignKey: "idEtablissement" });
+Matiere.belongsTo(Etablissement, { foreignKey: "idEtablissement" });
+
+MatiereBibliotheque.belongsTo(Enseignement, { foreignKey: "idEnseignement" });
+MatiereBibliotheque.belongsTo(Country, { foreignKey: "idCountry" });
 
 AnneeScolaire.hasMany(EtablissementStructure, { foreignKey: "idAnneeScolaire" });
 EtablissementStructure.belongsTo(AnneeScolaire, { foreignKey: "idAnneeScolaire" });
@@ -304,6 +317,7 @@ module.exports = {
   Eleve,
   Inscription,
   Matiere,
+  MatiereBibliotheque,
   GroupeMatiere,
   Periode,
   SousPeriode,

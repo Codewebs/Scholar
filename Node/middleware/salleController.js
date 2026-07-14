@@ -11,6 +11,7 @@ const {
     RepartitionEnseignant,
     sequelize
 } = require("../models");
+const { Op } = require("sequelize");
 
 exports.createSalle = async (req, res) => {
     try {
@@ -188,7 +189,7 @@ exports.getClassesWithRoomStats = async (req, res) => {
                     model: Enseignement,
                     as: 'Enseignement',
                     required: true,
-                    where: { idEnseignement: idsEnseignement, supprimer: false }
+                    where: { idEnseignement: { [Op.in]: idsEnseignement }, supprimer: false }
                 }]
             }, {
                 model: Salle,
@@ -263,8 +264,8 @@ exports.getClassesWithRoomStats = async (req, res) => {
 
         res.json(result);
     } catch (error) {
-        console.error("❌ [SalleController] Erreur getClassesWithRoomStats:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [SalleController] getClassesWithRoomStats Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 

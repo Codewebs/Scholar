@@ -25,7 +25,17 @@ import { clsx } from 'clsx';
 import ServerConfigModal from '../components/ServerConfigModal';
 import { useTranslation } from 'react-i18next';
 
-enum SetupStep { LANDING, SELECT_LANGUAGE, WELCOME, SELECT_SCHOOL, SELECT_PROFILE, SELECT_YEAR, SECURITY_PIN }
+enum SetupStep {
+  LANDING,
+  SELECT_LANGUAGE,
+  WELCOME,
+  SELECT_SCHOOL,
+  CREATE_SCHOOL_1,
+  CREATE_SCHOOL_2,
+  CREATE_SCHOOL_3,
+  SELECT_PROFILE,
+  SELECT_YEAR
+}
 
 const InitialConfig: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -44,7 +54,7 @@ const InitialConfig: React.FC = () => {
   );
   const [schools, setSchools] = useState<School[]>([]);
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
-  const [selectedProfile, setSelectedProfile] = useState<string | null>('ENSEIGNANT');
+  const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   const [selectedMatieres] = useState<string[]>([]);
   const [availableProfiles, setAvailableProfiles] = useState<string[]>([]);
   const [tempSelectedYear, setTempSelectedYear] = useState<SchoolYear | null>(null);
@@ -54,6 +64,21 @@ const InitialConfig: React.FC = () => {
   const [isNewUser, setIsNewUser] = useState(false);
   const [isCreatingSchool, setIsCreatingSchool] = useState(false);
   const [isCreatingYear, setIsCreatingYear] = useState(false);
+
+  // School Creation State
+  const [newSchool, setNewSchool] = useState<Partial<School>>({
+    nomFr: '',
+    pays: 'Cameroun',
+    ville: '',
+    arrete: '',
+    codeRecrutement: '',
+    telephone1: undefined,
+    telephone2: undefined,
+    pinSecurite: ''
+  });
+
+  const createdSchoolsCount = associations.filter(a => a.school.idCreateur === user?.id).length;
+  const isStudentElsewhere = associations.some(a => a.roles.includes('ELEVE') && a.etat === 'VALIDE');
 
   // Year Creation Form State
   const [newYearLabel, setNewYearLabel] = useState('');
@@ -87,7 +112,25 @@ const InitialConfig: React.FC = () => {
 
   const prevStep = () => {
     setError(null);
-    setStep(prev => prev - 1);
+    if (step === SetupStep.CREATE_SCHOOL_1) {
+      setStep(SetupStep.WELCOME);
+    } else if (step === SetupStep.SELECT_SCHOOL && !isNewUser) {
+      setStep(SetupStep.SELECT_LANGUAGE);
+    } else if (step === SetupStep.SELECT_YEAR) {
+      if (isCreatingSchool) {
+        setStep(SetupStep.CREATE_SCHOOL_3);
+      } else if (availableProfiles.length > 1) {
+        setStep(SetupStep.SELECT_PROFILE);
+      } else {
+        setStep(SetupStep.SELECT_SCHOOL);
+      }
+    } else if (step === SetupStep.SELECT_PROFILE) {
+      setStep(SetupStep.SELECT_SCHOOL);
+    } else if (step === SetupStep.WELCOME) {
+      setStep(SetupStep.SELECT_LANGUAGE);
+    } else {
+      setStep(prev => prev - 1);
+    }
   };
 
   const handleSearchSchools = async (query: string) => {
@@ -101,13 +144,36 @@ const InitialConfig: React.FC = () => {
   };
 
   const handleSelectSchool = (school: School) => {
+    setError(null);
+    const schoolId = school.idServeur || school.idEtablissement;
+    const assoc = associations.find(a => (a.school.idServeur || a.school.idEtablissement) === schoolId);
+
+    // --- CONFLICT CHECK ---
+    if (assoc) {
+        const intent = selectedProfile;
+        const isTryingToBeStudentOrParent = intent === 'ELEVE' || intent === 'PARENT';
+        const isTryingToBeStaff = intent !== null && !isTryingToBeStudentOrParent;
+
+        const hasStaffRole = assoc.roles.some(r => !['ELEVE', 'PARENT', 'DEMANDEUR', 'SANS_ROLE'].includes(r));
+        const hasStudentRole = assoc.roles.includes('ELEVE');
+        const hasParentRole = assoc.roles.includes('PARENT');
+
+        let conflictError = null;
+        if (intent === 'ELEVE' && hasParentRole) conflictError = "Vous êtes déjà Parent dans cet établissement. Un élève ne peut pas être parent.";
+        else if (intent === 'PARENT' && hasStudentRole) conflictError = "Vous êtes déjà Élève dans cet établissement. Un parent ne peut pas être élève.";
+        else if (isTryingToBeStudentOrParent && hasStaffRole) conflictError = "Vous êtes membre du personnel dans cet établissement. Accès réservé aux usagers externes.";
+        else if (isTryingToBeStaff && (hasStudentRole || hasParentRole)) conflictError = "Vous êtes déjà élève ou parent ici. Un membre du staff ne peut pas être usager.";
+
+        if (conflictError) {
+            setError(conflictError);
+            return;
+        }
+    }
+
     console.log("[Setup] School selected:", school);
     setSelectedSchool(school);
     setIsCreatingSchool(school.idCreateur === user?.id);
 
-    const schoolId = school.idServeur || school.idEtablissement;
-    const assoc = associations.find(a => (a.school.idServeur || a.school.idEtablissement) === schoolId);
-    console.log("[Setup] Association for school:", assoc);
     if (assoc && assoc.etat === 'VALIDE') {
       if (assoc.roles.length === 1) {
         setSelectedProfile(assoc.roles[0]);
@@ -127,7 +193,7 @@ const InitialConfig: React.FC = () => {
 
   const getBreadcrumbs = () => {
     const steps = [
-        { label: t('setup.breadcrumbs.school'), val: selectedSchool?.nomFr },
+        { label: t('setup.breadcrumbs.school'), val: isCreatingSchool ? (newSchool.nomFr || 'Nouveau') : selectedSchool?.nomFr },
         { label: t('setup.breadcrumbs.profile'), val: selectedProfile },
         { label: t('setup.breadcrumbs.year'), val: tempSelectedYear?.libelleAnneeScolaire }
     ].filter(s => s.val);
@@ -143,11 +209,62 @@ const InitialConfig: React.FC = () => {
     try {
       const assoc = associations.find(a => (a.school.idServeur || a.school.idEtablissement) === schoolId);
 
+      // --- NOUVELLES RESTRICTIONS DE RÔLE ---
+      const isTryingToBeStudentOrParent = selectedProfile === 'ELEVE' || selectedProfile === 'PARENT';
+      const isTryingToBeStaff = !isTryingToBeStudentOrParent && selectedProfile !== null;
+
+      if (assoc) {
+          const hasStaffRole = assoc.roles.some(r => !['ELEVE', 'PARENT', 'DEMANDEUR', 'SANS_ROLE'].includes(r));
+          const hasStudentRole = assoc.roles.includes('ELEVE');
+          const hasParentRole = assoc.roles.includes('PARENT');
+
+          // 1. Ne peut pas être élève et parent dans le même étab
+          if (selectedProfile === 'ELEVE' && hasParentRole) {
+              setError("Vous êtes déjà enregistré comme Parent dans cet établissement.");
+              setLoading(false); return;
+          }
+          if (selectedProfile === 'PARENT' && hasStudentRole) {
+              setError("Vous êtes déjà enregistré comme Élève dans cet établissement.");
+              setLoading(false); return;
+          }
+
+          // 2. Ne peut pas être (élève ou parent) ET staff dans le même etab
+          if (isTryingToBeStudentOrParent && hasStaffRole) {
+              setError("Un membre du personnel ne peut pas s'inscrire comme élève ou parent dans le même établissement.");
+              setLoading(false); return;
+          }
+          if (isTryingToBeStaff && (hasStudentRole || hasParentRole)) {
+              setError("Un élève ou parent ne peut pas devenir membre du personnel dans le même établissement.");
+              setLoading(false); return;
+          }
+      }
+      // -------------------------------------
+
       if (assoc?.etat === 'VALIDE') {
         if (assoc.roles.length > 1) {
           setAvailableProfiles(assoc.roles);
           setStep(SetupStep.SELECT_PROFILE);
         } else {
+          // Double vérification si l'utilisateur tente de rejoindre avec un nouveau rôle
+          // alors qu'il a déjà une association valide
+          if (selectedProfile && !assoc.roles.includes(selectedProfile)) {
+             // Si le profil choisi n'est pas dans ses rôles actuels, il doit soumettre une nouvelle demande
+             // mais les restrictions ci-dessus (Staff vs Elève/Parent) bloqueront si nécessaire.
+             const isStaff = selectedProfile !== 'ELEVE' && selectedProfile !== 'PARENT';
+             const entered = isStaff ? recruitmentCode : inscriptionCode;
+             const expected = isStaff ? selectedSchool.codeRecrutement : selectedSchool.codeInscription;
+
+             if (entered !== expected) {
+                setError(t('setup.select_school.code_invalide_msg', {
+                    defaultValue: `Code ${isStaff ? 'de recrutement' : 'd\'inscription'} invalide`,
+                    type: isStaff ? t('setup.select_school.recruitment_code') : t('setup.select_school.inscription_code')
+                }));
+                setLoading(false); return;
+             }
+             await submitDemand();
+             return;
+          }
+
           setSelectedProfile(assoc.roles[0]);
           if (schoolId) await fetchYears(schoolId as number);
           setStep(SetupStep.SELECT_YEAR);
@@ -160,9 +277,9 @@ const InitialConfig: React.FC = () => {
         setStep(SetupStep.SELECT_YEAR);
       } else {
         // Code verification
-        const isStaff = selectedProfile !== 'ELEVE';
+        const isStaff = selectedProfile !== 'ELEVE' && selectedProfile !== 'PARENT';
         const entered = isStaff ? recruitmentCode : inscriptionCode;
-        const expected = isStaff ? selectedSchool.codeRecrutement : selectedSchool.codeInscription;
+        const expected = isStaff ? (isStaff ? selectedSchool.codeRecrutement : selectedSchool.codeInscription) : selectedSchool.codeInscription;
 
         if (entered !== expected) {
           setError(t('setup.select_school.code_invalide_msg', {
@@ -200,7 +317,8 @@ const InitialConfig: React.FC = () => {
         await setupService.envoyerDemande(payload);
         const res = await setupService.getUserAssociations(user!.id);
         setAssociations(res.data);
-        alert(t('common.success'));
+        alert("Demande envoyée ! Veuillez attendre la validation de l'administration.");
+        setStep(SetupStep.LANDING); // Go back or show a pending screen
     } catch (err) {
         setError(t('common.error'));
     }
@@ -229,24 +347,44 @@ const InitialConfig: React.FC = () => {
     }
   };
 
+  const handleCreateSchool = async () => {
+    if (!newSchool.nomFr || !newSchool.pays || !newSchool.ville || !newSchool.arrete || !newSchool.telephone1 || !newSchool.pinSecurite) {
+        setError("Veuillez remplir tous les champs obligatoires.");
+        return;
+    }
+    setLoading(true);
+    try {
+        const res = await setupService.createSchool({
+            ...newSchool,
+            idCreateur: user?.id
+        });
+        setSelectedSchool(res.data);
+        const assocRes = await setupService.getUserAssociations(user!.id);
+        setAssociations(assocRes.data);
+        setStep(SetupStep.SELECT_YEAR);
+    } catch (err) {
+        setError("Erreur lors de la création de l'établissement.");
+    } finally {
+        setLoading(false);
+    }
+  };
+
   const handleFinish = () => {
     const schoolId = selectedSchool?.idServeur || selectedSchool?.idEtablissement;
     if (schoolId && tempSelectedYear) {
-      // Mettre à jour les permissions et le rôle de l'utilisateur pour cette école
       const assoc = associations.find(a =>
         (a.school.idServeur || a.school.idEtablissement) === schoolId
       );
 
       if (assoc && updateUser) {
           const finalRole = selectedProfile || assoc.roles[0];
-          console.log(`[InitialConfig] 🎯 Finishing setup: Role=${finalRole}, PermsCount=${assoc.permissionsAjoutees?.length || 0}`);
           updateUser({
               role: finalRole,
               permissions: (assoc.permissionsAjoutees || []) as any[]
           });
       }
 
-      selectYear(tempSelectedYear); // Persistent selection
+      selectYear(tempSelectedYear);
       localStorage.setItem('setup_complete', 'true');
       localStorage.setItem('school_id', schoolId.toString());
       navigate('/app/dashboard');
@@ -258,11 +396,23 @@ const InitialConfig: React.FC = () => {
   const renderStep = () => {
     switch (step) {
       case SetupStep.LANDING:
+        // ... (Already updated)
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="grid grid-cols-1 gap-4">
               <div
-                onClick={() => { setIsCreatingSchool(true); setStep(SetupStep.SELECT_LANGUAGE); }}
+                onClick={() => {
+                    if (isStudentElsewhere) {
+                        setError("Les élèves ne peuvent pas créer d'établissement.");
+                        return;
+                    }
+                    if (createdSchoolsCount >= 3) {
+                        setError("Limite de 3 établissements atteinte.");
+                        return;
+                    }
+                    setIsCreatingSchool(true);
+                    setStep(SetupStep.SELECT_LANGUAGE);
+                }}
                 className="bg-white p-6 cursor-pointer border-2 border-blue-50 hover:border-blue-500 shadow-sm hover:shadow-blue-100 hover:shadow-xl group transition-all rounded-[24px]"
               >
                 <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-sharp flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors shadow-inner">
@@ -273,7 +423,7 @@ const InitialConfig: React.FC = () => {
               </div>
 
               <div
-                onClick={() => { setSelectedProfile('ENSEIGNANT'); setStep(SetupStep.SELECT_LANGUAGE); }}
+                onClick={() => { setSelectedProfile('ENSEIGNANT'); setIsCreatingSchool(false); setStep(SetupStep.SELECT_LANGUAGE); }}
                 className={clsx(
                     "p-6 cursor-pointer border-2 transition-all rounded-[24px] group",
                     selectedProfile === 'ENSEIGNANT'
@@ -295,7 +445,18 @@ const InitialConfig: React.FC = () => {
               </div>
 
               <div
-                onClick={() => { setSelectedProfile('ELEVE'); setStep(SetupStep.SELECT_LANGUAGE); }}
+                onClick={() => { setSelectedProfile('PARENT'); setIsCreatingSchool(false); setStep(SetupStep.SELECT_LANGUAGE); }}
+                className="bg-white p-6 cursor-pointer border-2 border-green-50 hover:border-green-500 shadow-sm hover:shadow-green-100 hover:shadow-xl group transition-all rounded-[24px]"
+              >
+                <div className="w-12 h-12 bg-green-50 text-green-600 rounded-sharp flex items-center justify-center mb-4 group-hover:bg-green-600 group-hover:text-white transition-colors shadow-inner">
+                  <UserIcon size={24} />
+                </div>
+                <h3 className="font-black text-black uppercase text-sm tracking-tight">Accès Parent</h3>
+                <p className="text-[10px] text-[#9E9E9E] font-black uppercase tracking-widest">Rejoindre en tant que parent</p>
+              </div>
+
+              <div
+                onClick={() => { setSelectedProfile('ELEVE'); setIsCreatingSchool(false); setStep(SetupStep.SELECT_LANGUAGE); }}
                 className="bg-white p-6 cursor-pointer border-2 border-orange-50 hover:border-orange-500 shadow-sm hover:shadow-orange-100 hover:shadow-xl group transition-all rounded-[24px]"
               >
                 <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-sharp flex items-center justify-center mb-4 group-hover:bg-orange-600 group-hover:text-white transition-colors shadow-inner">
@@ -320,7 +481,7 @@ const InitialConfig: React.FC = () => {
                     const lngCode = lang === 'Français' ? 'fr' : 'en';
                     setLanguage(lang);
                     i18n.changeLanguage(lngCode);
-                    setStep(isNewUser ? SetupStep.WELCOME : SetupStep.SELECT_SCHOOL);
+                    setStep((isNewUser || isCreatingSchool) ? SetupStep.WELCOME : SetupStep.SELECT_SCHOOL);
                   }}
                   className={clsx(
                     "p-5 border-2 rounded-soft cursor-pointer transition-all flex items-center justify-between",
@@ -350,9 +511,151 @@ const InitialConfig: React.FC = () => {
                 {t('setup.welcome_subtitle')}
               </p>
             </div>
-            <AuthButton onClick={() => setStep(SetupStep.SELECT_SCHOOL)}>
-              {t('setup.select_school.placeholder')}
+            <AuthButton onClick={() => setStep(isCreatingSchool ? SetupStep.CREATE_SCHOOL_1 : SetupStep.SELECT_SCHOOL)}>
+              {isCreatingSchool ? "Commencer la création" : t('setup.select_school.placeholder')}
             </AuthButton>
+          </div>
+        );
+
+      case SetupStep.CREATE_SCHOOL_1:
+        return (
+          <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
+            <div className="bg-blue-50 p-6 rounded-[24px] border border-blue-100 mb-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-2">Etape 1: Informations de base</p>
+                <h3 className="text-sm font-black text-black uppercase">Identité de l'établissement</h3>
+                <p className="text-[8px] text-blue-400 mt-1 uppercase tracking-tight">Note: L'arrêté de création, le pays et la ville sont obligatoires.</p>
+            </div>
+
+            <AuthInput
+                label="Nom de l'établissement (Obligatoire) *"
+                placeholder="Ex: Lycée Technique de Douala"
+                value={newSchool.nomFr}
+                onChange={e => setNewSchool({...newSchool, nomFr: e.target.value})}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+                <AuthInput
+                    label="Pays (Obligatoire) *"
+                    value={newSchool.pays}
+                    onChange={e => setNewSchool({...newSchool, pays: e.target.value})}
+                />
+                <AuthInput
+                    label="Ville (Obligatoire) *"
+                    placeholder="Ex: Yaoundé"
+                    value={newSchool.ville}
+                    onChange={e => setNewSchool({...newSchool, ville: e.target.value})}
+                />
+            </div>
+
+            <AuthInput
+                label="N° Arrêté de création (Obligatoire) *"
+                placeholder="Ex: 123/A/MINESEC du ..."
+                value={newSchool.arrete}
+                onChange={e => setNewSchool({...newSchool, arrete: e.target.value})}
+            />
+
+            <div className="pt-8">
+                <AuthButton
+                    onClick={() => setStep(SetupStep.CREATE_SCHOOL_2)}
+                    disabled={!newSchool.nomFr || !newSchool.pays || !newSchool.ville || !newSchool.arrete}
+                >
+                    Suivant
+                </AuthButton>
+            </div>
+          </div>
+        );
+
+      case SetupStep.CREATE_SCHOOL_2:
+        return (
+          <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
+            <div className="bg-purple-50 p-6 rounded-[24px] border border-purple-100 mb-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-purple-600 mb-2">Etape 2: Sécurité et Accès</p>
+                <div className="space-y-1">
+                    <p className="text-[9px] font-bold text-gray-500 uppercase">{newSchool.nomFr}</p>
+                    <p className="text-[9px] font-bold text-gray-400 uppercase">{newSchool.ville}, {newSchool.pays}</p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <AuthInput
+                    label="Code Recrutement Staff *"
+                    placeholder="Ex: 1234"
+                    value={newSchool.codeRecrutement}
+                    onChange={e => setNewSchool({...newSchool, codeRecrutement: e.target.value})}
+                    maxLength={10}
+                />
+            </div>
+
+            <AuthInput
+                label="PIN de sécurité (4 chiffres) *"
+                placeholder="••••"
+                type="password"
+                value={newSchool.pinSecurite}
+                onChange={e => setNewSchool({...newSchool, pinSecurite: e.target.value.replace(/\D/g, '')})}
+                maxLength={4}
+            />
+
+            <div className="pt-8 flex gap-4">
+                <button
+                    onClick={() => setStep(SetupStep.CREATE_SCHOOL_1)}
+                    className="flex-1 py-4 bg-gray-50 text-gray-500 font-black uppercase text-[10px] tracking-widest rounded-sharp hover:bg-gray-100 transition-all"
+                >
+                    Retour
+                </button>
+                <AuthButton
+                    onClick={() => setStep(SetupStep.CREATE_SCHOOL_3)}
+                    disabled={!newSchool.codeRecrutement || newSchool.pinSecurite?.length !== 4}
+                >
+                    Suivant
+                </AuthButton>
+            </div>
+          </div>
+        );
+
+      case SetupStep.CREATE_SCHOOL_3:
+        return (
+          <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
+            <div className="bg-green-50 p-6 rounded-[24px] border border-green-100 mb-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-green-600 mb-2">Etape 3: Contact et Validation</p>
+                <div className="space-y-2">
+                    <p className="text-xs font-black text-black uppercase">{newSchool.nomFr}</p>
+                    <div className="flex gap-4">
+                        <span className="text-[8px] font-bold text-gray-500 uppercase">PIN: ****</span>
+                        <span className="text-[8px] font-bold text-gray-500 uppercase">CODE STAFF: {newSchool.codeRecrutement}</span>
+                    </div>
+                </div>
+            </div>
+
+            <AuthInput
+                label="Téléphone Principal *"
+                placeholder="Ex: 6XXXXXXXX"
+                type="number"
+                value={newSchool.telephone1}
+                onChange={e => setNewSchool({...newSchool, telephone1: e.target.value ? parseInt(e.target.value) : undefined})}
+            />
+
+            <AuthInput
+                label="Téléphone Secondaire (Optionnel)"
+                placeholder="Ex: 6XXXXXXXX"
+                type="number"
+                value={newSchool.telephone2}
+                onChange={e => setNewSchool({...newSchool, telephone2: e.target.value ? parseInt(e.target.value) : undefined})}
+            />
+
+            <div className="pt-8 flex gap-4">
+                <button
+                    onClick={() => setStep(SetupStep.CREATE_SCHOOL_2)}
+                    className="flex-1 py-4 bg-gray-50 text-gray-500 font-black uppercase text-[10px] tracking-widest rounded-sharp hover:bg-gray-100 transition-all"
+                >
+                    Retour
+                </button>
+                <AuthButton
+                    onClick={handleCreateSchool}
+                    disabled={!newSchool.telephone1 || loading}
+                >
+                    {loading ? "Création en cours..." : "Créer l'établissement"}
+                </AuthButton>
+            </div>
           </div>
         );
 
@@ -380,12 +683,35 @@ const InitialConfig: React.FC = () => {
                     const school = assoc.school;
                     const sId = school.idServeur || school.idEtablissement;
                     const selectedSId = selectedSchool?.idServeur || selectedSchool?.idEtablissement;
+
+                    const intent = selectedProfile;
+                    const isTryingToBeStudentOrParent = intent === 'ELEVE' || intent === 'PARENT';
+                    const isTryingToBeStaff = intent !== null && !isTryingToBeStudentOrParent;
+                    const hasStaffRole = assoc.roles.some(r => !['ELEVE', 'PARENT', 'DEMANDEUR', 'SANS_ROLE'].includes(r));
+                    const hasStudentRole = assoc.roles.includes('ELEVE');
+                    const hasParentRole = assoc.roles.includes('PARENT');
+
+                    const isConflicting = (intent === 'ELEVE' && hasParentRole) ||
+                                         (intent === 'PARENT' && hasStudentRole) ||
+                                         (isTryingToBeStudentOrParent && hasStaffRole) ||
+                                         (isTryingToBeStaff && (hasStudentRole || hasParentRole));
+
                     return (
                       <div
                         key={`assoc-${sId}-${index}`}
-                        onClick={() => handleSelectSchool(school)}
+                        onClick={() => {
+                            if (isConflicting) {
+                                setError("Accès impossible en raison d'un conflit de rôle dans cet établissement.");
+                                return;
+                            }
+                            handleSelectSchool(school);
+                            // On réinitialise les codes quand on change d'école
+                            setInscriptionCode('');
+                            setRecruitmentCode('');
+                        }}
                         className={clsx(
                           "p-5 border-2 rounded-[20px] cursor-pointer transition-all flex items-center justify-between",
+                          isConflicting ? "opacity-50 grayscale cursor-not-allowed border-red-50" :
                           selectedSId === sId
                             ? "border-accent bg-accent/5 shadow-xl shadow-accent/10 -translate-y-1"
                             : "border-gray-100 bg-white shadow-sm hover:border-accent/30 hover:shadow-md"
@@ -403,8 +729,15 @@ const InitialConfig: React.FC = () => {
                               {assoc.etat.replace('_', ' ')}
                             </span>
                           </div>
+                          {/* Affichage des rôles actuels pour aider l'utilisateur */}
+                          {assoc.etat === 'VALIDE' && (
+                              <p className="text-[7px] font-bold text-accent uppercase mt-1">
+                                  {isConflicting ? "CONFLIT DE RÔLE" : `Rôles: ${assoc.roles.join(', ')}`}
+                              </p>
+                          )}
                         </div>
                         {selectedSId === sId && <CheckCircle2 size={18} className="text-black" />}
+                        {isConflicting && <X size={18} className="text-red-500" />}
                       </div>
                     );
                   })}
@@ -423,12 +756,31 @@ const InitialConfig: React.FC = () => {
                     const assoc = associations.find(a => (a.school.idServeur || a.school.idEtablissement) === sId);
                     const selectedSId = selectedSchool?.idServeur || selectedSchool?.idEtablissement;
 
+                    const intent = selectedProfile;
+                    const isTryingToBeStudentOrParent = intent === 'ELEVE' || intent === 'PARENT';
+                    const isTryingToBeStaff = intent !== null && !isTryingToBeStudentOrParent;
+                    const hasStaffRole = assoc?.roles.some(r => !['ELEVE', 'PARENT', 'DEMANDEUR', 'SANS_ROLE'].includes(r));
+                    const hasStudentRole = assoc?.roles.includes('ELEVE');
+                    const hasParentRole = assoc?.roles.includes('PARENT');
+
+                    const isConflicting = assoc && ((intent === 'ELEVE' && hasParentRole) ||
+                                         (intent === 'PARENT' && hasStudentRole) ||
+                                         (isTryingToBeStudentOrParent && hasStaffRole) ||
+                                         (isTryingToBeStaff && (hasStudentRole || hasParentRole)));
+
                     return (
                       <div
                         key={`search-${sId}-${index}`}
-                        onClick={() => handleSelectSchool(school)}
+                        onClick={() => {
+                            if (isConflicting) {
+                                setError("Conflit de rôle : Vous êtes déjà enregistré avec un profil incompatible dans cette école.");
+                                return;
+                            }
+                            handleSelectSchool(school);
+                        }}
                         className={clsx(
                           "p-5 border-2 rounded-[20px] cursor-pointer transition-all flex items-center justify-between",
+                          isConflicting ? "opacity-50 grayscale cursor-not-allowed border-red-50" :
                           selectedSId === sId
                             ? "border-accent bg-accent/5 shadow-xl shadow-accent/10 -translate-y-1"
                             : "border-gray-100 bg-white shadow-sm hover:border-accent/30 hover:shadow-md"
@@ -447,8 +799,12 @@ const InitialConfig: React.FC = () => {
                               </span>
                             )}
                           </div>
+                          {isConflicting && (
+                              <p className="text-[7px] font-bold text-red-500 uppercase mt-1">Accès bloqué : Conflit de rôle</p>
+                          )}
                         </div>
                         {selectedSId === sId && <CheckCircle2 size={18} className="text-black" />}
+                        {isConflicting && <X size={18} className="text-red-500" />}
                       </div>
                     );
                   })}
@@ -621,8 +977,22 @@ const InitialConfig: React.FC = () => {
     }
   };
 
+  const videoBg = "https://assets.mixkit.co/videos/preview/mixkit-unrecognizable-student-taking-notes-in-a-notebook-42790-large.mp4";
+
   return (
-    <div className="min-h-screen bg-[#9E9E9E] flex items-center justify-center p-4 font-sans relative">
+    <div className="min-h-screen flex items-center justify-center p-4 font-sans relative overflow-hidden">
+      {/* Video Background */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute top-0 left-0 w-full h-full object-cover z-0"
+      >
+        <source src={videoBg} type="video/mp4" />
+      </video>
+      <div className="absolute top-0 left-0 w-full h-full bg-black/40 z-[1]"></div>
+
       <button
         onClick={() => setIsConfigOpen(true)}
         className="absolute top-8 right-8 p-4 bg-white rounded-soft shadow-xl border border-gray-100 group transition-all active:scale-95 z-20"
@@ -630,7 +1000,7 @@ const InitialConfig: React.FC = () => {
         <Globe size={20} className="text-accent group-hover:rotate-12 transition-transform" />
       </button>
 
-      <div className="w-full max-w-[450px] bg-white min-h-[750px] p-10 rounded-[32px] shadow-2xl flex flex-col relative overflow-hidden">
+      <div className="w-full max-w-[450px] bg-white min-h-[750px] p-10 rounded-[32px] shadow-2xl flex flex-col relative overflow-hidden z-10">
         <div className="flex justify-between items-center mb-12 relative z-10">
           <button
             onClick={step === SetupStep.LANDING ? () => navigate(-1) : prevStep}
@@ -641,7 +1011,17 @@ const InitialConfig: React.FC = () => {
 
           <div className="flex flex-col items-end">
               <span className="text-[10px] font-black uppercase tracking-widest text-black bg-gray-100 px-4 py-1.5 rounded-full mb-2">
-                {t('setup.step_info', { current: step + 1, total: 7 })}
+                {(() => {
+                  const creationFlow = [0, 1, 2, 4, 5, 6, 8];
+                  const joinFlow = [0, 1];
+                  if (isNewUser) joinFlow.push(2);
+                  joinFlow.push(3);
+                  if (availableProfiles.length > 1) joinFlow.push(7);
+                  joinFlow.push(8);
+                  const flow = isCreatingSchool ? creationFlow : joinFlow;
+                  const idx = flow.indexOf(step);
+                  return t('setup.step_info', { current: idx + 1, total: flow.length });
+                })()}
               </span>
               <div className="flex gap-1">
                 {getBreadcrumbs().map((b, i) => (

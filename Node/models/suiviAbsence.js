@@ -13,7 +13,7 @@ const SuiviAbsence = sequelize.define("SuiviAbsence", {
   supprimer: { type: DataTypes.BOOLEAN, defaultValue: false }
 }, {
   tableName: "suivi_absence",
-  timestamps: true
+  timestamps: false
 });
 
 module.exports = SuiviAbsence;

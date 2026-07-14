@@ -30,6 +30,9 @@ const Dashboard: React.FC = () => {
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [showOnboardingBanner, setShowOnboardingBanner] = useState(() => {
+    return localStorage.getItem('hide_onboarding_banner') !== 'true';
+  });
 
   // Initial Load: Schools
   useEffect(() => {
@@ -166,6 +169,40 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="animate-in fade-in duration-500 flex flex-col" style={{ gap: `${2.5 * settings.globalDensity}rem` }}>
+      {/* Onboarding Banner */}
+      {showOnboardingBanner && user?.role === 'ADMINISTRATEUR' && (
+        <div className="bg-red-600 text-white p-6 rounded-[24px] shadow-2xl shadow-red-200 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 duration-500">
+           <div className="flex items-center space-x-6">
+              <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                 <Plus size={28} className="text-white animate-pulse" />
+              </div>
+              <div>
+                 <h2 className="text-lg font-black uppercase tracking-tight leading-none mb-1">Démarrage Rapide</h2>
+                 <p className="text-[10px] font-black uppercase tracking-widest text-red-100 opacity-90">
+                    Configurez votre établissement en moins de 5 minutes pour débloquer toutes les fonctionnalités.
+                 </p>
+              </div>
+           </div>
+           <div className="flex items-center space-x-4 w-full md:w-auto">
+              <Link
+                to="/app/configuration"
+                className="flex-1 md:flex-none bg-white text-red-600 px-8 py-3 rounded-sharp font-black text-[10px] uppercase tracking-[0.2em] hover:bg-black hover:text-white transition-all text-center"
+              >
+                Commencer maintenant
+              </Link>
+              <button
+                onClick={() => {
+                  setShowOnboardingBanner(false);
+                  localStorage.setItem('hide_onboarding_banner', 'true');
+                }}
+                className="px-6 py-3 border border-white/30 rounded-sharp font-black text-[10px] uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
+              >
+                J'ai compris
+              </button>
+           </div>
+        </div>
+      )}
+
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
         <div>
@@ -177,6 +214,7 @@ const Dashboard: React.FC = () => {
           </h1>
           <div className="flex items-center space-x-4 mt-4">
             <button
+              id="connection-status"
               onClick={() => setIsConfigOpen(true)}
               className="flex items-center bg-white px-4 py-2 border border-border rounded-sharp hover:border-black transition-all group"
             >
@@ -188,7 +226,7 @@ const Dashboard: React.FC = () => {
             </button>
 
             {/* Language Switcher */}
-            <div className="flex bg-white border border-border rounded-sharp p-1">
+            <div id="lang-switcher" className="flex bg-white border border-border rounded-sharp p-1">
               <button
                 onClick={() => changeLanguage('fr')}
                 className={clsx(
@@ -259,6 +297,7 @@ const Dashboard: React.FC = () => {
 
       {/* Main Grid */}
       <div
+        id="dashboard-grid"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         style={{ gap: `${1.5 * settings.globalDensity}rem` }}
       >

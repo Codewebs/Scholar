@@ -17,7 +17,7 @@ const Note = sequelize.define("Note", {
   idRepartitionCompetence: { type: DataTypes.BIGINT, allowNull: true }
 }, {
   tableName: "note",
-  timestamps: true,
+  timestamps: false,
   indexes: [
     {
       name: 'idx_unique_note_entry',

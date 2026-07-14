@@ -57,17 +57,31 @@ const Login: React.FC = () => {
 
   if (!isInitialized) return null;
 
+  const videoBg = "https://assets.mixkit.co/videos/preview/mixkit-unrecognizable-student-taking-notes-in-a-notebook-42790-large.mp4";
+
   return (
-    <div className="min-h-screen bg-[#9E9E9E] flex items-center justify-center p-4 font-sans relative">
+    <div className="min-h-screen flex items-center justify-center p-4 font-sans relative overflow-hidden">
+      {/* Video Background */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute top-0 left-0 w-full h-full object-cover z-0"
+      >
+        <source src={videoBg} type="video/mp4" />
+      </video>
+      <div className="absolute top-0 left-0 w-full h-full bg-black/40 z-[1]"></div>
+
       {/* Rare Violet Accent: Server Config Trigger */}
       <button
         onClick={() => setIsModalOpen(true)}
-        className="absolute top-8 right-8 p-4 bg-white rounded-soft shadow-xl border border-gray-100 group transition-all active:scale-95"
+        className="absolute top-8 right-8 p-4 bg-white rounded-soft shadow-xl border border-gray-100 group transition-all active:scale-95 z-10"
       >
         <Globe size={20} className="text-accent group-hover:rotate-12 transition-transform" />
       </button>
 
-      <div className="w-full max-w-[450px] bg-white min-h-[650px] p-10 rounded-[32px] shadow-2xl flex flex-col relative overflow-hidden">
+      <div className="w-full max-w-[450px] bg-white min-h-[650px] p-10 rounded-[32px] shadow-2xl flex flex-col relative overflow-hidden z-10">
         {/* Back Button */}
         <button
           onClick={() => navigate('/')}

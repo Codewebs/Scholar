@@ -94,4 +94,10 @@ export const financeService = {
 
   searchStudents: (q: string, idAnneeScolaire: number) =>
     api.get<any[]>(`/students/search/${idAnneeScolaire}`, { params: { q } }),
+
+  quickSetup: (payload: { idAnneeScolaire: number; classes: { idClasse: number; nomSalle: string }[] }) =>
+    api.post('/finance/setup/quick', payload),
+
+  importFromPreviousYear: (payload: { idAnneeScolaire: number; idAnneePrecedente: number }) =>
+    api.post('/finance/setup/import-previous', payload),
 };

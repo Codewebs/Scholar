@@ -84,4 +84,7 @@ export const matiereService = {
 
   getGlobalCompetencies: (idEtablissement?: number) =>
     api.get<any[]>('/pedagogy/competences', { params: { idEtablissement } }), // Need to ensure this exists in backend
+
+  importFromLibrary: (idEnseignement: number, idCountry: number) =>
+    api.post('/pedagogy/matieres/import-library', { idEnseignement, idCountry }),
 };

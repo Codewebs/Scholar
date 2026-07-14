@@ -45,6 +45,10 @@ const ReportingCockpitPage: React.FC = () => {
   const [period, setPeriod] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ANNUAL'>('MONTHLY');
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  // Configuration Horaires
+  const [openingHour, setOpeningHour] = useState(7);
+  const [closingHour, setClosingHour] = useState(18);
+
   // Scope & Granularité (Version 4.0)
   const [scope, setScope] = useState<'ALL' | 'CYCLE' | 'CLASSE' | 'SALLE'>('ALL');
   const [selectedScopeId, setSelectedScopeId] = useState<string>('');
@@ -57,8 +61,8 @@ const ReportingCockpitPage: React.FC = () => {
   const [selectedPeriodeId, setSelectedPeriodeId] = useState<string>('');
 
   // Autres Filtres
-  const [selectedFraisId] = useState<string>('');
-  // const [libraryFees, setLibraryFees] = useState<any[]>([]);
+  const [selectedFraisId, setSelectedFraisId] = useState<string>('');
+  const [libraryFees, setLibraryFees] = useState<any[]>([]);
 
   useEffect(() => {
     if (yearId) {
@@ -70,20 +74,22 @@ const ReportingCockpitPage: React.FC = () => {
     if (yearId) {
       loadStats();
     }
-  }, [yearId, period, currentDate, scope, selectedScopeId, selectedFraisId, selectedPeriodeId]);
+  }, [yearId, period, currentDate, scope, selectedScopeId, selectedFraisId, selectedPeriodeId, openingHour, closingHour]);
 
   const loadInitialData = async () => {
       try {
-          const [roomsRes, cyclesRes, classesRes, periodesRes] = await Promise.all([
+          const [roomsRes, cyclesRes, classesRes, periodesRes, feesRes] = await Promise.all([
               studentService.getRooms(yearId!),
               studentService.getCycles(yearId!),
               studentService.getClasses(yearId!),
-              pedagogyService.getPeriodes(yearId!)
+              pedagogyService.getPeriodes(yearId!),
+              financeService.getExigibles()
           ]);
           setRooms(roomsRes.data);
           setCycles(cyclesRes.data);
           setClasses(classesRes.data);
           setPeriodes(periodesRes.data);
+          setLibraryFees(feesRes.data);
       } catch (err) {
           console.error("Error loading filter data", err);
       }
@@ -140,7 +146,9 @@ const ReportingCockpitPage: React.FC = () => {
           idSalle: scope === 'SALLE' ? selectedScopeId : undefined,
           idClasse: scope === 'CLASSE' ? selectedScopeId : undefined,
           idCycle: scope === 'CYCLE' ? selectedScopeId : undefined,
-          idFrais: selectedFraisId || undefined
+          idFrais: selectedFraisId || undefined,
+          openingHour,
+          closingHour
       });
       setStats(res.data);
     } catch (err) {
@@ -245,6 +253,30 @@ const ReportingCockpitPage: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-4">
+                {/* Configuration Horaires */}
+                <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
+                    <CalendarDays size={14} className="text-gray-400" />
+                    <div className="flex items-center gap-1">
+                        <input
+                            type="number"
+                            min="0" max="23"
+                            value={openingHour}
+                            onChange={e => setOpeningHour(parseInt(e.target.value))}
+                            className="w-8 bg-transparent text-[10px] font-black outline-none text-center"
+                        />
+                        <span className="text-[8px] font-bold text-gray-300">H</span>
+                        <span className="text-[8px] font-bold text-gray-300">—</span>
+                        <input
+                            type="number"
+                            min="0" max="23"
+                            value={closingHour}
+                            onChange={e => setClosingHour(parseInt(e.target.value))}
+                            className="w-8 bg-transparent text-[10px] font-black outline-none text-center"
+                        />
+                        <span className="text-[8px] font-bold text-gray-300">H</span>
+                    </div>
+                </div>
+
                 <div className="flex p-1.5 bg-gray-100 rounded-[24px]">
                     {[
                         { id: 'ALL', label: t('reports.cockpit.scopes.all') },
@@ -264,6 +296,18 @@ const ReportingCockpitPage: React.FC = () => {
                         </button>
                     ))}
                 </div>
+
+                {/* Sélecteur de Frais */}
+                <select
+                    className="h-14 bg-gray-50 border border-gray-100 rounded-2xl px-6 text-[10px] font-black uppercase tracking-widest outline-none focus:border-black transition-all"
+                    value={selectedFraisId}
+                    onChange={e => setSelectedFraisId(e.target.value)}
+                >
+                    <option value="">{t('reports.cockpit.scopes.all_fees')}</option>
+                    {libraryFees.map(f => (
+                        <option key={f.idFraisExigible} value={f.idFraisExigible}>{f.fraisFr}</option>
+                    ))}
+                </select>
 
                 <AuthButton className="bg-black shadow-2xl px-8 h-14" onClick={() => window.print()}>
                     <Download size={18} className="mr-2" /> {t('reports.cockpit.pdf_synthesis')}
@@ -416,6 +460,71 @@ const ReportingCockpitPage: React.FC = () => {
                       </AreaChart>
                   </ResponsiveContainer>
               </div>
+
+              {/* Insights & Commentary Section */}
+              {stats?.revenue?.insights && (
+                <div className="mt-10 p-8 bg-gray-50/50 rounded-[32px] border border-gray-100 animate-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 bg-black text-white rounded-xl flex items-center justify-center">
+                            <Sparkles size={18} />
+                        </div>
+                        <div>
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-black">{t('reports.cockpit.insights_title')}</h4>
+                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t('reports.cockpit.ai_analysis')}</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <p className="text-xs font-medium leading-relaxed text-gray-600 first-letter:text-2xl first-letter:font-black first-letter:text-black">
+                            {(() => {
+                                const insights = stats.revenue.insights;
+                                const scopeLabel = scope === 'ALL' ? t('reports.cockpit.scopes.all') :
+                                                   scope === 'CYCLE' ? `${t('reports.cockpit.scopes.cycle')} ${cycles.find(c => c.idCycle.toString() === selectedScopeId)?.libelleCycle || ''}` :
+                                                   scope === 'CLASSE' ? `${t('reports.cockpit.scopes.classe')} ${classes.find(c => c.idClasse.toString() === selectedScopeId)?.libelleClasseFr || ''}` :
+                                                   `${t('reports.cockpit.scopes.salle')} ${rooms.find(r => r.idSalle.toString() === selectedScopeId)?.nomSalle || ''}`;
+
+                                const periodLabel = period === 'DAILY' ? t('reports.cockpit.periods.daily') :
+                                                    period === 'WEEKLY' ? t('reports.cockpit.periods.weekly') :
+                                                    period === 'MONTHLY' ? t('reports.cockpit.periods.monthly') :
+                                                    t('reports.cockpit.periods.annual');
+
+                                const morningVsAfternoon = insights.morningTotal > insights.afternoonTotal
+                                    ? t('reports.cockpit.insights.morning_dominance')
+                                    : t('reports.cockpit.insights.afternoon_dominance');
+
+                                const feeLabel = selectedFraisId
+                                    ? ` ${libraryFees.find(f => f.idFraisExigible.toString() === selectedFraisId)?.fraisFr || ''}`
+                                    : '';
+
+                                let text = `${t('reports.cockpit.insights.intro', { scope: scopeLabel, period: periodLabel })}. `;
+                                text += `${t('reports.cockpit.insights.payments', { fee: feeLabel })} ${morningVsAfternoon}. `;
+                                text += `${t('reports.cockpit.insights.peak_window', {
+                                    start: insights.peakWindow.start,
+                                    end: insights.peakWindow.end,
+                                    amount: insights.peakWindow.amount.toLocaleString()
+                                })}. `;
+
+                                // Contrast with low period (simplified logic)
+                                const lowAmount = insights.morningTotal > insights.afternoonTotal ? insights.afternoonTotal : insights.morningTotal;
+                                const lowLabel = insights.morningTotal > insights.afternoonTotal ? t('reports.cockpit.insights.afternoon') : t('reports.cockpit.insights.morning');
+                                text += `${t('reports.cockpit.insights.contrast', { period: lowLabel, amount: lowAmount.toLocaleString() })}. `;
+
+                                if (insights.canCompare) {
+                                    const direction = insights.progression >= 0 ? t('reports.cockpit.insights.progression') : t('reports.cockpit.insights.regression');
+                                    const diff = Math.abs(stats.revenue.total - insights.previousTotal).toLocaleString();
+                                    text += `${t('reports.cockpit.insights.comparison', {
+                                        direction,
+                                        percent: Math.abs(insights.progression).toFixed(1),
+                                        diff
+                                    })}.`;
+                                }
+
+                                return text;
+                            })()}
+                        </p>
+                    </div>
+                </div>
+              )}
           </div>
 
           <div className="bg-black p-10 rounded-[56px] text-white flex flex-col justify-between relative overflow-hidden">

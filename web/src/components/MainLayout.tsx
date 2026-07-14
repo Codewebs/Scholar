@@ -7,6 +7,7 @@ import { LogOut, Menu, X, ChevronRight, Zap, MessageCircle, Youtube, Twitter, Fa
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import SetupProgressWidget from './SetupProgressWidget';
+import WelcomeGuide from './dashboard/WelcomeGuide';
 import { useUI } from '../context/UIContext';
 import { useTranslation } from 'react-i18next';
 import { contactInfo } from '../utils/contactInfo';
@@ -19,6 +20,7 @@ const MainLayout: React.FC = () => {
   const { t } = useTranslation();
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [highlightedPath, setHighlightedPath] = useState<string | null>(null);
   const { user, logout, hasPermission } = useAuth();
   const { selectedYear } = useSchoolYear();
   const { settings } = useUI();
@@ -26,6 +28,18 @@ const MainLayout: React.FC = () => {
   const globalScale = settings.globalDensity;
   const textScale = settings.textScale;
   const location = useLocation();
+
+  React.useEffect(() => {
+    if (location.state?.highlight) {
+        setHighlightedPath(location.state.highlight);
+        const timer = setTimeout(() => {
+            setHighlightedPath(null);
+            // Clear location state to prevent re-highlighting on manual reload
+            window.history.replaceState({}, document.title);
+        }, 3000);
+        return () => clearTimeout(timer);
+    }
+  }, [location]);
 
   const filteredGroups = menuGroups.map(group => ({
     ...group,
@@ -40,9 +54,11 @@ const MainLayout: React.FC = () => {
 
       {/* Global Floating Widget */}
       <SetupProgressWidget />
+      <WelcomeGuide />
 
       {/* Sidebar with Colors */}
       <aside
+        id="sidebar"
         className="bg-white border-r border-gray-100 transition-all duration-500 ease-in-out z-20 shadow-[20px_0_50px_rgba(0,0,0,0.02)]"
         style={{
             width: isSidebarOpen ? `${20 * sidebarScale}rem` : `${6 * sidebarScale}rem`
@@ -115,6 +131,7 @@ const MainLayout: React.FC = () => {
                 <ul className="space-y-2">
                   {group.items.map((item, itemIdx) => {
                     const isActive = location.pathname.startsWith(item.path);
+                    const isHighlighted = highlightedPath === item.path;
                     return (
                       <li key={itemIdx}>
                         <Link
@@ -123,7 +140,8 @@ const MainLayout: React.FC = () => {
                             "flex items-center rounded-[18px] transition-all group relative",
                             isActive
                               ? "bg-black text-white shadow-2xl shadow-gray-400 translate-x-1"
-                              : "hover:bg-gray-50 text-[#9E9E9E] hover:text-black"
+                              : "hover:bg-gray-50 text-[#9E9E9E] hover:text-black",
+                            isHighlighted && "ring-4 ring-accent shadow-[0_0_20px_rgba(124,58,237,0.4)] scale-105 z-10"
                           )}
                           style={{ padding: `${1 * sidebarScale}rem` }}
                         >
@@ -131,7 +149,11 @@ const MainLayout: React.FC = () => {
                             <div className="absolute left-[-24px] w-2 h-8 bg-accent rounded-r-full shadow-[0_0_15px_rgba(124,58,237,0.5)]" />
                           )}
 
-                          <item.icon size={22 * sidebarScale} className={cn(isSidebarOpen ? "mr-4" : "mx-auto", isActive && "text-accent")} />
+                          {isHighlighted && !isActive && (
+                              <div className="absolute inset-0 bg-accent/10 rounded-[18px] animate-pulse" />
+                          )}
+
+                          <item.icon size={22 * sidebarScale} className={cn(isSidebarOpen ? "mr-4" : "mx-auto", (isActive || isHighlighted) && "text-accent")} />
                           {isSidebarOpen && (
                             <span
                                 className="flex-1 font-black uppercase tracking-tight"

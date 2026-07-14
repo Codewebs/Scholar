@@ -1,10 +1,20 @@
 const { Matiere, RepartitionMatiere, Classe, Salle, RepartitionEnseignant, GroupeMatiere, RepartitionCompetence, Competence, sequelize } = require("../models");
 const { Op } = require("sequelize");
 
-// 1. CRUD MATIERE (Bibliothèque Globale)
+// 1. CRUD MATIERE (Bibliothèque Globale ou Spécifique Établissement)
 exports.getAllMatieres = async (req, res) => {
     try {
-        const matieres = await Matiere.findAll({ where: { supprimer: false }, order: [['libelleFr', 'ASC']] });
+        const idEtablissement = req.headers['id-etablissement'];
+        const matieres = await Matiere.findAll({
+            where: {
+                supprimer: false,
+                [Op.or]: [
+                    { idEtablissement: idEtablissement || -1 },
+                    { idEtablissement: null } // Still show global ones? No, user said scoped to school.
+                ]
+            },
+            order: [['libelleFr', 'ASC']]
+        });
         const formatted = matieres.map(m => ({
             ...m.toJSON(),
             idServeur: m.idMatiere,
@@ -116,12 +126,14 @@ exports.deleteGroup = async (req, res) => {
 exports.createMatiere = async (req, res) => {
     try {
         const { libelleFr, libelleEn, libelleEs, abreviation, codeMatiere } = req.body;
+        const idEtablissement = req.headers['id-etablissement'];
         const finalAbreviation = abreviation || codeMatiere;
         const matiere = await Matiere.create({
             libelleFr,
             libelleEn,
             libelleEs,
-            abreviation: finalAbreviation
+            abreviation: finalAbreviation,
+            idEtablissement
         });
         res.status(201).json({
             ...matiere.toJSON(),
@@ -142,6 +154,43 @@ exports.updateMatiere = async (req, res) => {
 
         await Matiere.update(data, { where: { idMatiere: id } });
         res.json({ message: "Matière mise à jour" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.importMatieresFromLibrary = async (req, res) => {
+    try {
+        const { idEnseignement, idCountry } = req.body;
+        const idEtablissement = req.headers['id-etablissement'];
+
+        if (!idEtablissement) return res.status(400).json({ error: "ID établissement manquant" });
+
+        // Vérifier s'il y a déjà des matières pour cette école
+        const existingCount = await Matiere.count({ where: { idEtablissement, supprimer: false } });
+        if (existingCount > 0) {
+            return res.status(400).json({ error: "L'importation n'est possible que si aucune matière n'est encore enregistrée pour cet établissement." });
+        }
+
+        const library = await MatiereBibliotheque.findAll({
+            where: { idEnseignement, idCountry }
+        });
+
+        if (library.length === 0) {
+            return res.status(404).json({ error: "Aucune matière trouvée dans la bibliothèque pour ce profil/pays." });
+        }
+
+        const created = [];
+        for (const item of library) {
+            const matiere = await Matiere.create({
+                libelleFr: item.libelleFr,
+                libelleEn: item.libelleEn,
+                abreviation: item.abreviation,
+                idEtablissement
+            });
+            created.push(matiere);
+        }
+        res.json({ message: `${created.length} matières importées avec succès.`, matieres: created });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

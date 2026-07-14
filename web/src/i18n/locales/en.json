@@ -254,7 +254,8 @@
         "all": "Institution",
         "cycle": "By Cycle",
         "classe": "By Class",
-        "salle": "By Room"
+        "salle": "By Room",
+        "all_fees": "All fees"
       },
       "kpi": {
         "revenue": "Global Revenue",
@@ -284,7 +285,22 @@
       "success_rate_calc": "This rate is calculated by comparing each student's current average to the success thresholds defined for each cycle.",
       "financial_reports_engine": "Financial Reports Engine",
       "a4_preview_ready": "A4 Preview Ready",
-      "calculating": "Calculating indicators..."
+      "calculating": "Calculating indicators...",
+      "insights_title": "Detailed Commentary",
+      "ai_analysis": "Smart Flow Analysis",
+      "insights": {
+        "intro": "Analysis of the {{scope}} scope for the {{period}} period",
+        "payments": "Generally, payments for{{fee}}",
+        "morning_dominance": "were mostly concentrated in the morning",
+        "afternoon_dominance": "were denser in the afternoon",
+        "peak_window": "Record performance was observed between {{start}}:00 and {{end}}:00 with a total of {{amount}} FCFA collected",
+        "afternoon": "the afternoon",
+        "morning": "the morning",
+        "contrast": "In contrast, {{period}} generated only {{amount}} FCFA during the same time slot",
+        "progression": "in clear progression",
+        "regression": "down",
+        "comparison": "This is {{direction}} compared to the equivalent previous period with a variation of {{percent}}% (a difference of {{diff}} FCFA)"
+      }
     },
     "modules": {
       "daily_journal": { "title": "Cash Journal", "desc": "Closure & Daily details" },

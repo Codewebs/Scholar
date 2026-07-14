@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSchoolYear } from '../context/SchoolYearContext';
 import { setupService, UserAssociation } from '../api/setupService';
@@ -23,6 +23,7 @@ const SessionGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     const [loading, setLoading] = useState(false);
     const [needsSchool, setNeedsSchool] = useState(false);
     const [needsYear, setNeedsYear] = useState(false);
+    const lastSyncedRef = useRef<string | null>(null);
 
     const schoolId = Number(localStorage.getItem('school_id'));
 
@@ -35,12 +36,16 @@ const SessionGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     const checkSession = async () => {
         if (!user) return;
 
+        const syncKey = `${user.id}-${schoolId}`;
+        if (lastSyncedRef.current === syncKey) return;
+
         const currentRole = (user.role || '').toUpperCase();
         const isDefaultRole = currentRole === 'DEMANDEUR' || currentRole === 'SANS_ROLE' || currentRole === '';
 
         // On ne rafraîchit que si on est encore en rôle par défaut
         // ou si on a une école mais pas encore de permissions chargées en mémoire
-        const needsRefresh = isDefaultRole || (!!schoolId && user.permissions.length === 0);
+        // Sauf pour ADMINISTRATEUR qui n'a pas forcément de permissions personnalisées
+        const needsRefresh = isDefaultRole || (!!schoolId && user.permissions.length === 0 && currentRole !== 'ADMINISTRATEUR');
 
         if (needsRefresh) {
             setLoading(true);
@@ -54,6 +59,8 @@ const SessionGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => 
                     return;
                 }
 
+                lastSyncedRef.current = syncKey; // Marquer comme synchronisé pour éviter le loop
+
                 // Si on a déjà un schoolId, on rafraîchit les droits pour CETTE école
                 if (schoolId) {
                     const currentAssoc = validAssocs.find(a =>
@@ -62,12 +69,16 @@ const SessionGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
                     if (currentAssoc && updateUser) {
                         const apiPerms = currentAssoc.permissionsAjoutees || [];
-                        console.log(`[SessionGuard] 🎯 Profile found: Role=${currentAssoc.roles[0]}, Perms=${apiPerms.length}`);
+                        const apiRole = currentAssoc.roles[0];
 
-                        updateUser({
-                            role: currentAssoc.roles[0],
-                            permissions: apiPerms as any[]
-                        });
+                        // Mettre à jour seulement si nécessaire
+                        if (user.role !== apiRole || JSON.stringify(user.permissions) !== JSON.stringify(apiPerms)) {
+                            console.log(`[SessionGuard] 🎯 Profile found: Role=${apiRole}, Perms=${apiPerms.length}`);
+                            updateUser({
+                                role: apiRole,
+                                permissions: apiPerms as any[]
+                            });
+                        }
                     } else if (!currentAssoc && validAssocs.length > 0) {
                         // L'école en cache n'est plus valide pour cet utilisateur
                         setAssociations(validAssocs);

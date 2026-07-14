@@ -16,6 +16,16 @@ const Eleve = sequelize.define("Eleve", {
   nomTuteur: { type: DataTypes.STRING(150), allowNull: true },
   telephoneTuteur: { type: DataTypes.BIGINT, allowNull: true },
   quartier: { type: DataTypes.STRING(100), allowNull: true },
+  idUtilisateur: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    references: { model: 'utilisateur', key: 'idUtilisateur' }
+  },
+  idUtilisateurParent: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    references: { model: 'utilisateur', key: 'idUtilisateur' }
+  },
   supprimer: { type: DataTypes.BOOLEAN, defaultValue: false }
 }, {
   tableName: "eleve",

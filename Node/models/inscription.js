@@ -10,6 +10,7 @@ const Inscription = sequelize.define("Inscription", {
   statut: { type: DataTypes.STRING(20), defaultValue: "INSCRIT" }, // INSCRIT, DEMISSIONNAIRE, etc.
   ancienEtablissement: { type: DataTypes.STRING(255), allowNull: true },
   nouveau: { type: DataTypes.BOOLEAN, defaultValue: true },
+  codeInscription: { type: DataTypes.STRING(20), allowNull: true },
   supprimer: { type: DataTypes.BOOLEAN, defaultValue: false }
 }, {
   tableName: "inscription",

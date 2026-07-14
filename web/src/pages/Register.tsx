@@ -89,9 +89,23 @@ const Register: React.FC = () => {
     }
   };
 
+  const videoBg = "https://assets.mixkit.co/videos/preview/mixkit-unrecognizable-student-taking-notes-in-a-notebook-42790-large.mp4";
+
   return (
-    <div className="min-h-screen bg-[#9E9E9E] flex items-center justify-center p-4 font-sans">
-      <div className="w-full max-w-[450px] bg-white min-h-[700px] p-10 rounded-[32px] shadow-2xl flex flex-col relative">
+    <div className="min-h-screen flex items-center justify-center p-4 font-sans relative overflow-hidden">
+      {/* Video Background */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute top-0 left-0 w-full h-full object-cover z-0"
+      >
+        <source src={videoBg} type="video/mp4" />
+      </video>
+      <div className="absolute top-0 left-0 w-full h-full bg-black/40 z-[1]"></div>
+
+      <div className="w-full max-w-[450px] bg-white min-h-[700px] p-10 rounded-[32px] shadow-2xl flex flex-col relative z-10 overflow-hidden">
         {/* Back Button */}
         <button
           onClick={() => navigate('/')}

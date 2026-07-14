@@ -7,6 +7,7 @@ const db = require("./db");
 const routes = require("./routes");
 const seedMenus = require("./middleware/menuSeeder");
 const seedEducationProfiles = require("./middleware/educationProfilesSeeder");
+const seedMatiereBibliotheque = require("./middleware/matiereBibliothequeSeeder");
 const seedQualites = require("./middleware/qualiteSeeder");
 const seedSpecialities = require("./middleware/specialitySeeder");
 
@@ -37,6 +38,7 @@ async function startApplication() {
     await seedQualites();
     await seedMenus();
     await seedEducationProfiles();
+    await seedMatiereBibliotheque();
     await seedSpecialities();
     console.log("✅ Base de données, qualités, menus, profils et spécialités initialisés.");
 

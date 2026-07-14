@@ -7,6 +7,7 @@ const checkPermission = require("../middleware/checkPermission");
 // Bibliothèque globale
 router.get("/", verifyToken, controller.getAllMatieres);
 router.post("/", verifyToken, checkPermission("MANAGE_GRADES"), controller.createMatiere);
+router.post("/import-library", verifyToken, checkPermission("MANAGE_GRADES"), controller.importMatieresFromLibrary);
 router.put("/:id", verifyToken, checkPermission("MANAGE_GRADES"), controller.updateMatiere);
 router.delete("/:id", verifyToken, checkPermission("MANAGE_GRADES"), controller.deleteMatiere);
 

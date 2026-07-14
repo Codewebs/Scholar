@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSchoolYear } from '../../context/SchoolYearContext';
 import { studentService } from '../../api/studentService';
 import { financeService, FraisExigible } from '../../api/financeService';
+import { pedagogyService, EnseignementResponse } from '../../api/pedagogyService';
 import {
     Wallet,
     ArrowLeft,
@@ -12,10 +13,17 @@ import {
     AlertCircle,
     Trash2,
     Info,
-    Check
+    Check,
+    Zap,
+    X,
+    LayoutGrid,
+    Calendar,
+    ChevronRight,
+    Search
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import AuthButton from '../../components/ui/AuthButton';
+import AuthInput from '../../components/ui/AuthInput';
 import api from '../../api/axios';
 
 interface TarifRow {
@@ -28,19 +36,33 @@ interface TarifRow {
     hasPayments?: boolean;
 }
 
+interface QuickConfigClasse {
+    idClasse: number;
+    libelleClasseFr: string;
+    nomSalle: string;
+    selected: boolean;
+}
+
 const ExigibleDistributionPage: React.FC = () => {
-    const { selectedYear } = useSchoolYear();
+    const { selectedYear, years } = useSchoolYear();
     const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
     const [classes, setClasses] = useState<any[]>([]);
+    const [allPotentialClasses, setAllPotentialClasses] = useState<QuickConfigClasse[]>([]);
     const [libraryFees, setLibraryFees] = useState<FraisExigible[]>([]);
     const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
     const [tarifs, setTarifs] = useState<TarifRow[]>([]);
     const [allYearTarifs, setAllYearTarifs] = useState<any[]>([]);
 
+    const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    // Quick Config Modal
+    const [showQuickModal, setShowQuickModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importYearId, setImportYearId] = useState<number | null>(null);
 
     useEffect(() => {
         if (yearId) {
@@ -55,13 +77,16 @@ const ExigibleDistributionPage: React.FC = () => {
     }, [selectedClassId, yearId]);
 
     const loadInitialData = async () => {
+        setLoading(true);
         try {
-            const [roomsRes, libRes, allTarifsRes] = await Promise.all([
+            const [roomsRes, libRes, allTarifsRes, structureRes] = await Promise.all([
                 studentService.getRooms(yearId!),
                 financeService.getExigibles(),
-                api.get(`/finance/tarifs/all/${yearId}`)
+                api.get(`/finance/tarifs/all/${yearId}`),
+                pedagogyService.getStructure(yearId!)
             ]);
 
+            // Existing classes with rooms
             const uniqueClasses: any[] = [];
             const classIds = new Set();
             roomsRes.data.forEach((salle: any) => {
@@ -74,11 +99,70 @@ const ExigibleDistributionPage: React.FC = () => {
             setLibraryFees(libRes.data);
             setAllYearTarifs(allTarifsRes.data.exigibles || []);
 
+            // Prepare potential classes for Quick Config
+            const allFlattened: QuickConfigClasse[] = [];
+            structureRes.data.forEach((ens: EnseignementResponse) => {
+                ens.cycles?.forEach((cyc: any) => {
+                    cyc.classes?.forEach((cl: any) => {
+                        allFlattened.push({
+                            idClasse: cl.idClasse,
+                            libelleClasseFr: cl.libelleClasseFr,
+                            nomSalle: `Salle ${cl.abreviation || 'A'}`,
+                            selected: true
+                        });
+                    });
+                });
+            });
+            setAllPotentialClasses(allFlattened);
+
             if (uniqueClasses.length > 0 && !selectedClassId) {
                 setSelectedClassId(uniqueClasses[0].idClasse);
             }
         } catch (err) {
             console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleQuickConfig = async () => {
+        const selectedOnes = allPotentialClasses.filter(c => c.selected);
+        if (selectedOnes.length === 0) {
+            alert("Veuillez sélectionner au moins une classe.");
+            return;
+        }
+
+        setSaving(true);
+        try {
+            await financeService.quickSetup({
+                idAnneeScolaire: yearId!,
+                classes: selectedOnes.map(c => ({ idClasse: c.idClasse, nomSalle: c.nomSalle }))
+            });
+            setShowQuickModal(false);
+            setSuccess("Configuration rapide effectuée !");
+            await loadInitialData();
+        } catch (err: any) {
+            setError(err.response?.data?.error || "Erreur lors de la configuration rapide.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleImportFromPrevious = async () => {
+        if (!importYearId || !yearId) return;
+        setSaving(true);
+        try {
+            await financeService.importFromPreviousYear({
+                idAnneeScolaire: yearId,
+                idAnneePrecedente: importYearId
+            });
+            setShowImportModal(false);
+            setSuccess("Frais importés avec succès !");
+            await loadInitialData();
+        } catch (err: any) {
+            setError(err.response?.data?.error || "Erreur lors de l'importation.");
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -178,6 +262,8 @@ const ExigibleDistributionPage: React.FC = () => {
     return (
         <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-500 pb-20 p-4">
             <div className="bg-white p-10 rounded-[40px] shadow-xl border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+
                 <div className="flex items-center space-x-6 relative z-10">
                     <button onClick={() => window.history.back()} className="p-4 hover:bg-gray-100 rounded-full transition-all bg-gray-50 text-black shadow-sm">
                         <ArrowLeft size={28} />
@@ -193,13 +279,56 @@ const ExigibleDistributionPage: React.FC = () => {
                     </div>
                 </div>
 
-                <AuthButton onClick={handleSave} disabled={saving || !selectedClassId} className="md:w-auto px-12 bg-black shadow-2xl">
-                    <div className="flex items-center space-x-3">
-                        <Save size={20} />
-                        <span>{saving ? "Saving..." : "Save Rates"}</span>
-                    </div>
-                </AuthButton>
+                <div className="flex items-center space-x-4">
+                    {allYearTarifs.length === 0 && (
+                        <>
+                            <button
+                                onClick={() => setShowImportModal(true)}
+                                className="px-6 py-4 bg-gray-50 text-black border-2 border-gray-100 rounded-sharp font-black uppercase text-[10px] tracking-widest hover:bg-gray-100 transition-all flex items-center gap-2"
+                            >
+                                <Calendar size={16} />
+                                Import Previous
+                            </button>
+                            <button
+                                onClick={() => setShowQuickModal(true)}
+                                className="px-6 py-4 bg-orange-50 text-orange-600 border-2 border-orange-100 rounded-sharp font-black uppercase text-[10px] tracking-widest hover:bg-orange-100 transition-all flex items-center gap-2"
+                            >
+                                <Zap size={16} />
+                                Quick Config
+                            </button>
+                        </>
+                    )}
+                    <AuthButton onClick={handleSave} disabled={saving || !selectedClassId} className="px-12 bg-black shadow-2xl">
+                        <div className="flex items-center space-x-3">
+                            <Save size={20} />
+                            <span>{saving ? "Saving..." : "Save Rates"}</span>
+                        </div>
+                    </AuthButton>
+                </div>
             </div>
+
+            {/* Empty Alert Card */}
+            {allYearTarifs.length === 0 && !loading && (
+                <div className="bg-red-50 border-2 border-red-100 p-8 rounded-[40px] flex items-center justify-between animate-in slide-in-from-top-4 duration-500">
+                    <div className="flex items-center space-x-6">
+                        <div className="w-16 h-16 bg-red-600 text-white rounded-[24px] flex items-center justify-center shadow-lg shadow-red-200">
+                            <AlertCircle size={32} />
+                        </div>
+                        <div className="space-y-1">
+                            <h3 className="font-black text-red-600 uppercase text-lg tracking-tight">Configuration manquante</h3>
+                            <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest leading-relaxed">
+                                Aucun frais n'est distribué pour cette année. Si vous n'utilisez pas la gestion financière, optez pour la configuration rapide.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setShowQuickModal(true)}
+                        className="bg-red-600 text-white px-8 py-4 rounded-sharp font-black uppercase text-[10px] tracking-widest shadow-xl shadow-red-200 hover:scale-105 active:scale-95 transition-all"
+                    >
+                        Config. Rapide (Frais à 1 FCFA)
+                    </button>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-8">
                 {/* Column 1: Classes & Library */}
@@ -398,9 +527,150 @@ const ExigibleDistributionPage: React.FC = () => {
             )}
 
             {success && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-black text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center space-x-4 animate-in slide-in-from-bottom-10">
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-black text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center space-x-4 animate-in slide-in-from-bottom-10 z-[110]">
                     <CheckCircle2 size={20} className="text-green-400" />
                     <span className="text-xs font-black uppercase tracking-widest">{success}</span>
+                </div>
+            )}
+
+            {/* Quick Config Modal */}
+            {showQuickModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
+                    <div className="w-full max-w-4xl bg-white rounded-[56px] p-16 shadow-2xl relative overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-orange-500"></div>
+                        <button onClick={() => setShowQuickModal(false)} className="absolute top-10 right-10 p-3 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
+                            <X size={24} />
+                        </button>
+
+                        <div className="flex items-center space-x-4 text-orange-600 mb-8">
+                            <Zap size={32} />
+                            <span className="text-[11px] font-black uppercase tracking-[0.5em]">Configuration Rapide</span>
+                        </div>
+
+                        <div className="mb-10">
+                            <h2 className="text-4xl font-black uppercase tracking-tighter text-black mb-4">Classes & Salles</h2>
+                            <p className="text-[11px] font-bold text-[#9E9E9E] uppercase tracking-widest">
+                                Sélectionnez les classes à paramétrer. Le système créera automatiquement un frais de 1 FCFA et une salle par défaut pour chaque classe cochée.
+                            </p>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto pr-4 space-y-4 custom-scrollbar mb-10">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {allPotentialClasses.map((cl, idx) => (
+                                    <div
+                                        key={cl.idClasse}
+                                        className={clsx(
+                                            "p-6 rounded-[32px] border-2 transition-all flex items-center justify-between group",
+                                            cl.selected ? "border-black bg-black text-white" : "border-gray-100 bg-gray-50 hover:border-gray-200"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-6">
+                                            <div
+                                                onClick={() => {
+                                                    const updated = [...allPotentialClasses];
+                                                    updated[idx].selected = !updated[idx].selected;
+                                                    setAllPotentialClasses(updated);
+                                                }}
+                                                className={clsx(
+                                                    "w-10 h-10 rounded-xl border-2 flex items-center justify-center cursor-pointer transition-all",
+                                                    cl.selected ? "bg-white border-white text-black" : "bg-white border-gray-200"
+                                                )}
+                                            >
+                                                {cl.selected && <Check size={20} />}
+                                            </div>
+                                            <div className="space-y-1">
+                                                <h4 className="font-black uppercase text-sm tracking-tight">{cl.libelleClasseFr}</h4>
+                                                <div className="flex items-center gap-2">
+                                                    <LayoutGrid size={12} className={cl.selected ? "text-orange-400" : "text-gray-300"} />
+                                                    <input
+                                                        type="text"
+                                                        className={clsx(
+                                                            "bg-transparent border-b font-bold text-[10px] uppercase tracking-widest outline-none",
+                                                            cl.selected ? "border-white/30 text-white/70" : "border-gray-200 text-gray-400"
+                                                        )}
+                                                        value={cl.nomSalle}
+                                                        onChange={(e) => {
+                                                            const updated = [...allPotentialClasses];
+                                                            updated[idx].nomSalle = e.target.value;
+                                                            setAllPotentialClasses(updated);
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-10 border-t border-gray-100">
+                             <div className="flex items-center space-x-3 text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">
+                                 <span className="text-black">{allPotentialClasses.filter(c => c.selected).length}</span> classes sélectionnées
+                             </div>
+                             <AuthButton
+                                onClick={handleQuickConfig}
+                                disabled={saving}
+                                className="bg-orange-600 shadow-orange-200 px-16"
+                             >
+                                <div className="flex items-center space-x-3">
+                                    <Zap size={20} />
+                                    <span>{saving ? "Configuration..." : "Lancer la Config."}</span>
+                                </div>
+                             </AuthButton>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Import Previous Year Modal */}
+            {showImportModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
+                    <div className="w-full max-w-xl bg-white rounded-[56px] p-16 shadow-2xl relative overflow-hidden border border-gray-100">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-black"></div>
+                        <button onClick={() => setShowImportModal(false)} className="absolute top-10 right-10 p-3 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
+                            <X size={24} />
+                        </button>
+
+                        <div className="flex items-center space-x-4 text-black mb-8">
+                            <Calendar size={32} />
+                            <span className="text-[11px] font-black uppercase tracking-[0.5em]">Importation Annuelle</span>
+                        </div>
+
+                        <h2 className="text-4xl font-black uppercase tracking-tighter text-black mb-8">Importer l'an passé</h2>
+
+                        <div className="space-y-4 mb-12">
+                            {years.filter(y => (y.idServeur || y.idAnneeScolaire) !== yearId).map(y => {
+                                const yId = y.idServeur || y.idAnneeScolaire;
+                                return (
+                                    <div
+                                        key={yId}
+                                        onClick={() => setImportYearId(yId!)}
+                                        className={clsx(
+                                            "p-6 rounded-[32px] border-2 cursor-pointer transition-all flex items-center justify-between group",
+                                            importYearId === yId ? "border-black bg-black text-white shadow-xl" : "border-gray-100 bg-gray-50 hover:border-gray-200"
+                                        )}
+                                    >
+                                        <div className="flex items-center space-x-4">
+                                            <Calendar size={20} className={importYearId === yId ? "text-accent" : "text-gray-300"} />
+                                            <span className="font-black uppercase text-sm tracking-widest">{y.libelleAnneeScolaire}</span>
+                                        </div>
+                                        {importYearId === yId && <CheckCircle2 size={24} className="text-accent" />}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <AuthButton
+                            onClick={handleImportFromPrevious}
+                            disabled={!importYearId || saving}
+                            className="w-full py-6"
+                        >
+                            <div className="flex items-center justify-center space-x-3">
+                                <Save size={20} />
+                                <span>{saving ? "Importation..." : "Importer les frais"}</span>
+                            </div>
+                        </AuthButton>
+                    </div>
                 </div>
             )}
         </div>

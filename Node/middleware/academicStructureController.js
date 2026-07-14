@@ -1,4 +1,5 @@
 const { Enseignement, Cycle, Classe, EtablissementStructure, AnneeScolaire, sequelize } = require("../models");
+const { Op } = require("sequelize");
 
 exports.createStructure = async (req, res) => {
     console.log("🏗️ [AcademicStructure] Enregistrement des profils choisis...");
@@ -163,11 +164,16 @@ exports.getAllCyclesByAnnee = async (req, res) => {
     });
     const idsEnseignement = configurations.map(c => c.idEnseignement);
 
+    if (idsEnseignement.length === 0) {
+      console.warn(`⚠️ [AcademicStructure] Aucun profil d'enseignement trouvé pour l'année ${idAnneeScolaire}`);
+      return res.json([]);
+    }
+
     const cycles = await Cycle.findAll({
       include: [{
         model: Enseignement,
         as: 'Enseignement',
-        where: { idEnseignement: idsEnseignement, supprimer: false }
+        where: { idEnseignement: { [Op.in]: idsEnseignement }, supprimer: false }
       }],
       where: { supprimer: false }
     });
@@ -186,8 +192,8 @@ exports.getAllCyclesByAnnee = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error("❌ [AcademicStructure] Erreur getAllCyclesByAnnee:", error);
-    res.status(500).json({ error: error.message });
+    console.error("❌ [AcademicStructure] getAllCyclesByAnnee Error:", error);
+    res.status(500).json({ error: error.message, stack: error.stack });
   }
 };
 

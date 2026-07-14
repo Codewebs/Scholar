@@ -24,6 +24,7 @@ export interface School {
     codeRecrutement?: string;
     codeInscription?: string;
     idCreateur?: number;
+    pinSecurite?: string;
 }
 
 export interface SchoolYear {

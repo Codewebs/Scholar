@@ -25,7 +25,7 @@ const EtablissementStructure = sequelize.define("EtablissementStructure", {
   }
 }, {
   tableName: "etablissement_structure",
-  timestamps: true
+  timestamps: false
 });
 
 module.exports = EtablissementStructure;

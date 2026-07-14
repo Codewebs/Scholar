@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSchoolYear } from '../../context/SchoolYearContext';
 import { matiereService, MatiereKPIs } from '../../api/matiereService';
+import { pedagogyService, EnseignementResponse } from '../../api/pedagogyService';
 import { MatiereEntity } from '../../types/pedagogy';
 import {
   Search,
@@ -12,7 +13,11 @@ import {
   LayoutGrid,
   X,
   Save,
-  RotateCcw
+  RotateCcw,
+  Library,
+  ChevronRight,
+  Sparkles,
+  AlertCircle
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import AuthButton from '../../components/ui/AuthButton';
@@ -23,12 +28,15 @@ const MatiereListPage: React.FC = () => {
   const { t } = useTranslation();
   const { selectedYear } = useSchoolYear();
   const [matieres, setMatieres] = useState<MatiereEntity[]>([]);
+  const [activeProfiles, setActiveProfiles] = useState<EnseignementResponse[]>([]);
   const [kpis, setKPIs] = useState<MatiereKPIs | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   // Modal States
   const [showModal, setShowModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentMatiere, setCurrentMatiere] = useState<Partial<MatiereEntity>>({
     libelleFr: '',
@@ -43,12 +51,18 @@ const MatiereListPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // 1. Load Global Library (Critical)
-      const resLib = await matiereService.getGlobalLibrary();
+      const yId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
+
+      // 1. Load Subjects and Profiles in parallel
+      const [resLib, resProfiles] = await Promise.all([
+        matiereService.getGlobalLibrary(),
+        yId ? pedagogyService.getStructure(yId) : Promise.resolve({ data: [] })
+      ]);
+
       setMatieres(resLib.data);
+      setActiveProfiles(resProfiles.data);
 
       // 2. Load KPIs (Non-critical)
-      const yId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
       if (yId) {
         try {
           const resKPI = await matiereService.getKPIs(yId);
@@ -61,6 +75,20 @@ const MatiereListPage: React.FC = () => {
       console.error("Erreur chargement bibliothèque matières:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleImport = async (idEnseignement: number, idCountry: number) => {
+    setImporting(true);
+    try {
+        await matiereService.importFromLibrary(idEnseignement, idCountry);
+        setShowImportModal(false);
+        await loadData();
+        alert(t('pedagogy.subjects.import_success', { defaultValue: "Matières importées avec succès !" }));
+    } catch (error: any) {
+        alert(error.response?.data?.error || t('pedagogy.subjects.import_error'));
+    } finally {
+        setImporting(false);
     }
   };
 
@@ -134,13 +162,24 @@ const MatiereListPage: React.FC = () => {
             </div>
         </div>
 
-        <button
-          onClick={handleOpenAdd}
-          className="bg-black text-white py-4 px-10 rounded-sharp flex items-center space-x-3 shadow-2xl hover:scale-105 active:scale-95 transition-all font-black uppercase text-xs tracking-[0.2em]"
-        >
-          <Plus size={20} className="text-indigo-400" />
-          <span>{t('pedagogy.subjects.new_subject')}</span>
-        </button>
+        <div className="flex items-center space-x-3">
+            {matieres.length === 0 && activeProfiles.length > 0 && (
+                <button
+                    onClick={() => setShowImportModal(true)}
+                    className="bg-indigo-50 text-indigo-600 py-4 px-8 rounded-sharp flex items-center space-x-3 border-2 border-indigo-200 shadow-sm hover:shadow-indigo-100 hover:scale-105 active:scale-95 transition-all font-black uppercase text-xs tracking-widest"
+                >
+                    <Library size={20} />
+                    <span>{t('pedagogy.subjects.import_library', { defaultValue: 'Import Library' })}</span>
+                </button>
+            )}
+            <button
+                onClick={handleOpenAdd}
+                className="bg-black text-white py-4 px-10 rounded-sharp flex items-center space-x-3 shadow-2xl hover:scale-105 active:scale-95 transition-all font-black uppercase text-xs tracking-[0.2em]"
+            >
+                <Plus size={20} className="text-indigo-400" />
+                <span>{t('pedagogy.subjects.new_subject')}</span>
+            </button>
+        </div>
       </div>
 
       {/* KPI Section */}
@@ -225,14 +264,89 @@ const MatiereListPage: React.FC = () => {
         </div>
 
         {filteredMatieres.length === 0 && !loading && (
-            <div className="py-20 text-center space-y-4">
-                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto text-gray-200">
-                    <BookOpen size={40} />
+            <div className="py-24 text-center space-y-8 animate-in zoom-in-95">
+                <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto text-gray-200 border-4 border-dashed border-gray-100 relative">
+                    <BookOpen size={44} />
+                    <Sparkles size={20} className="absolute -top-1 -right-1 text-indigo-400 animate-pulse" />
                 </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#9E9E9E]">{t('pedagogy.subjects.no_subject_found')}</p>
+                <div className="max-w-xs mx-auto space-y-2">
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-black">{t('pedagogy.subjects.no_subject_found')}</p>
+                    <p className="text-[10px] font-bold text-[#9E9E9E] uppercase leading-relaxed">{t('pedagogy.subjects.empty_hint', { defaultValue: 'Configure subjects manually or use our country-specific library to get started instantly.' })}</p>
+                </div>
+
+                {activeProfiles.length > 0 && (
+                     <div className="pt-4">
+                        <button
+                            onClick={() => setShowImportModal(true)}
+                            className="inline-flex items-center space-x-3 px-8 py-4 bg-indigo-600 text-white rounded-sharp font-black uppercase text-[10px] tracking-widest shadow-xl shadow-indigo-100 hover:scale-105 active:scale-95 transition-all"
+                        >
+                            <Library size={18} />
+                            <span>{t('pedagogy.subjects.quick_import_cta', { defaultValue: 'Import from Subject Library' })}</span>
+                        </button>
+                    </div>
+                )}
             </div>
         )}
       </div>
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
+           <div className="w-full max-w-2xl bg-white rounded-[56px] p-16 shadow-2xl relative overflow-hidden border border-gray-100">
+              <button onClick={() => setShowImportModal(false)} className="absolute top-10 right-10 p-3 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
+                <X size={24} />
+              </button>
+
+              <div className="flex items-center space-x-4 text-indigo-600 mb-8">
+                  <Library size={32} />
+                  <span className="text-[11px] font-black uppercase tracking-[0.5em]">{t('pedagogy.subjects.library_import')}</span>
+              </div>
+
+              <h2 className="text-4xl font-black uppercase tracking-tighter text-black mb-4">
+                Bibliothèque de Matières
+              </h2>
+              <p className="text-[11px] font-bold text-[#9E9E9E] uppercase tracking-widest mb-12">Sélectionnez le profil académique à importer pour votre établissement.</p>
+
+              <div className="grid grid-cols-1 gap-4">
+                  {activeProfiles.map((ens) => (
+                      <div
+                        key={ens.idEnseignement}
+                        onClick={() => !importing && ens.idCountry && handleImport(ens.idEnseignement, ens.idCountry)}
+                        className={clsx(
+                            "group p-8 border-2 rounded-[32px] cursor-pointer transition-all flex items-center justify-between",
+                            importing ? "opacity-50 cursor-not-allowed" : "border-gray-100 hover:border-indigo-600 hover:bg-indigo-50/50"
+                        )}
+                      >
+                         <div className="flex items-center space-x-6">
+                            <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner">
+                                <LayoutGrid size={24} />
+                            </div>
+                            <div>
+                                <h4 className="font-black text-sm uppercase tracking-tight text-black group-hover:text-indigo-600 transition-colors">{ens.enseignementFr}</h4>
+                                <p className="text-[9px] font-black text-[#9E9E9E] uppercase tracking-widest mt-1">Catalogue Officiel</p>
+                            </div>
+                         </div>
+                         <ChevronRight size={20} className="text-gray-200 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
+                      </div>
+                  ))}
+
+                  {activeProfiles.length === 0 && (
+                      <div className="p-10 text-center bg-red-50 rounded-[32px] border-2 border-red-100">
+                          <AlertCircle size={32} className="mx-auto text-red-400 mb-4" />
+                          <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Aucun profil académique n'est encore configuré. Veuillez d'abord définir la structure de l'établissement.</p>
+                      </div>
+                  )}
+              </div>
+
+              {importing && (
+                  <div className="mt-12 flex flex-col items-center justify-center space-y-4">
+                      <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                      <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Importation en cours...</p>
+                  </div>
+              )}
+           </div>
+        </div>
+      )}
 
       {/* Modal */}
       {showModal && (

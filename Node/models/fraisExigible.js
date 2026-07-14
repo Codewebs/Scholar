@@ -3,6 +3,7 @@ const sequelize = require("../db");
 
 const FraisExigible = sequelize.define("FraisExigible", {
   idFraisExigible: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+  idEtablissement: { type: DataTypes.BIGINT, allowNull: true }, // Scoped to school
   fraisFr: { type: DataTypes.STRING(60), allowNull: false },
   fraisEn: { type: DataTypes.STRING(60), allowNull: false },
   description: { type: DataTypes.STRING(255), allowNull: true },
@@ -13,8 +14,8 @@ const FraisExigible = sequelize.define("FraisExigible", {
   indexes: [
     {
       unique: true,
-      fields: ['fraisFr'],
-      name: 'unique_frais_fr'
+      fields: ['fraisFr', 'idEtablissement'],
+      name: 'unique_frais_etab'
     }
   ]
 });

@@ -7,49 +7,25 @@ const {
   Matiere,
   Salle,
   Etablissement,
+  Inscription,
   sequelize
 } = require("../models");
 const { Op } = require("sequelize");
 
+const STAFF_ROLES = [
+    "ADMINISTRATEUR", "FONDATEUR", "DIRECTEUR", "VICE_PRINCIPAL", "DIRECTEUR_DES_ETUDES",
+    "INTENDANT", "SECRETAIRE", "SURVEILLANT_GENERAL", "CHEF_DE_DEPARTEMENT", "ENSEIGNANT",
+    "CONSEILLER_ORIENTATION", "INFIRMIER", "AGENT_ENTRETIEN", "PERSONNEL_CANTINE"
+];
+const USAGER_ROLES = ["PARENT", "ELEVE"];
+
 // 1. ENVOYER UNE DEMANDE
 exports.envoyerDemande = async (req, res) => {
     try {
-        const { idUtilisateur, idEtablissement, profilDemande, nom, prenom, telephone1, email, specialites } = req.body;
+        const { idUtilisateur, idEtablissement, profilDemande, nom, prenom, telephone1, email, specialites, code } = req.body;
         console.log(`📩 [PersonnelCtrl] Nouvelle demande d'inscription: User=${idUtilisateur}, School=${idEtablissement}, Profil=${profilDemande}`);
 
-        // Vérifier si une demande identique en attente existe (par utilisateur ou par identité unique)
-        const orConditions = [{ idUtilisateur }];
-        if (telephone1) orConditions.push({ telephone1 });
-        if (email && email.trim() !== "") orConditions.push({ email });
-
-        const existing = await DemandeInscriptionPersonnel.findOne({
-            where: {
-                idEtablissement,
-                etat: 'EN_ATTENTE',
-                [Op.or]: orConditions
-            }
-        });
-
-        if (existing) {
-            console.warn(`⚠️ [PersonnelCtrl] Demande déjà en cours pour cette identité dans School=${idEtablissement}`);
-            return res.status(409).json({ error: "Une demande est déjà en cours d'étude pour cet utilisateur, ce numéro ou cet email." });
-        }
-
-        // Vérifier si l'utilisateur est déjà inscrit dans l'établissement
-        const existingMember = await InscriptionPersonnel.findOne({
-            where: {
-                idEtablissement,
-                supprimer: false,
-                [Op.or]: orConditions
-            }
-        });
-
-        if (existingMember) {
-            console.warn(`⚠️ [PersonnelCtrl] Utilisateur déjà inscrit dans School=${idEtablissement}`);
-            return res.status(409).json({ error: "Cet utilisateur, numéro ou email est déjà enregistré dans cet établissement." });
-        }
-
-        // Vérifier si l'utilisateur est bloqué par l'établissement
+        // 1. Vérifier si bloqué
         const blocked = await InscriptionPersonnel.findOne({
             where: { idUtilisateur, idEtablissement, bloque: true }
         });
@@ -58,6 +34,81 @@ exports.envoyerDemande = async (req, res) => {
             return res.status(403).json({ error: "Accès refusé par l'établissement." });
         }
 
+        // 2. Vérifier si une demande IDENTIQUE en attente existe
+        const existingDemand = await DemandeInscriptionPersonnel.findOne({
+            where: {
+                idUtilisateur,
+                idEtablissement,
+                profilDemande,
+                etat: 'EN_ATTENTE'
+            }
+        });
+        if (existingDemand) {
+            return res.status(409).json({ error: "Une demande pour ce rôle est déjà en cours d'étude." });
+        }
+
+        // 3. Récupérer TOUTES les inscriptions de l'utilisateur (ou liées par email/tel) dans cet établissement
+        const orConditions = [{ idUtilisateur }];
+        if (telephone1) orConditions.push({ telephone1 });
+        if (email && email.trim() !== "") orConditions.push({ email });
+
+        const currentInscriptions = await InscriptionPersonnel.findAll({
+            where: {
+                idEtablissement,
+                supprimer: false,
+                [Op.or]: orConditions
+            }
+        });
+
+        const existingRoles = currentInscriptions.map(ins => ins.role);
+
+        // Si l'utilisateur a déjà exactement ce rôle
+        if (existingRoles.includes(profilDemande)) {
+            return res.status(409).json({ error: `Cet utilisateur est déjà enregistré comme ${profilDemande} dans cet établissement.` });
+        }
+
+        // 4. Vérifier les CONFLITS (Règles 1 & 2)
+        const isNewStaff = STAFF_ROLES.includes(profilDemande);
+        const isNewUsager = USAGER_ROLES.includes(profilDemande);
+        const hasStaff = existingRoles.some(r => STAFF_ROLES.includes(r));
+        const hasParent = existingRoles.includes("PARENT");
+        const hasEleve = existingRoles.includes("ELEVE");
+
+        if (profilDemande === "ELEVE" && hasParent) {
+            return res.status(400).json({ error: "Isolation : Un utilisateur ne peut pas être à la fois Élève et Parent dans le même établissement." });
+        }
+        if (profilDemande === "PARENT" && hasEleve) {
+            return res.status(400).json({ error: "Isolation : Un utilisateur ne peut pas être à la fois Élève et Parent dans le même établissement." });
+        }
+        if (isNewStaff && (hasEleve || hasParent)) {
+            return res.status(400).json({ error: "Exclusivité Staff vs Usagers : Un membre du Staff ne peut pas être Élève ou Parent." });
+        }
+        if (isNewUsager && hasStaff) {
+            return res.status(400).json({ error: "Exclusivité Staff vs Usagers : Un Élève ou Parent ne peut pas rejoindre le Staff." });
+        }
+
+        // 5. Vérification du CODE (Règle 4)
+        const school = await Etablissement.findByPk(idEtablissement);
+        if (!school) return res.status(404).json({ error: "Établissement introuvable." });
+
+        if (isNewStaff) {
+            if (!code || code !== school.codeRecrutement) {
+                return res.status(403).json({ error: "Code de recrutement invalide pour rejoindre le Staff." });
+            }
+        } else if (isNewUsager) {
+            const validInscription = await Inscription.findOne({
+                where: { codeInscription: code },
+                include: [{
+                    model: Salle,
+                    where: { idEtablissement }
+                }]
+            });
+            if (!validInscription) {
+                return res.status(403).json({ error: "Code d'inscription invalide pour cet établissement. Veuillez vérifier le code sur votre reçu." });
+            }
+        }
+
+        // 6. Création de la demande
         const demande = await DemandeInscriptionPersonnel.create({
             idUtilisateur, idEtablissement, profilDemande, nom, prenom, telephone1, email, specialites
         });
@@ -74,7 +125,12 @@ exports.envoyerDemande = async (req, res) => {
 exports.validerDemande = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        const { idDemande, idAnneeScolaire, matricule, dateNaissance, lieuNaissance, sexe, role, diplomes, permissionsAjoutees, permissionsRetirees } = req.body;
+        const {
+            idDemande, idAnneeScolaire, matricule, dateNaissance, lieuNaissance,
+            sexe, role, diplomes, permissionsAjoutees, permissionsRetirees,
+            idEleveLinked // Optionnel: ID de l'élève à lier si rôle ELEVE ou PARENT
+        } = req.body;
+
         const demande = await DemandeInscriptionPersonnel.findByPk(idDemande);
         if (!demande) return res.status(404).json({ error: "Demande introuvable." });
 
@@ -84,6 +140,7 @@ exports.validerDemande = async (req, res) => {
         }
 
         // Créer l'inscription avec surcharges de droits
+        const finalRole = role || demande.profilDemande;
         const inscription = await InscriptionPersonnel.create({
             matricule,
             nom: demande.nom,
@@ -93,7 +150,7 @@ exports.validerDemande = async (req, res) => {
             sexe,
             telephone1: demande.telephone1,
             email: demande.email,
-            role: role || demande.profilDemande,
+            role: finalRole,
             idUtilisateur: demande.idUtilisateur,
             idAnneeScolaire,
             idEtablissement: demande.idEtablissement,
@@ -102,8 +159,27 @@ exports.validerDemande = async (req, res) => {
             permissionsRetirees: permissionsRetirees ? JSON.stringify(permissionsRetirees) : null
         }, { transaction: t });
 
+        // LIEN AVEC ELEVE (SI APPLICABLE)
+        if (idEleveLinked) {
+            if (finalRole === 'ELEVE') {
+                await sequelize.models.Eleve.update(
+                    { idUtilisateur: demande.idUtilisateur },
+                    { where: { idEleve: idEleveLinked }, transaction: t }
+                );
+            } else if (finalRole === 'PARENT') {
+                // Pour un parent, on peut imaginer un lien via une table Pivot ou
+                // simplement mettre à jour les champs téléphone si nécessaire,
+                // mais le lien formel se fait par idUtilisateur dans Eleve (idParentUser ?)
+                // Pour l'instant on suit la consigne: "créer un lien entre eleve/parent et utilsateur"
+                // On pourrait ajouter idUtilisateurParent à la table eleve.
+                await sequelize.models.Eleve.update(
+                    { idUtilisateurParent: demande.idUtilisateur },
+                    { where: { idEleve: idEleveLinked }, transaction: t }
+                );
+            }
+        }
+
         // Gérer les spécialités si enseignant
-        const finalRole = role || demande.profilDemande;
         if (finalRole.includes('ENSEIGNANT') && demande.specialites) {
             const ids = demande.specialites.split(',').map(id => id.trim());
             for (const idMatiere of ids) {

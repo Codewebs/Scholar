@@ -51,10 +51,6 @@ const Etablissement = sequelize.define("Etablissement", {
     type: DataTypes.STRING(10),
     defaultValue: "1234"
   },
-  codeInscription: {
-    type: DataTypes.STRING(20),
-    allowNull: true
-  },
   email: {
     type: DataTypes.STRING(150),
     allowNull: true,

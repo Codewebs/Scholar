@@ -1,11 +1,42 @@
-const { Eleve, Inscription, sequelize } = require("../models");
+const { Eleve, Inscription, Salle, sequelize } = require("../models");
 const { Op } = require("sequelize");
+
+const generateUniqueInscriptionCode = async (idEtablissement, idAnneeScolaire) => {
+    const digits = '0123456789';
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    let code = '';
+    let isUnique = false;
+    let attempts = 0;
+
+    while (!isUnique && attempts < 100) {
+        code = digits[Math.floor(Math.random() * 10)] +
+               letters[Math.floor(Math.random() * 26)] +
+               digits[Math.floor(Math.random() * 10)] +
+               letters[Math.floor(Math.random() * 26)];
+
+        const existing = await Inscription.findOne({
+            where: { codeInscription: code, idAnneeScolaire },
+            include: [{
+                model: Salle,
+                where: { idEtablissement }
+            }]
+        });
+        if (!existing) isUnique = true;
+        attempts++;
+    }
+    return code;
+};
 
 // 1. INSCRIPTION ET CRÉATION DE L'ÉLÈVE (Remote-First)
 exports.registerAndEnrollStudent = async (req, res) => {
     const { userId, role } = req.user;
     console.log(`📥 [POST] /register-enroll - Utilisateur ID: ${userId}, Rôle: ${role}`);
     console.log("Payload reçu:", JSON.stringify(req.body, null, 2));
+
+    const targetSalle = await Salle.findByPk(req.body.idSalle);
+    if (!targetSalle) return res.status(404).json({ error: "Salle introuvable." });
+    const idEtablissement = targetSalle.idEtablissement;
+
     const t = await sequelize.transaction();
     try {
         const data = req.body;
@@ -53,6 +84,8 @@ exports.registerAndEnrollStudent = async (req, res) => {
 
         // Étape B : Créer son inscription
         console.log(`📝 Création de l'inscription pour l'élève ID: ${student.idEleve} dans la salle ID: ${data.idSalle}`);
+        const codeInscription = await generateUniqueInscriptionCode(idEtablissement, data.idAnneeScolaire);
+
         const nouvelleInscription = await Inscription.create({
             idEleve: student.idEleve,
             idAnneeScolaire: data.idAnneeScolaire,
@@ -61,6 +94,7 @@ exports.registerAndEnrollStudent = async (req, res) => {
             ancienEtablissement: data.ancienEtablissement,
             nouveau: data.nouveau !== undefined ? data.nouveau : true,
             statut: "INSCRIT",
+            codeInscription: codeInscription,
             supprimer: false
         }, { transaction: t });
 
@@ -70,7 +104,8 @@ exports.registerAndEnrollStudent = async (req, res) => {
             message: "Élève enregistré et inscrit avec succès.",
             idEleve: student.idEleve,
             idInscription: nouvelleInscription.idInscription,
-            matricule: finalMatricule
+            matricule: finalMatricule,
+            codeInscription: codeInscription
         });
 
     } catch (error) {

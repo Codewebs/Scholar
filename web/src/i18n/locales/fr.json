@@ -254,7 +254,8 @@
         "all": "Établissement",
         "cycle": "Par Cycle",
         "classe": "Par Classe",
-        "salle": "Par Salle"
+        "salle": "Par Salle",
+        "all_fees": "Tous les frais"
       },
       "kpi": {
         "revenue": "Revenu Global",
@@ -284,7 +285,22 @@
       "success_rate_calc": "Ce taux est calculé en comparant la moyenne actuelle de chaque élève aux seuils de réussite définis pour chaque cycle.",
       "financial_reports_engine": "Moteur de Bilans Financiers",
       "a4_preview_ready": "Aperçu A4 Prêt",
-      "calculating": "Calcul des indicateurs..."
+      "calculating": "Calcul des indicateurs...",
+      "insights_title": "Commentaires Détaillés",
+      "ai_analysis": "Analyse Intelligente des Flux",
+      "insights": {
+        "intro": "Analyse du périmètre {{scope}} pour la période {{period}}",
+        "payments": "En général, les paiements de{{fee}}",
+        "morning_dominance": "se sont majoritairement concentrés en matinée",
+        "afternoon_dominance": "ont été plus denses en après-midi",
+        "peak_window": "Une performance record a été observée entre {{start}}h et {{end}}h avec un cumul de {{amount}} FCFA collectés",
+        "afternoon": "l'après-midi",
+        "morning": "la matinée",
+        "contrast": "En contraste, {{period}} n'a généré que {{amount}} FCFA sur la même plage horaire",
+        "progression": "en nette progression",
+        "regression": "en recul",
+        "comparison": "Ceci est {{direction}} par rapport à la période équivalente précédente avec une variation de {{percent}}% (soit une différence de {{diff}} FCFA)"
+      }
     },
     "modules": {
       "daily_journal": { "title": "Journal de Caisse", "desc": "Clôture & Détails journaliers" },

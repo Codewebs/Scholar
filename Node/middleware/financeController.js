@@ -8,6 +8,7 @@ const {
     PaiementFraisPeriscolaire,
     Eleve,
     Classe,
+    Cycle,
     AnneeScolaire,
     Inscription,
     Salle,
@@ -28,10 +29,13 @@ const { Op, QueryTypes } = require("sequelize");
 // 1. BIBLIOTHEQUE DES FRAIS
 exports.getFraisExigiblesLibrary = async (req, res) => {
     try {
-        const library = await FraisExigible.findAll({ where: { supprimer: false } });
+        const idEtablissement = req.headers['id-etablissement'];
+        const library = await FraisExigible.findAll({
+            where: { idEtablissement, supprimer: false }
+        });
         res.json(library);
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
+        console.error("❌ [CockpitAggregates] Error:", error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -39,10 +43,11 @@ exports.getFraisExigiblesLibrary = async (req, res) => {
 exports.createFraisExigible = async (req, res) => {
     try {
         const { fraisFr, fraisEn, description } = req.body;
-        const frais = await FraisExigible.create({ fraisFr, fraisEn, description });
+        const idEtablissement = req.headers['id-etablissement'];
+        const frais = await FraisExigible.create({ fraisFr, fraisEn, description, idEtablissement });
         res.status(201).json(frais);
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
+        console.error("❌ [CockpitAggregates] Error:", error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -53,8 +58,8 @@ exports.updateFraisExigible = async (req, res) => {
         await FraisExigible.update(req.body, { where: { idFraisExigible: id } });
         res.json({ message: "Frais mis à jour" });
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
@@ -68,7 +73,109 @@ exports.deleteFraisExigible = async (req, res) => {
         await FraisExigible.update({ supprimer: true }, { where: { idFraisExigible: id } });
         res.json({ message: "Frais supprimé" });
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 1c. CONFIGURATION RAPIDE (Frais & Salles)
+exports.quickSetupFraisAndSalles = async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { idAnneeScolaire, classes } = req.body; // classes: [{ idClasse, nomSalle }]
+        const idEtablissement = req.headers['id-etablissement'];
+
+        if (!idEtablissement || !idAnneeScolaire || !classes) {
+            throw new Error("Données manquantes pour la configuration rapide.");
+        }
+
+        // 1. Créer le frais global par défaut s'il n'existe pas
+        const [frais] = await FraisExigible.findOrCreate({
+            where: { idEtablissement, fraisFr: "Frais de scolarité (Défaut)", supprimer: false },
+            defaults: {
+                fraisEn: "Tuition Fees (Default)",
+                description: "Frais générés automatiquement pour la configuration rapide.",
+                idEtablissement
+            },
+            transaction: t
+        });
+
+        const results = [];
+
+        for (const item of classes) {
+            // 2. Créer le tarif à 1 FR pour cette classe
+            const [tarif] = await TarifFraisExigible.findOrCreate({
+                where: { idClasse: item.idClasse, idAnneeScolaire, idFraisExigible: frais.idFraisExigible },
+                defaults: {
+                    montantFraisExigible: 1,
+                    ordrePaiement: 1,
+                    supprimer: false
+                },
+                transaction: t
+            });
+
+            // 3. Créer la salle associée
+            const [salle] = await Salle.findOrCreate({
+                where: { nomSalle: item.nomSalle || "Salle A", idClasse: item.idClasse, idAnneeScolaire, supprimer: false },
+                defaults: {
+                    capacite: 50,
+                    idEtablissement
+                },
+                transaction: t
+            });
+
+            results.push({ idClasse: item.idClasse, idTarif: tarif.idTarifFraisExigible, idSalle: salle.idSalle });
+        }
+
+        await t.commit();
+        res.json({ message: "Configuration rapide terminée avec succès.", details: results });
+    } catch (error) {
+        if (t) await t.rollback();
+        console.error("❌ [QuickSetup] Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.importFraisFromPreviousYear = async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { idAnneeScolaire, idAnneePrecedente } = req.body;
+        const idEtablissement = req.headers['id-etablissement'];
+
+        // Get all tarifs from previous year
+        const previousTarifs = await TarifFraisExigible.findAll({
+            where: { idAnneeScolaire: idAnneePrecedente, supprimer: false },
+            include: [{ model: FraisExigible, as: "Frais", where: { idEtablissement } }]
+        });
+
+        if (previousTarifs.length === 0) {
+            return res.status(404).json({ error: "Aucun frais trouvé pour l'année précédente." });
+        }
+
+        const created = [];
+        for (const pt of previousTarifs) {
+            const [nt] = await TarifFraisExigible.findOrCreate({
+                where: {
+                    idClasse: pt.idClasse,
+                    idAnneeScolaire,
+                    idFraisExigible: pt.idFraisExigible
+                },
+                defaults: {
+                    montantFraisExigible: pt.montantFraisExigible,
+                    ordrePaiement: pt.ordrePaiement,
+                    dateLimite: pt.dateLimite,
+                    dateAlerte: pt.dateAlerte,
+                    supprimer: false
+                },
+                transaction: t
+            });
+            created.push(nt);
+        }
+
+        await t.commit();
+        res.json({ message: `${created.length} tarifs importés avec succès.`, count: created.length });
+    } catch (error) {
+        if (t) await t.rollback();
         res.status(500).json({ error: error.message });
     }
 };
@@ -84,8 +191,8 @@ exports.getTarifsByClasse = async (req, res) => {
         });
         res.json(tarifs);
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
@@ -115,7 +222,7 @@ exports.getCockpitAggregates = async (req, res) => {
         const wherePaiement = {
             idAnneeScolaire,
             annule: 0,
-            createdAt: { [Op.between]: [new Date(startDate), new Date(endDate)] }
+            datePaiement: { [Op.between]: [new Date(startDate), new Date(endDate)] }
         };
 
         const transactions = await PaiementFraisGlobal.findAll({
@@ -135,7 +242,7 @@ exports.getCockpitAggregates = async (req, res) => {
                     }]
                 }]
             }],
-            order: [['createdAt', 'ASC']]
+            order: [['datePaiement', 'ASC']]
         });
 
         let filteredTransactions = transactions;
@@ -153,10 +260,95 @@ exports.getCockpitAggregates = async (req, res) => {
 
         const totalEncaisse = filteredTransactions.reduce((sum, t) => sum + parseFloat(t.montantTotal || 0), 0);
 
+        // --- INSIGHTS ENGINE (Performance analysis & Temporal distribution) ---
+        const openingHour = parseInt(req.query.openingHour || 7);
+        const closingHour = parseInt(req.query.closingHour || 18);
+
+        // 1. Hourly Distribution Analysis
+        const hourlyStats = new Array(24).fill(0);
+        filteredTransactions.forEach(t => {
+            if (!t.datePaiement) return;
+            const hour = new Date(t.datePaiement).getHours();
+            hourlyStats[hour] += parseFloat(t.montantTotal || 0);
+        });
+
+        // Find peak 2-hour window within opening hours
+        let peakWindowAmount = 0;
+        let peakWindowStart = openingHour;
+        for (let h = openingHour; h <= closingHour - 2; h++) {
+            const windowTotal = hourlyStats[h] + hourlyStats[h+1];
+            if (windowTotal > peakWindowAmount) {
+                peakWindowAmount = windowTotal;
+                peakWindowStart = h;
+            }
+        }
+
+        // Compare morning (opening to 12h) vs afternoon (13h to closing)
+        const morningTotal = hourlyStats.slice(openingHour, 12).reduce((a, b) => a + b, 0);
+        const afternoonTotal = hourlyStats.slice(13, closingHour + 1).reduce((a, b) => a + b, 0);
+
+        // 2. Comparative Analysis (Temporal comparison)
+        let prevTotalEncaisse = 0;
+        let canCompare = false;
+        const currentStart = new Date(startDate);
+        const currentEnd = new Date(endDate);
+        let prevStart, prevEnd;
+
+        if (period === 'DAILY') {
+            prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 7);
+            prevEnd = new Date(currentEnd); prevEnd.setDate(prevEnd.getDate() - 7);
+            canCompare = true;
+        } else if (period === 'WEEKLY') {
+            prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 7);
+            prevEnd = new Date(currentEnd); prevEnd.setDate(prevEnd.getDate() - 7);
+            canCompare = true;
+        } else if (period === 'MONTHLY') {
+            prevStart = new Date(currentStart); prevStart.setMonth(prevStart.getMonth() - 1);
+            prevEnd = new Date(currentEnd); prevEnd.setMonth(prevEnd.getMonth() - 1);
+            canCompare = true;
+        }
+
+        // Validation against school year bounds (don't compare if previous range is before school year)
+        const schoolYear = await AnneeScolaire.findByPk(idAnneeScolaire);
+        if (schoolYear && prevStart < new Date(schoolYear.dateDebut)) canCompare = false;
+
+        if (canCompare) {
+            const prevTxs = await PaiementFraisGlobal.findAll({
+                where: { idAnneeScolaire, annule: 0, datePaiement: { [Op.between]: [prevStart, prevEnd] } },
+                include: (idSalle || idClasse || idCycle) ? [{
+                    model: Eleve,
+                    include: [{
+                        model: Inscription,
+                        where: { idAnneeScolaire, supprimer: false },
+                        include: [{
+                            model: Salle,
+                            include: [{ model: Classe, as: 'Classe', include: [{ model: Cycle, as: 'Cycle' }] }]
+                        }]
+                    }]
+                }] : []
+            });
+
+            let filteredPrev = prevTxs;
+            if (idSalle || idClasse || idCycle) {
+                filteredPrev = prevTxs.filter(t => {
+                    const inscriptions = t.Eleve?.Inscriptions || [];
+                    return inscriptions.some(ins => {
+                        if (idSalle && ins.idSalle != idSalle) return false;
+                        if (idClasse && ins.Salle?.idClasse != idClasse) return false;
+                        if (idCycle && ins.Salle?.Classe?.idCycle != idCycle) return false;
+                        return true;
+                    });
+                });
+            }
+            prevTotalEncaisse = filteredPrev.reduce((sum, t) => sum + parseFloat(t.montantTotal || 0), 0);
+        }
+
+        const progression = prevTotalEncaisse > 0 ? ((totalEncaisse - prevTotalEncaisse) / prevTotalEncaisse) * 100 : 0;
+
         const evolutionMap = {};
         filteredTransactions.forEach(t => {
-            if (!t.createdAt) return;
-            const dateObj = new Date(t.createdAt);
+            if (!t.datePaiement) return;
+            const dateObj = new Date(t.datePaiement);
             let label = (period === 'DAILY') ? `${dateObj.getHours()}h` : dateObj.toISOString().split('T')[0];
             evolutionMap[label] = (evolutionMap[label] || 0) + parseFloat(t.montantTotal || 0);
         });
@@ -165,13 +357,10 @@ exports.getCockpitAggregates = async (req, res) => {
         const studentWhere = { idAnneeScolaire, supprimer: false };
         if (idSalle) studentWhere.idSalle = parseInt(idSalle);
         const studentCount = await Inscription.count({
-            where: {
-                idAnneeScolaire,
-                supprimer: false,
-                ...(idSalle ? { idSalle: parseInt(idSalle) } : {})
-            },
+            where: studentWhere,
             include: (idClasse || idCycle) ? [{
                 model: Salle,
+                as: 'Salle',
                 required: true,
                 where: idClasse ? { idClasse: parseInt(idClasse) } : {},
                 include: idCycle ? [{
@@ -216,16 +405,15 @@ exports.getCockpitAggregates = async (req, res) => {
                     }] : []
                 }]
             });
-            totalAttenduUrgent += (tarif.montantFraisExigible * count);
+            totalAttenduUrgent += (parseFloat(tarif.montantFraisExigible || 0) * count);
         }
 
         if (tarifsUrgent.length > 0) {
             const tarifIds = tarifsUrgent.map(t => t.idTarifFraisExigible);
             totalRecouvreUrgent = await PaiementFraisExigible.sum('montantAlloue', {
-                where: { idTarifFraisExigible: { [Op.in]: tarifIds } },
+                where: { idTarifFraisExigible: { [Op.in]: tarifIds }, annule: 0 },
                 include: [{
                     model: PaiementFraisGlobal,
-                    as: 'PaiementFraisGlobal',
                     where: { annule: 0 },
                     required: true,
                     include: (idSalle || idClasse || idCycle) ? [{
@@ -259,11 +447,15 @@ exports.getCockpitAggregates = async (req, res) => {
         const recoveryRate = totalAttenduUrgent > 0 ? (totalRecouvreUrgent / totalAttenduUrgent) * 100 : 100;
 
         // Correction pour éviter l'ambiguïté sur idAnneeScolaire
-        const avgNote = await Note.findAll({
+        const avgNoteResult = await Note.findOne({
             attributes: [[sequelize.fn('AVG', sequelize.col('Note.note')), 'average']],
-            where: { idAnneeScolaire },
-            include: [{
+            where: {
+                idAnneeScolaire: idAnneeScolaire,
+                supprimer: false
+            },
+            include: (idSalle || idClasse || idCycle) ? [{
                 model: Inscription,
+                as: 'Inscription',
                 attributes: [],
                 where: {
                     supprimer: false,
@@ -272,6 +464,7 @@ exports.getCockpitAggregates = async (req, res) => {
                 required: true,
                 include: (idClasse || idCycle) ? [{
                     model: Salle,
+                    as: 'Salle',
                     attributes: [],
                     required: true,
                     where: idClasse ? { idClasse: parseInt(idClasse) } : {},
@@ -283,9 +476,10 @@ exports.getCockpitAggregates = async (req, res) => {
                         where: { idCycle: parseInt(idCycle) }
                     }] : []
                 }] : []
-            }],
+            }] : [],
             raw: true
-        }).then(res => parseFloat(res[0]?.average || 0));
+        });
+        const avgNote = parseFloat(avgNoteResult?.average || 0);
 
         const totalAbsences = await SuiviAbsence.count({
             where: { idAnneeScolaire },
@@ -317,7 +511,15 @@ exports.getCockpitAggregates = async (req, res) => {
                 evolution,
                 moyenne: filteredTransactions.length > 0 ? totalEncaisse / filteredTransactions.length : 0,
                 startDate,
-                endDate
+                endDate,
+                insights: {
+                    peakWindow: { start: peakWindowStart, end: peakWindowStart + 2, amount: peakWindowAmount },
+                    morningTotal,
+                    afternoonTotal,
+                    previousTotal: prevTotalEncaisse,
+                    progression,
+                    canCompare
+                }
             },
             students: {
                 total: studentCount,
@@ -331,8 +533,8 @@ exports.getCockpitAggregates = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
@@ -343,8 +545,8 @@ exports.checkTarifPayments = async (req, res) => {
         const count = await PaiementFraisExigible.count({ where: { idTarifFraisExigible: idTarif, annule: 0 } });
         res.json({ hasPayments: count > 0 });
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
@@ -357,8 +559,8 @@ exports.getAllTarifsOfYear = async (req, res) => {
         ]);
         res.json({ exigibles, periscolaires });
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
@@ -456,8 +658,8 @@ exports.getRecouvrementStats = async (req, res) => {
         }));
         res.json({ nbEleves, stats });
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
@@ -476,8 +678,8 @@ exports.getStudentPaymentDetails = async (req, res) => {
         const totalTotalDu = details.reduce((sum, item) => sum + item.montantDu, 0);
         res.json({ nomComplet: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(), classeLabel: `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}`, totalDejaVerse, totalTotalDu, resteGlobal: totalTotalDu - totalDejaVerse, frais: details });
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
@@ -496,8 +698,8 @@ exports.getClassesMissingFrais = async (req, res) => {
         }));
         res.json(result);
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
@@ -560,7 +762,7 @@ exports.getRegistrationReceiptData = async (req, res) => {
         }));
         const totalDejaVerse = fullHistory.reduce((sum, h) => sum + h.dejaPaye, 0);
         const totalTotalDu = fullHistory.reduce((sum, h) => sum + h.montantTotal, 0);
-        res.json({ schoolInfo: { name: school?.nomFr || "INSTITUT BILINGUE ROGER AMPERE", devise: school?.devise || "Discipline - Travail - Succès", ministry: school?.tutelle || "Ministère des Enseignements Secondaires", address: school?.adresse, bp: school?.bp, phones: school?.telephone1?.toString(), email: school?.email, authorizationNo: school?.numeroAgrement, logoUrl: school?.logo }, receiptInfo: { title: "REÇU DE PAIEMENT", receiptNo: `FS-${lastPayment.idPaiementFraisGlobal}`, schoolYear: ins.AnneeScolaire.libelleAnneeScolaire, dateTime: lastPayment.createdAt, operationTime: lastPayment.createdAt }, studentInfo: { matricule: ins.Eleve.matricule, fullName: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(), classLabel: `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}`, dateNaissance: ins.Eleve.dateNaissance, lieuNaissance: ins.Eleve.lieuNaissance, sexe: ins.Eleve.sexe === 'M' ? 'MASCULIN' : 'FEMININ', redoublant: ins.nouveau ? 'NON' : 'OUI' }, financialDetail: { nature: "Paiement frais de scolarité", amountDigits: lastPayment.montantTotal, amountWords: "...", paymentMode: lastPayment.modePaiement, balance: totalDejaVerse, remaining: totalTotalDu - totalDejaVerse, penalties: 0, printedBy: lastPayment.Caissier?.nom || "ADMINISTRATEUR", todayBreakdown, fullHistory }, validation: { cashierName: lastPayment.Caissier?.nom || "La Caisse", qrContent: `REF:${lastPayment.idPaiementFraisGlobal}-EL:${idEleve}` } });
+        res.json({ schoolInfo: { name: school?.nomFr || "INSTITUT BILINGUE ROGER AMPERE", devise: school?.devise || "Discipline - Travail - Succès", ministry: school?.tutelle || "Ministère des Enseignements Secondaires", address: school?.adresse, bp: school?.bp, phones: school?.telephone1?.toString(), email: school?.email, authorizationNo: school?.numeroAgrement, logoUrl: school?.logo }, receiptInfo: { title: "REÇU DE PAIEMENT", receiptNo: `FS-${lastPayment.idPaiementFraisGlobal}`, schoolYear: ins.AnneeScolaire.libelleAnneeScolaire, dateTime: lastPayment.datePaiement, operationTime: lastPayment.datePaiement }, studentInfo: { matricule: ins.Eleve.matricule, fullName: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(), classLabel: `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}`, dateNaissance: ins.Eleve.dateNaissance, lieuNaissance: ins.Eleve.lieuNaissance, sexe: ins.Eleve.sexe === 'M' ? 'MASCULIN' : 'FEMININ', redoublant: ins.nouveau ? 'NON' : 'OUI' }, financialDetail: { nature: "Paiement frais de scolarité", amountDigits: lastPayment.montantTotal, amountWords: "...", paymentMode: lastPayment.modePaiement, balance: totalDejaVerse, remaining: totalTotalDu - totalDejaVerse, penalties: 0, printedBy: lastPayment.Caissier?.nom || "ADMINISTRATEUR", todayBreakdown, fullHistory }, validation: { cashierName: lastPayment.Caissier?.nom || "La Caisse", qrContent: `REF:${lastPayment.idPaiementFraisGlobal}-EL:${idEleve}` } });
     } catch (error) {
         console.error("Error in getRegistrationReceiptData:", error);
         res.status(500).json({ error: error.message });
@@ -588,13 +790,13 @@ exports.annulerPaiement = async (req, res) => {
                 idEleve: paiementToCancel.idEleve,
                 idAnneeScolaire: paiementToCancel.idAnneeScolaire,
                 annule: 0,
-                createdAt: { [Op.gt]: paiementToCancel.createdAt }
+                datePaiement: { [Op.gt]: paiementToCancel.datePaiement }
             },
             transaction: t
         });
 
         if (moreRecent) {
-            throw new Error(`Impossible d'annuler cette transaction. Vous devez d'abord annuler la transaction la plus récente (#FS-${moreRecent.idPaiementFraisGlobal} du ${new Date(moreRecent.createdAt).toLocaleDateString()}) pour respecter l'ordre chronologique.`);
+            throw new Error(`Impossible d'annuler cette transaction. Vous devez d'abord annuler la transaction la plus récente (#FS-${moreRecent.idPaiementFraisGlobal} du ${new Date(moreRecent.datePaiement).toLocaleDateString()}) pour respecter l'ordre chronologique.`);
         }
 
         console.log(`[AUDIT] Annulation du paiement #FS-${idPaiementFraisGlobal} par l'utilisateur ID:${idCaissier}. Motif: ${motif}`);
@@ -652,10 +854,10 @@ exports.getSimpleRegistrationReceipt = async (req, res) => {
         const ins = await Inscription.findOne({ where: { idEleve, idAnneeScolaire, supprimer: false }, include: [{ model: Eleve }, { model: AnneeScolaire }, { model: Salle, include: [{ model: Classe, as: 'Classe' }] }] });
         if (!ins) return res.status(404).json({ error: "Inscription non trouvée." });
         const school = await Etablissement.findOne();
-        res.json({ schoolInfo: { name: school?.nomFr || "INSTITUT BILINGUE ROGER AMPERE", devise: school?.devise || "Discipline - Travail - Succès", ministry: school?.tutelle || "Ministère des Enseignements Secondaires", address: school?.adresse, bp: school?.bp, phones: school?.telephone1?.toString(), email: school?.email, logoUrl: school?.logo }, receiptInfo: { title: "FICHE D'INSCRIPTION", receiptNo: `INS-${ins.idInscription}`, schoolYear: ins.AnneeScolaire.libelleAnneeScolaire, dateTime: ins.createdAt }, studentInfo: { matricule: ins.Eleve.matricule, fullName: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(), classLabel: `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}`, dateNaissance: ins.Eleve.dateNaissance, lieuNaissance: ins.Eleve.lieuNaissance, sexe: ins.Eleve.sexe === 'M' ? 'MASCULIN' : 'FEMININ', redoublant: ins.nouveau ? 'NON' : 'OUI' }, validation: { qrContent: `INSCRIPTION:${ins.idInscription}-MAT:${ins.Eleve.matricule}` } });
+        res.json({ schoolInfo: { name: school?.nomFr || "INSTITUT BILINGUE ROGER AMPERE", devise: school?.devise || "Discipline - Travail - Succès", ministry: school?.tutelle || "Ministère des Enseignements Secondaires", address: school?.adresse, bp: school?.bp, phones: school?.telephone1?.toString(), email: school?.email, logoUrl: school?.logo }, receiptInfo: { title: "FICHE D'INSCRIPTION", receiptNo: `INS-${ins.idInscription}`, schoolYear: ins.AnneeScolaire.libelleAnneeScolaire, dateTime: ins.dateInscription }, studentInfo: { matricule: ins.Eleve.matricule, fullName: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(), classLabel: `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}`, dateNaissance: ins.Eleve.dateNaissance, lieuNaissance: ins.Eleve.lieuNaissance, sexe: ins.Eleve.sexe === 'M' ? 'MASCULIN' : 'FEMININ', redoublant: ins.nouveau ? 'NON' : 'OUI' }, validation: { qrContent: `INSCRIPTION:${ins.idInscription}-MAT:${ins.Eleve.matricule}` } });
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
@@ -686,8 +888,8 @@ exports.getBilanJournalier = async (req, res) => {
         const transactions = await PaiementFraisGlobal.findAll({ where: { idAnneeScolaire, annule: 0, [Op.and]: [sequelize.where(sequelize.fn('DATE', sequelize.col('PaiementFraisGlobal.createdAt')), targetDate)] }, include: [{ model: Eleve, attributes: ['nom', 'prenom', 'matricule'] }], order: [['createdAt', 'ASC']] });
         res.json({ date: targetDate, chartData: hourlyData.map(d => ({ label: `${d.hour}h`, value: parseFloat(d.total) })), transactions });
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
@@ -700,8 +902,8 @@ exports.getBilanMensuel = async (req, res) => {
         const dailyData = await sequelize.query(`SELECT DATE(createdAt) as day, SUM(montantTotal) as total FROM paiement_frais_global WHERE idAnneeScolaire = :idAnneeScolaire AND MONTH(createdAt) = :targetMonth AND YEAR(createdAt) = :targetYear AND annule = 0 GROUP BY day ORDER BY total DESC`, { replacements: { idAnneeScolaire, targetMonth, targetYear }, type: QueryTypes.SELECT });
         res.json({ period: `${targetMonth}/${targetYear}`, chartData: dailyData.map(d => { const dayStr = d.day instanceof Date ? d.day.toISOString().split('T')[0] : String(d.day); return { label: dayStr.split('-')[2], value: parseFloat(d.total) }; }), topDays: dailyData.slice(0, 5) });
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
@@ -713,8 +915,8 @@ exports.getBilanAnnuel = async (req, res) => {
         const chartData = monthLabels.map((label, index) => { const m = ((index + 8) % 12) + 1; const found = monthlyData.find(d => parseInt(d.month) === m); return { label, value: found ? parseFloat(found.total) : 0 }; });
         res.json({ chartData });
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
@@ -725,13 +927,30 @@ exports.getPerformanceComparison = async (req, res) => {
         const whereSalle = {};
         if (idCycle) whereSalle['$Classe.Cycle.idCycle$'] = idCycle;
         if (idEnseignement) whereSalle['$Classe.Cycle.idEnseignement$'] = idEnseignement;
-        const salles = await Salle.findAll({ include: [{ model: Classe, as: 'Classe', include: [{ model: require("../models").Cycle, as: 'Cycle' }] }], where: whereSalle });
-        const comparison = await Promise.all(salles.map(async (s) => { const stats = await exports.getRecouvrementStatsInternal(s.idClasse, idAnneeScolaire, s.idSalle); return { idSalle: s.idSalle, nomSalle: `${s.Classe.libelleClasseFr} ${s.nomSalle}`, cycle: s.Classe.Cycle.libelleCycleFr, totalAttendu: stats.totalAttendu, totalEncaisse: stats.totalEncaisse, rp: stats.totalAttendu > 0 ? (stats.totalEncaisse / stats.totalAttendu) * 100 : 0 }; }));
+        const salles = await Salle.findAll({
+            include: [{
+                model: Classe,
+                as: 'Classe',
+                include: [{ model: Cycle, as: 'Cycle' }]
+            }],
+            where: whereSalle
+        });
+        const comparison = await Promise.all(salles.map(async (s) => {
+            const stats = await exports.getRecouvrementStatsInternal(s.idClasse, idAnneeScolaire, s.idSalle);
+            return {
+                idSalle: s.idSalle,
+                nomSalle: `${s.Classe.libelleClasseFr} ${s.nomSalle}`,
+                cycle: s.Classe.Cycle.libelleCycleFr,
+                totalAttendu: stats.totalAttendu,
+                totalEncaisse: stats.totalEncaisse,
+                rp: stats.totalAttendu > 0 ? (stats.totalEncaisse / stats.totalAttendu) * 100 : 0
+            };
+        }));
         comparison.sort((a, b) => b.rp - a.rp);
         res.json(comparison);
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
@@ -760,17 +979,20 @@ exports.getInsolvablesList = async (req, res) => {
         }
         res.json(result);
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
 exports.getFraisPeriscolairesLibrary = async (req, res) => {
     try {
-        const library = await FraisActivitePeriscolaire.findAll({ where: { supprimer: false } });
+        const idEtablissement = req.headers['id-etablissement'];
+        const library = await FraisActivitePeriscolaire.findAll({
+            where: { idEtablissement, supprimer: false }
+        });
         res.json(library);
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
+        console.error("❌ [CockpitAggregates] Error:", error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -778,10 +1000,13 @@ exports.getFraisPeriscolairesLibrary = async (req, res) => {
 exports.createFraisPeriscolaire = async (req, res) => {
     try {
         const { libelleFr, libelleEn, description } = req.body;
-        const frais = await FraisActivitePeriscolaire.create({ libelleFr, libelleEn, description });
+        const idEtablissement = req.headers['id-etablissement'];
+        const frais = await FraisActivitePeriscolaire.create({
+            libelleFr, libelleEn, description, idEtablissement
+        });
         res.status(201).json(frais);
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
+        console.error("❌ [CockpitAggregates] Error:", error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -792,8 +1017,8 @@ exports.updateFraisPeriscolaire = async (req, res) => {
         await FraisActivitePeriscolaire.update(req.body, { where: { idFraisActivitePeriscolaire: id } });
         res.json({ message: "Frais périscolaire mis à jour" });
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
@@ -805,8 +1030,8 @@ exports.deleteFraisPeriscolaire = async (req, res) => {
         await FraisActivitePeriscolaire.update({ supprimer: true }, { where: { idFraisActivitePeriscolaire: id } });
         res.json({ message: "Frais périscolaire supprimé" });
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
@@ -848,8 +1073,8 @@ exports.getStudentPeriscolaireDetails = async (req, res) => {
         }));
         res.json({ nomComplet: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(), classeLabel: ins.Salle ? `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}` : "N/A", totalDejaVerse: details.reduce((sum, item) => sum + item.montantPaye, 0), totalTotalDu: details.reduce((sum, item) => sum + item.montantDu, 0), resteGlobal: details.reduce((sum, item) => sum + item.reste, 0), frais: details });
     } catch (error) {
-        console.error("Error in getCockpitAggregates:", error);
-        res.status(500).json({ error: error.message });
+        console.error("❌ [CockpitAggregates] Error:", error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
 
