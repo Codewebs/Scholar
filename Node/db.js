@@ -23,7 +23,7 @@ console.log("   - SSL  :", process.env.DB_SSL || "DISABLED");
 const sequelize = new Sequelize(
   process.env.DB_NAME || "scholar_db",
   process.env.DB_USER || "root",
-  process.env.DB_PASS || "",
+  process.env.DB_PASS || process.env.DB_PASSWORD || "", // Supporte les deux clés !
   {
     host: process.env.DB_HOST || "localhost",
     port: parseInt(process.env.DB_PORT) || 3306,
@@ -36,7 +36,7 @@ const sequelize = new Sequelize(
     dialectOptions: {
       charset: 'utf8mb4',
       ssl: (process.env.DB_SSL === 'REQUIRED' || process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production') ? {
-        rejectUnauthorized: false // Permet de se connecter même si Render n'a pas le certificat physique d'Aiven
+        rejectUnauthorized: false
       } : false
     },
   }
