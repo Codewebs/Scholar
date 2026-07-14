@@ -13,7 +13,7 @@ interface ServerConfigModalProps {
 const ServerConfigModal: React.FC<ServerConfigModalProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
   const { settings, updateSetting, resetSettings } = useUI();
-  const [url, setUrl] = useState(localStorage.getItem('server_url') || 'http://localhost:4000');
+  const [url, setUrl] = useState(localStorage.getItem('server_url') || (import.meta as any).env.VITE_API_BASE_URL || 'https://scholar-0ko6.onrender.com');
   const [saved, setSaved] = useState(false);
 
   if (!isOpen) return null;
@@ -82,7 +82,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({ isOpen, onClose }
                 label={t('server_config.server_url')}
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="http://192.168.1.100:4000"
+                placeholder="https://scholar-0ko6.onrender.com"
             />
           </div>
 

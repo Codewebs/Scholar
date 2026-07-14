@@ -46,7 +46,7 @@ const SettingsPage: React.FC = () => {
   const [isLangModalOpen, setIsLangModalOpen] = useState(false);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isYearModalOpen, setIsYearModalOpen] = useState(false);
-  const serverIp = localStorage.getItem('server_ip') || '192.168.0.50';
+  const serverUrl = localStorage.getItem('server_url') || (import.meta as any).env.VITE_API_BASE_URL || 'https://scholar-0ko6.onrender.com';
 
   useEffect(() => {
     localStorage.setItem('sync_enabled', isSyncEnabled.toString());
@@ -315,7 +315,7 @@ const SettingsPage: React.FC = () => {
             icon={Server}
             iconColor="bg-slate-600"
             title={t('settings.items.server_config')}
-            subtitle={serverIp}
+            subtitle={serverUrl}
             onClick={() => setIsConfigOpen(true)}
             showDivider={false}
           />

@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const getBaseUrl = () => {
-  return localStorage.getItem('server_url') || (import.meta as any).env.VITE_API_BASE_URL || 'http://192.168.0.50:4000';
+  return localStorage.getItem('server_url') || (import.meta as any).env.VITE_API_BASE_URL || 'https://scholar-0ko6.onrender.com';
 };
 
 const api = axios.create({
