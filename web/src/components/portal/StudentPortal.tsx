@@ -10,12 +10,12 @@ import {
   BookOpen,
   TrendingUp,
   Clock,
-  Award,
   Bell,
   Download,
   CreditCard,
   FileText
 } from 'lucide-react';
+import { clsx } from 'clsx';
 
 const StudentPortal: React.FC = () => {
   const { user } = useAuth();

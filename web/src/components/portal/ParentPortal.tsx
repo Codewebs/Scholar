@@ -105,14 +105,14 @@ const ParentPortal: React.FC = () => {
             <div className="flex bg-gray-50 p-1.5 rounded-[24px] border border-gray-100 shadow-inner">
                 {children.map(child => (
                     <button
-                        key={child.idServeur}
+                        key={child.idEleve}
                         onClick={() => setSelectedChild(child)}
                         className={clsx(
                             "px-6 py-2.5 rounded-[20px] text-[10px] font-black uppercase tracking-widest transition-all",
-                            selectedChild?.idServeur === child.idServeur ? "bg-black text-white shadow-xl" : "text-gray-400 hover:text-black"
+                            selectedChild?.idEleve === child.idEleve ? "bg-black text-white shadow-xl" : "text-gray-400 hover:text-black"
                         )}
                     >
-                        {child.nom.split(' ')[0]}
+                        {child.nom?.split(' ')[0] || 'Enfant'}
                     </button>
                 ))}
             </div>
@@ -147,7 +147,7 @@ const ParentPortal: React.FC = () => {
 
                     <div className="text-center md:text-left flex-1">
                         <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
-                            <h3 className="text-3xl font-black uppercase tracking-tighter leading-none">{selectedChild.nom} {selectedChild.prenom}</h3>
+                            <h3 className="text-3xl font-black uppercase tracking-tighter leading-none">{selectedChild.nom} {selectedChild.prenom || ''}</h3>
                             <span className="bg-black text-white text-[9px] font-black px-6 py-2 rounded-full uppercase tracking-[0.2em] w-fit mx-auto md:mx-0 shadow-lg">
                                 {selectedChild.classeLabel || 'N/A'}
                             </span>
@@ -159,7 +159,9 @@ const ParentPortal: React.FC = () => {
                             </div>
                             <div className="flex items-center space-x-2 bg-gray-50 px-4 py-2 rounded-xl">
                                 <span className="text-[8px] font-black text-[#9E9E9E] uppercase tracking-widest">Né(e) le:</span>
-                                <span className="text-[10px] font-black">{new Date(selectedChild.dateNaissance).toLocaleDateString()}</span>
+                                <span className="text-[10px] font-black">
+                                    {selectedChild.dateNaissance ? new Date(selectedChild.dateNaissance).toLocaleDateString() : 'N/A'}
+                                </span>
                             </div>
                         </div>
                     </div>
