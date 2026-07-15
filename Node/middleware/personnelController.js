@@ -22,8 +22,8 @@ const USAGER_ROLES = ["PARENT", "ELEVE"];
 // 1. ENVOYER UNE DEMANDE
 exports.envoyerDemande = async (req, res) => {
     try {
-        const { idUtilisateur, idEtablissement, profilDemande, nom, prenom, telephone1, email, specialites, code } = req.body;
-        console.log(`📩 [PersonnelCtrl] Nouvelle demande d'inscription: User=${idUtilisateur}, School=${idEtablissement}, Profil=${profilDemande}`);
+        const { idUtilisateur, idEtablissement, profilDemande, nom, prenom, telephone1, email, specialites, code, idEleveLinked } = req.body;
+        console.log(`📩 [PersonnelCtrl] Nouvelle demande d'inscription: User=${idUtilisateur}, School=${idEtablissement}, Profil=${profilDemande}, LinkChild=${idEleveLinked}`);
 
         // 1. Vérifier si bloqué
         const blocked = await InscriptionPersonnel.findOne({
@@ -110,7 +110,7 @@ exports.envoyerDemande = async (req, res) => {
 
         // 6. Création de la demande
         const demande = await DemandeInscriptionPersonnel.create({
-            idUtilisateur, idEtablissement, profilDemande, nom, prenom, telephone1, email, specialites
+            idUtilisateur, idEtablissement, profilDemande, nom, prenom, telephone1, email, specialites, idEleveLinked
         });
 
         console.log(`✅ [PersonnelCtrl] Demande créée avec succès ID: ${demande.idDemande}`);
@@ -128,11 +128,13 @@ exports.validerDemande = async (req, res) => {
         const {
             idDemande, idAnneeScolaire, matricule, dateNaissance, lieuNaissance,
             sexe, role, diplomes, permissionsAjoutees, permissionsRetirees,
-            idEleveLinked // Optionnel: ID de l'élève à lier si rôle ELEVE ou PARENT
+            idEleveLinked: bodyIdEleveLinked // Optionnel: ID de l'élève à lier si rôle ELEVE ou PARENT
         } = req.body;
 
         const demande = await DemandeInscriptionPersonnel.findByPk(idDemande);
         if (!demande) return res.status(404).json({ error: "Demande introuvable." });
+
+        const idEleveLinked = bodyIdEleveLinked || demande.idEleveLinked;
 
         // Update diplomas in global user profile if provided
         if (diplomes) {

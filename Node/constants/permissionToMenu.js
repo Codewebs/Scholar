@@ -66,7 +66,14 @@ const PermissionToMenu = {
     "VIEW_STUDENT_LIST": "Voir Liste Élèves",
     "VIEW_PAYMENT_STATUS": "Voir Statut Paiement",
     "VIEW_MY_PAYMENT_STATUS": "Voir My Statut Paiement",
-    "EDIT_STUDENT_NOTE": "Modifier Note Élève"
+    "EDIT_STUDENT_NOTE": "Modifier Note Élève",
+    "VIEW_MY_CHILDREN": "Mes Enfants",
+    "VIEW_CHILD_GRADES": "Notes de l'enfant",
+    "VIEW_CHILD_ATTENDANCE": "Assiduité de l'enfant",
+    "VIEW_CHILD_FINANCE": "Finance de l'enfant",
+    "VIEW_MY_GRADES": "Mes Notes",
+    "VIEW_MY_ATTENDANCE": "Mon Assiduité",
+    "VIEW_MY_FINANCE": "Ma Scolarité"
 };
 
 module.exports = PermissionToMenu;

@@ -26,6 +26,9 @@ const reports = require("./reportRoutes");
 const institutionalHeader = require("./institutionalHeader");
 const trackingRoutes = require("./tracking");
 
+// Import du modèle pour le keep-alive de la BD
+const Qualite = require("../models/qualite");
+
 // Montage des endpoints
 app.use((req, res, next) => {
     console.log(`🛣️ [Router Index] Requête reçue: ${req.method} ${req.url}`);
@@ -34,7 +37,19 @@ app.use((req, res, next) => {
 
 // Endpoint de santé pour Uptimerobot (Public)
 app.get("/health", (req, res) => {
+    // 1. Réponse immédiate pour Render (Serveur)
     res.status(200).json({ status: "ok", message: "Server is awake" });
+
+    // 2. Opération DB en arrière-plan pour Aiven (Base de données)
+    // Non-bloquant pour la réponse health, mais maintient la connexion active
+    // On ajoute un timestamp dans la description pour forcer une écriture réelle
+    console.log("Check de Santé")
+    Qualite.upsert({
+        abreviation: "AGENT ",
+        description: `Personnel (Actif: ${new Date().toISOString()})`,
+        libelleQualite: "PERSONNEL",
+        supprimer: 0
+    }).catch(err => console.warn(`🛰️ [Health Check] DB Activity failed: ${err.message}`));
 });
 
 // Placer les routes spécifiques AVANT les routes génériques ou montées sur "/"

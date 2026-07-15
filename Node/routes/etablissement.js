@@ -139,4 +139,39 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+// Rechercher des élèves dans un établissement
+router.get("/:schoolId/students/search", async (req, res) => {
+  try {
+    const { schoolId } = req.params;
+    const { q } = req.query;
+    const { Eleve, Inscription, AnneeScolaire } = require("../models");
+
+    const students = await Eleve.findAll({
+      where: {
+        [Op.or]: [
+          { nom: { [Op.like]: `%${q}%` } },
+          { prenom: { [Op.like]: `%${q}%` } }
+        ],
+        supprimer: false
+      },
+      include: [{
+        model: Inscription,
+        required: true,
+        where: { supprimer: false },
+        include: [{
+            model: AnneeScolaire,
+            required: true,
+            where: { idEtablissement: schoolId, supprimer: false }
+        }]
+      }],
+      limit: 20
+    });
+
+    res.json(students);
+  } catch (err) {
+    console.error(`❌ [SchoolRoute] Erreur recherche élèves:`, err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

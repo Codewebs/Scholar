@@ -16,7 +16,8 @@ const DemandeInscriptionPersonnel = sequelize.define("DemandeInscriptionPersonne
     defaultValue: 'EN_ATTENTE'
   },
   motifRejet: { type: DataTypes.STRING(255), allowNull: true },
-  specialites: { type: DataTypes.TEXT, allowNull: true } // JSON string or comma separated IDs for teachers
+  specialites: { type: DataTypes.TEXT, allowNull: true }, // JSON string or comma separated IDs for teachers
+  idEleveLinked: { type: DataTypes.BIGINT, allowNull: true }
 }, {
   tableName: "demande_inscription_personnel",
   timestamps: true
