@@ -141,6 +141,7 @@ fun InitialSetupScreen(
                         SetupStep.SELECT_LANGUAGE -> LanguageStep(viewModel)
                         SetupStep.WELCOME -> WelcomeStep(viewModel)
                         SetupStep.SELECT_SCHOOL -> SchoolStep(viewModel, onNavigateToTracker)
+                        SetupStep.SEARCH_CHILD -> SearchChildStep(viewModel)
                         SetupStep.SELECT_PROFILE -> ProfileStep(viewModel, onNavigateToTracker)
                         SetupStep.SELECT_YEAR -> YearStep(viewModel)
                         SetupStep.SECURITY_PIN -> PinStep(viewModel, onSetupComplete)
@@ -168,8 +169,57 @@ fun LandingStep(viewModel: InitialSetupViewModel, onNavigateToTracker: () -> Uni
         },
         onNavigateToJoinStudent = { 
             viewModel.startJoinStudent()
+        },
+        onNavigateToJoinParent = {
+            viewModel.startJoinParent()
         }
     )
+}
+
+@Composable
+fun SearchChildStep(viewModel: InitialSetupViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
+    
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("Link your child", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text("Search for your child by their full name to link your account.", color = Color(0xFF9E9E9E))
+
+        ModernTextField(
+            value = uiState.childSearchQuery,
+            onValueChange = { viewModel.searchStudents(it) },
+            label = "Student Name",
+            placeholder = "Ex: Jean Dupont"
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        uiState.foundStudents.forEach { student ->
+            Surface(
+                onClick = { viewModel.selectChild(student) },
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, if (student.idServeur == uiState.selectedChild?.idServeur) Color.Black else Color(0xFF9E9E9E).copy(alpha = 0.2f)),
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.School, null, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("${student.nom} ${student.prenom ?: ""}", fontWeight = FontWeight.Bold)
+                        Text("Matricule: ${student.matricule ?: "N/A"}", style = MaterialTheme.typography.bodySmall, color = Color(0xFF9E9E9E))
+                    }
+                    if (student.idServeur == uiState.selectedChild?.idServeur) Icon(Icons.Default.CheckCircle, null)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+        ModernButton(
+            text = "Confirm and Link",
+            onClick = { viewModel.validateSchool { } },
+            enabled = uiState.selectedChild != null
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -261,6 +311,11 @@ fun SummarySection(state: SetupUiState, onStepClick: (SetupStep) -> Unit) {
             val canChange = (state.availableProfiles.size > 1)
             SummaryItem("Profile", it, enabled = canChange) { 
                 onStepClick(SetupStep.SELECT_PROFILE) 
+            }
+        }
+        state.selectedChild?.let {
+            SummaryItem("Child", "${it.nom} ${it.prenom ?: ""}") {
+                onStepClick(SetupStep.SEARCH_CHILD)
             }
         }
         state.selectedYear?.let {

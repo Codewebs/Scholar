@@ -20,6 +20,8 @@ export interface DemandeInscriptionPayload {
     telephone1: number;
     email: string | null;
     specialites: string | null;
+    code?: string;
+    idEleveLinked?: number | null;
 }
 
 export const setupService = {
@@ -46,4 +48,7 @@ export const setupService = {
 
     getMatieres: () =>
         api.get<MatiereEntity[]>(`/pedagogy/matieres`),
+
+    searchStudents: (schoolId: number, query: string) =>
+        api.get<any[]>(`/etablissement/${schoolId}/students/search`, { params: { q: query } }),
 };

@@ -31,7 +31,8 @@ data class DemandeInscriptionPayload(
     val email: String?,
     val specialites: String?,
     val permissionsAjoutees: List<String>? = null,
-    val permissionsRetirees: List<String>? = null
+    val permissionsRetirees: List<String>? = null,
+    val idEleveLinked: Long? = null
 )
 
 data class ValidationDemandePayload(

@@ -17,6 +17,8 @@ import { clsx } from 'clsx';
 import ServerConfigModal from '../components/ServerConfigModal';
 import { useUI } from '../context/UIContext';
 import { useTranslation } from 'react-i18next';
+import ParentPortal from '../components/portal/ParentPortal';
+import StudentPortal from '../components/portal/StudentPortal';
 
 const Dashboard: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -71,6 +73,9 @@ const Dashboard: React.FC = () => {
   }, [selectedSchool, selectedYear]);
 
   const flatMenuItems = menuGroups.flatMap(g => g.items).filter(item => !item.permission || hasPermission(item.permission));
+
+  const isParent = user?.role === 'PARENT';
+  const isStudent = user?.role === 'ELEVE';
 
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
@@ -295,76 +300,82 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Grid */}
-      <div
-        id="dashboard-grid"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-        style={{ gap: `${1.5 * settings.globalDensity}rem` }}
-      >
-        {flatMenuItems.map((item, idx) => {
-          const theme = cardTheme(item.title);
-          const translatedTitle = t(item.translationKey);
-          return (
-            <Link
-              key={idx}
-              to={item.path}
-              className="group bg-white border border-border rounded-[24px] hover:border-black hover:shadow-xl transition-all duration-300 flex flex-col justify-between relative overflow-hidden"
-              style={{
-                padding: `${1.5 * cardScale}rem`,
-                minHeight: `${170 * cardScale}px`
-              }}
-            >
-              <div className="flex justify-between items-start relative z-10">
-                <div
-                    className={clsx("rounded-soft shadow-sm transition-all duration-300", theme.badge)}
-                    style={{ padding: `${0.75 * cardScale}rem` }}
-                >
-                  <item.icon size={24 * cardScale} className={`${theme.icon} transition-colors`} />
-                </div>
-                <div className="w-3 h-3 rounded-full bg-black/10 shadow-[0_0_12px_rgba(0,0,0,0.08)] animate-pulse"></div>
-              </div>
-              <div className="relative z-10" style={{ marginTop: `${1.5 * cardScale}rem` }}>
-                <h3
-                    className={clsx("font-black uppercase tracking-tight mb-1 transition-transform duration-300 group-hover:translate-x-1", theme.title)}
-                    style={{ fontSize: `${1.125 * textScale}rem` }}
-                >
-                    {translatedTitle}
-                </h3>
-                <p
-                    className="font-black uppercase tracking-[0.26em] text-black opacity-80"
-                    style={{ fontSize: `${11 * textScale}px` }}
-                >
-                    {t('dashboard.manage_module', { title: translatedTitle.toLowerCase() })}
-                </p>
-              </div>
-              <div className="absolute -right-6 -bottom-6 opacity-[0.04] group-hover:opacity-[0.08] group-hover:scale-110 transition-all duration-700 pointer-events-none">
-                <item.icon size={130 * cardScale} className="text-black/5" />
-              </div>
-            </Link>
-          );
-        })}
-
-        <button
-            className="border-2 border-dashed border-border rounded-[24px] hover:border-black hover:bg-gray-50 transition-all flex flex-col items-center justify-center space-y-3 group"
-            style={{
-                padding: `${1.5 * cardScale}rem`,
-                minHeight: `${170 * cardScale}px`
-            }}
+      {/* Portal or Main Grid */}
+      {isParent ? (
+          <ParentPortal />
+      ) : isStudent ? (
+          <StudentPortal />
+      ) : (
+        <div
+            id="dashboard-grid"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            style={{ gap: `${1.5 * settings.globalDensity}rem` }}
         >
-          <div
-            className="bg-gray-100 rounded-full group-hover:bg-black group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-xl group-hover:shadow-black/20"
-            style={{ padding: `${0.75 * cardScale}rem` }}
-          >
-            <Plus size={24 * cardScale} />
-          </div>
-          <span
-            className="font-black uppercase tracking-[0.3em] text-[#9E9E9E] group-hover:text-black"
-            style={{ fontSize: `${10 * textScale}px` }}
-          >
-            {t('dashboard.add_button')}
-          </span>
-        </button>
-      </div>
+            {flatMenuItems.map((item, idx) => {
+            const theme = cardTheme(item.title);
+            const translatedTitle = t(item.translationKey);
+            return (
+                <Link
+                key={idx}
+                to={item.path}
+                className="group bg-white border border-border rounded-[24px] hover:border-black hover:shadow-xl transition-all duration-300 flex flex-col justify-between relative overflow-hidden"
+                style={{
+                    padding: `${1.5 * cardScale}rem`,
+                    minHeight: `${170 * cardScale}px`
+                }}
+                >
+                <div className="flex justify-between items-start relative z-10">
+                    <div
+                        className={clsx("rounded-soft shadow-sm transition-all duration-300", theme.badge)}
+                        style={{ padding: `${0.75 * cardScale}rem` }}
+                    >
+                    <item.icon size={24 * cardScale} className={`${theme.icon} transition-colors`} />
+                    </div>
+                    <div className="w-3 h-3 rounded-full bg-black/10 shadow-[0_0_12px_rgba(0,0,0,0.08)] animate-pulse"></div>
+                </div>
+                <div className="relative z-10" style={{ marginTop: `${1.5 * cardScale}rem` }}>
+                    <h3
+                        className={clsx("font-black uppercase tracking-tight mb-1 transition-transform duration-300 group-hover:translate-x-1", theme.title)}
+                        style={{ fontSize: `${1.125 * textScale}rem` }}
+                    >
+                        {translatedTitle}
+                    </h3>
+                    <p
+                        className="font-black uppercase tracking-[0.26em] text-black opacity-80"
+                        style={{ fontSize: `${11 * textScale}px` }}
+                    >
+                        {t('dashboard.manage_module', { title: translatedTitle.toLowerCase() })}
+                    </p>
+                </div>
+                <div className="absolute -right-6 -bottom-6 opacity-[0.04] group-hover:opacity-[0.08] group-hover:scale-110 transition-all duration-700 pointer-events-none">
+                    <item.icon size={130 * cardScale} className="text-black/5" />
+                </div>
+                </Link>
+            );
+            })}
+
+            <button
+                className="border-2 border-dashed border-border rounded-[24px] hover:border-black hover:bg-gray-50 transition-all flex flex-col items-center justify-center space-y-3 group"
+                style={{
+                    padding: `${1.5 * cardScale}rem`,
+                    minHeight: `${170 * cardScale}px`
+                }}
+            >
+            <div
+                className="bg-gray-100 rounded-full group-hover:bg-black group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-xl group-hover:shadow-black/20"
+                style={{ padding: `${0.75 * cardScale}rem` }}
+            >
+                <Plus size={24 * cardScale} />
+            </div>
+            <span
+                className="font-black uppercase tracking-[0.3em] text-[#9E9E9E] group-hover:text-black"
+                style={{ fontSize: `${10 * textScale}px` }}
+            >
+                {t('dashboard.add_button')}
+            </span>
+            </button>
+        </div>
+      )}
 
       <ServerConfigModal isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
     </div>

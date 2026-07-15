@@ -107,6 +107,12 @@ interface ApiService {
     @GET("etablissement/user/{userId}")
     suspend fun getUserSchools(@Path("userId") userId: Long): Response<List<com.indiza.scholar.model.EtablissementEntity>>
 
+    @GET("etablissement/{schoolId}/students/search")
+    suspend fun searchStudentsBySchool(
+        @Path("schoolId") schoolId: Long,
+        @Query("q") query: String
+    ): Response<List<com.indiza.scholar.model.EleveEntity>>
+
     @POST("etablissement")
     suspend fun createSchool(@Body school: com.indiza.scholar.model.EtablissementEntity): Response<com.indiza.scholar.model.EtablissementEntity>
 

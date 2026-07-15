@@ -126,7 +126,17 @@ enum class AcademicPermission(
     PRINT_SCHOOL_YEAR_INFO("Imprimer Info Année", "Print School Year Info", "Imprimer le calendrier", "Print the calendar"),
     COLLECT_SCHOOL_YEAR_INFO("Rapport Annuel", "School Year Report", "Générer le rapport de l'année", "Generate the year report"),
     VIEW_SCHOOL_YEAR_INFO("Voir année scolaire", "View School Year", "Permet de voir l'année scolaire de l'ecole actuel", "View the school year"),
-    COLLECT_ALL_SCHOOL_YEARS_INFO("Archives", "All School Years Info", "Accéder aux archives des années", "Access year archives");
+    COLLECT_ALL_SCHOOL_YEARS_INFO("Archives", "All School Years Info", "Accéder aux archives des années", "Access year archives"),
+
+    // --- Portal Permissions (Parent/Student) ---
+    VIEW_MY_CHILDREN("Mes Enfants", "My Children", "Consulter la liste de ses enfants", "View children list"),
+    VIEW_CHILD_GRADES("Notes de l'enfant", "Child Grades", "Consulter les notes de ses enfants", "View children's grades"),
+    VIEW_CHILD_ATTENDANCE("Assiduité de l'enfant", "Child Attendance", "Consulter les absences de ses enfants", "View children's attendance"),
+    VIEW_CHILD_FINANCE("Finance de l'enfant", "Child Finance", "Consulter les paiements de ses enfants", "View children's finance"),
+
+    VIEW_MY_GRADES("Mes Notes", "My Grades", "Consulter ses notes personnelles", "View own grades"),
+    VIEW_MY_ATTENDANCE("Mon Assiduité", "My Attendance", "Consulter ses propres absences", "View own attendance"),
+    VIEW_MY_FINANCE("Ma Scolarité", "My Finance", "Consulter ses propres paiements", "View own finance");
 
     fun label(lang: String): String = if (lang == "en") labelEn else labelFr
     fun description(lang: String): String = if (lang == "en") descriptionEn else descriptionFr
@@ -493,8 +503,22 @@ enum class AcademicRole(
     ), Icons.Default.School, Color(0xFF2980B9)),
     CONSEILLER_ORIENTATION(emptySet(), Icons.Default.Psychology, Color(0xFF16A085)),
     INFIRMIER(emptySet(), Icons.Default.LocalHospital, Color(0xFFC0392B)),
-    PARENT(emptySet(), Icons.Default.FamilyRestroom, Color(0xFF34495E)),
-    ELEVE(emptySet(), Icons.Default.Person, Color(0xFF7F8C8D)),
+    PARENT(setOf(
+        AcademicPermission.DASHBOARD_ETABLISSEMENT,
+        AcademicPermission.VIEW_MY_CHILDREN,
+        AcademicPermission.VIEW_CHILD_GRADES,
+        AcademicPermission.VIEW_CHILD_ATTENDANCE,
+        AcademicPermission.VIEW_CHILD_FINANCE,
+        AcademicPermission.VIEW_MY_PAYMENT_STATUS,
+        AcademicPermission.SUMMARY
+    ), Icons.Default.FamilyRestroom, Color(0xFF34495E)),
+    ELEVE(setOf(
+        AcademicPermission.DASHBOARD_ETABLISSEMENT,
+        AcademicPermission.VIEW_MY_GRADES,
+        AcademicPermission.VIEW_MY_ATTENDANCE,
+        AcademicPermission.VIEW_MY_FINANCE,
+        AcademicPermission.SUMMARY
+    ), Icons.Default.Person, Color(0xFF7F8C8D)),
     AGENT_ENTRETIEN(emptySet(), Icons.Default.CleaningServices, Color(0xFFBDC3C7)),
     PERSONNEL_CANTINE(emptySet(), Icons.Default.Restaurant, Color(0xFFE67E22)),
 

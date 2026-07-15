@@ -28,7 +28,8 @@ import com.indiza.scholar.utils.ValidationUtils
 fun LandingScreen(
     onNavigateToCreate: (String, String, String) -> Unit, // pays, ville, arrete
     onNavigateToJoinStaff: () -> Unit,
-    onNavigateToJoinStudent: () -> Unit
+    onNavigateToJoinStudent: () -> Unit,
+    onNavigateToJoinParent: () -> Unit
 ) {
     var step by remember { mutableIntStateOf(0) } // 0: Landing, 1: Rejoindre
     var showCreateSheet by remember { mutableStateOf(false) }
@@ -83,7 +84,8 @@ fun LandingScreen(
                 JoinOptions(
                     onBack = { step = 0 },
                     onStaff = { onNavigateToJoinStaff() },
-                    onStudent = { onNavigateToJoinStudent() }
+                    onStudent = { onNavigateToJoinStudent() },
+                    onParent = { onNavigateToJoinParent() }
                 )
             }
         }
@@ -141,7 +143,7 @@ fun CreateSchoolLandingForm(onConfirm: (String, String, String) -> Unit) {
 }
 
 @Composable
-fun JoinOptions(onBack: () -> Unit, onStaff: () -> Unit, onStudent: () -> Unit) {
+fun JoinOptions(onBack: () -> Unit, onStaff: () -> Unit, onStudent: () -> Unit, onParent: () -> Unit) {
     Column(horizontalAlignment = Alignment.Start, modifier = Modifier.fillMaxWidth()) {
         IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
@@ -173,6 +175,25 @@ fun JoinOptions(onBack: () -> Unit, onStaff: () -> Unit, onStudent: () -> Unit) 
         Spacer(modifier = Modifier.height(16.dp))
 
         Surface(
+            onClick = onParent,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, Color(0xFF9E9E9E).copy(alpha = 0.2f)),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(modifier = Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.FamilyRestroom, null, modifier = Modifier.size(32.dp))
+                Spacer(modifier = Modifier.width(20.dp))
+                Column {
+                    Text("Parent", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("Follow your children's progress.", color = Color(0xFF9E9E9E), fontSize = 14.sp)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Surface(
             onClick = onStudent,
             shape = RoundedCornerShape(12.dp),
             border = BorderStroke(1.dp, Color(0xFF9E9E9E).copy(alpha = 0.2f)),
@@ -180,10 +201,10 @@ fun JoinOptions(onBack: () -> Unit, onStaff: () -> Unit, onStudent: () -> Unit) 
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(modifier = Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Person, null, modifier = Modifier.size(32.dp))
+                Icon(Icons.Default.School, null, modifier = Modifier.size(32.dp))
                 Spacer(modifier = Modifier.width(20.dp))
                 Column {
-                    Text("Student / Parent", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("Student", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     Text("Access your academic profile.", color = Color(0xFF9E9E9E), fontSize = 14.sp)
                 }
             }

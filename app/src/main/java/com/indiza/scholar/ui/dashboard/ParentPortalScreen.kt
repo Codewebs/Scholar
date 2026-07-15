@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
 import com.indiza.scholar.network.ApiService
 import com.indiza.scholar.ui.student.EleveUiModel
 import kotlinx.coroutines.launch
@@ -83,7 +84,7 @@ fun ParentPortalScreen(
                         Tab(
                             selected = selectedChild == child,
                             onClick = { selectedChild = child },
-                            text = { Text(child.nom.split(" ")[0], fontWeight = FontWeight.Bold) }
+                            text = { Text(child.nomComplet.split(" ").getOrNull(0) ?: "Child", fontWeight = FontWeight.Bold) }
                         )
                     }
                 }
@@ -141,8 +142,8 @@ fun ChildSummaryCard(child: EleveUiModel) {
                 }
                 Spacer(Modifier.width(16.dp))
                 Column {
-                    Text("${child.nom} ${child.prenom ?: ""}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text("Class: ${child.classe ?: "N/A"}", style = MaterialTheme.typography.bodyMedium)
+                    Text(child.nomComplet, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("Class: ${child.classeLabel ?: "N/A"}", style = MaterialTheme.typography.bodyMedium)
                 }
             }
             
@@ -151,7 +152,7 @@ fun ChildSummaryCard(child: EleveUiModel) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 SummaryStat("Avg", "14.5/20")
                 SummaryStat("Abs", "02")
-                SummaryStat("Status", "Paid", Color(0xFF27AE60))
+                SummaryStat("Status", if (child.isSolded) "Paid" else "Pending", if (child.isSolded) Color(0xFF27AE60) else Color(0xFFE67E22))
             }
         }
     }

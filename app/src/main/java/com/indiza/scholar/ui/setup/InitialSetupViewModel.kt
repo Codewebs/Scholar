@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class SetupStep { LANDING, SELECT_LANGUAGE, WELCOME, SELECT_SCHOOL, SELECT_PROFILE, SELECT_YEAR, SECURITY_PIN }
+enum class SetupStep { LANDING, SELECT_LANGUAGE, WELCOME, SELECT_SCHOOL, SEARCH_CHILD, SELECT_PROFILE, SELECT_YEAR, SECURITY_PIN }
 
 data class SetupUiState(
     val currentStep: SetupStep = SetupStep.LANDING,
@@ -43,7 +43,10 @@ data class SetupUiState(
     val initialVille: String? = null,
     val initialArrete: String? = null,
     val recruitmentCode: String? = null,
-    val inscriptionCode: String? = null
+    val inscriptionCode: String? = null,
+    val childSearchQuery: String = "",
+    val foundStudents: List<EleveEntity> = emptyList(),
+    val selectedChild: EleveEntity? = null
 )
 
 class InitialSetupViewModel(
@@ -135,6 +138,16 @@ class InitialSetupViewModel(
         ) }
     }
 
+    fun startJoinParent() {
+        _uiState.update { it.copy(
+            selectedProfile = "PARENT",
+            currentStep = SetupStep.SELECT_SCHOOL,
+            error = null,
+            inscriptionCode = null,
+            selectedChild = null
+        ) }
+    }
+
     fun onRecruitmentCodeChanged(code: String) {
         _uiState.update { it.copy(recruitmentCode = code) }
     }
@@ -166,6 +179,26 @@ class InitialSetupViewModel(
                 _uiState.update { it.copy(isLoading = false) }
             }
         }
+    }
+
+    fun searchStudents(query: String) {
+        val schoolId = _uiState.value.selectedSchool?.idServeur ?: return
+        _uiState.update { it.copy(childSearchQuery = query) }
+        if (query.length < 3) return
+        viewModelScope.launch {
+            try {
+                val response = api.searchStudentsBySchool(schoolId, query)
+                if (response.isSuccessful) {
+                    _uiState.update { it.copy(foundStudents = response.body() ?: emptyList()) }
+                }
+            } catch (e: Exception) {
+                Log.e("InitialSetupVM", "Error searchStudents", e)
+            }
+        }
+    }
+
+    fun selectChild(eleve: EleveEntity) {
+        _uiState.update { it.copy(selectedChild = eleve) }
     }
 
     fun selectSchool(school: EtablissementEntity) {
@@ -261,6 +294,11 @@ class InitialSetupViewModel(
                         return@launch
                     }
 
+                    if (state.selectedProfile == "PARENT" && state.selectedChild == null) {
+                        _uiState.update { it.copy(currentStep = SetupStep.SEARCH_CHILD) }
+                        return@launch
+                    }
+
                     submitAutomaticDemand(onNewDemandSent)
                 }
             }
@@ -285,7 +323,8 @@ class InitialSetupViewModel(
                     prenom = userFullName.split(" ").lastOrNull() ?: "Scholar",
                     telephone1 = userPhone,
                     email = userEmail,
-                    specialites = null
+                    specialites = null,
+                    idEleveLinked = state.selectedChild?.idServeur
                 )
                 val response = personnelRepo.envoyerDemande(payload)
                 Log.d("InitialSetupVM", "📥 [SubmitDemand] Response Code: ${response.code()}")

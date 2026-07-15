@@ -34,6 +34,7 @@ enum SetupStep {
   CREATE_SCHOOL_2,
   CREATE_SCHOOL_3,
   SELECT_PROFILE,
+  SEARCH_CHILD,
   SELECT_YEAR
 }
 
@@ -58,6 +59,10 @@ const InitialConfig: React.FC = () => {
   const [selectedMatieres] = useState<string[]>([]);
   const [availableProfiles, setAvailableProfiles] = useState<string[]>([]);
   const [tempSelectedYear, setTempSelectedYear] = useState<SchoolYear | null>(null);
+
+  const [childSearchQuery, setChildSearchQuery] = useState('');
+  const [foundStudents, setFoundStudents] = useState<any[]>([]);
+  const [selectedChild, setSelectedChild] = useState<any | null>(null);
 
   const [recruitmentCode, setRecruitmentCode] = useState('');
   const [inscriptionCode, setInscriptionCode] = useState('');
@@ -119,17 +124,33 @@ const InitialConfig: React.FC = () => {
     } else if (step === SetupStep.SELECT_YEAR) {
       if (isCreatingSchool) {
         setStep(SetupStep.CREATE_SCHOOL_3);
+      } else if (selectedProfile === 'PARENT') {
+        setStep(SetupStep.SEARCH_CHILD);
       } else if (availableProfiles.length > 1) {
         setStep(SetupStep.SELECT_PROFILE);
       } else {
         setStep(SetupStep.SELECT_SCHOOL);
       }
+    } else if (step === SetupStep.SEARCH_CHILD) {
+      setStep(SetupStep.SELECT_SCHOOL);
     } else if (step === SetupStep.SELECT_PROFILE) {
       setStep(SetupStep.SELECT_SCHOOL);
     } else if (step === SetupStep.WELCOME) {
       setStep(SetupStep.SELECT_LANGUAGE);
     } else {
       setStep(prev => prev - 1);
+    }
+  };
+
+  const handleSearchStudents = async (query: string) => {
+    setChildSearchQuery(query);
+    const sId = selectedSchool?.idServeur || selectedSchool?.idEtablissement;
+    if (query.length < 3 || !sId) return;
+    try {
+      const res = await setupService.searchStudents(sId, query);
+      setFoundStudents(res.data);
+    } catch (err) {
+      setError(t('common.error'));
     }
   };
 
@@ -261,6 +282,12 @@ const InitialConfig: React.FC = () => {
                 }));
                 setLoading(false); return;
              }
+
+             if (selectedProfile === 'PARENT' && !selectedChild) {
+                setStep(SetupStep.SEARCH_CHILD);
+                setLoading(false); return;
+             }
+
              await submitDemand();
              return;
           }
@@ -290,6 +317,11 @@ const InitialConfig: React.FC = () => {
           return;
         }
 
+        if (selectedProfile === 'PARENT' && !selectedChild) {
+            setStep(SetupStep.SEARCH_CHILD);
+            setLoading(false); return;
+        }
+
         await submitDemand();
       }
     } catch (err) {
@@ -310,7 +342,8 @@ const InitialConfig: React.FC = () => {
         prenom: user.nom.split(' ').slice(1).join(' ') || 'User',
         telephone1: 0,
         email: user.email,
-        specialites: selectedProfile === 'ENSEIGNANT' ? selectedMatieres.join(',') : null
+        specialites: selectedProfile === 'ENSEIGNANT' ? selectedMatieres.join(',') : null,
+        idEleveLinked: selectedChild?.idEleve || null
     };
 
     try {
@@ -883,6 +916,62 @@ const InitialConfig: React.FC = () => {
           </div>
         );
 
+      case SetupStep.SEARCH_CHILD:
+        return (
+          <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
+            <div className="bg-green-50 p-6 rounded-[24px] border border-green-100 mb-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-green-600 mb-2">Liaison Parent-Enfant</p>
+                <h3 className="text-sm font-black text-black uppercase">Trouver votre enfant</h3>
+                <p className="text-[8px] text-green-400 mt-1 uppercase tracking-tight">Recherchez l'élève par son nom complet.</p>
+            </div>
+
+            <AuthInput
+              label="Nom de l'enfant"
+              placeholder="Ex: Jean Dupont"
+              value={childSearchQuery}
+              onChange={(e) => handleSearchStudents(e.target.value)}
+            />
+
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar p-1">
+              {foundStudents.map((student, index) => (
+                <div
+                  key={`student-${student.idEleve}-${index}`}
+                  onClick={() => setSelectedChild(student)}
+                  className={clsx(
+                    "p-4 border-2 rounded-[20px] cursor-pointer transition-all flex items-center justify-between",
+                    selectedChild?.idEleve === student.idEleve
+                      ? "border-green-500 bg-green-50 shadow-lg"
+                      : "border-gray-100 bg-white hover:border-green-200"
+                  )}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
+                        <GraduationCap size={20} />
+                    </div>
+                    <div>
+                      <h4 className="font-black uppercase text-[10px] tracking-tight">{student.nom} {student.prenom}</h4>
+                      <p className="text-[8px] text-[#9E9E9E] font-bold uppercase">Matricule: {student.matricule || 'N/A'}</p>
+                    </div>
+                  </div>
+                  {selectedChild?.idEleve === student.idEleve && <CheckCircle2 size={18} className="text-green-600" />}
+                </div>
+              ))}
+              {childSearchQuery.length >= 3 && foundStudents.length === 0 && (
+                <p className="text-center text-[10px] font-bold text-gray-400 uppercase py-4">Aucun élève trouvé</p>
+              )}
+            </div>
+
+            <div className="pt-8">
+              <AuthButton
+                onClick={handleValidateSchool}
+                disabled={!selectedChild || loading}
+              >
+                {loading ? t('common.loading') : "Confirmer et lier"}
+              </AuthButton>
+            </div>
+          </div>
+        );
+
       case SetupStep.SELECT_YEAR:
         const activeYears = years.filter(y => !y.cloturerAnnee);
         return (
@@ -1012,12 +1101,13 @@ const InitialConfig: React.FC = () => {
           <div className="flex flex-col items-end">
               <span className="text-[10px] font-black uppercase tracking-widest text-black bg-gray-100 px-4 py-1.5 rounded-full mb-2">
                 {(() => {
-                  const creationFlow = [0, 1, 2, 4, 5, 6, 8];
+                  const creationFlow = [0, 1, 2, 4, 5, 6, 9];
                   const joinFlow = [0, 1];
                   if (isNewUser) joinFlow.push(2);
                   joinFlow.push(3);
+                  if (selectedProfile === 'PARENT') joinFlow.push(8);
                   if (availableProfiles.length > 1) joinFlow.push(7);
-                  joinFlow.push(8);
+                  joinFlow.push(9);
                   const flow = isCreatingSchool ? creationFlow : joinFlow;
                   const idx = flow.indexOf(step);
                   return t('setup.step_info', { current: idx + 1, total: flow.length });
