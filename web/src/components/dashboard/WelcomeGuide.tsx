@@ -28,7 +28,8 @@ const WelcomeGuide: React.FC = () => {
 
     useEffect(() => {
         const hasSeenModal = localStorage.getItem(`welcome_modal_seen_${user?.id}`);
-        if (!hasSeenModal && user?.role === 'ADMINISTRATEUR') {
+        const roles = (user?.role || '').toUpperCase().split(',').map(r => r.trim());
+        if (!hasSeenModal && roles.includes('ADMINISTRATEUR')) {
             setShowModal(true);
         }
     }, [user]);

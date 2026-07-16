@@ -22,7 +22,8 @@ const { Op } = require("sequelize");
 
 exports.getSystemStats = async (req, res) => {
     try {
-        const userRole = req.user.role;
+        const userRole = req.user.role || "";
+        const roles = userRole.split(',').map(r => r.trim().toUpperCase());
 
         let stats = {
             online: true,
@@ -32,14 +33,14 @@ exports.getSystemStats = async (req, res) => {
 
         const connectedCount = await Utilisateur.count();
 
-        if (userRole === "ADMINISTRATEUR") {
+        if (roles.includes("ADMINISTRATEUR")) {
             stats.value = connectedCount;
             stats.label = "Utilisateurs connectés";
             stats.extra = {
-                teachers: await InscriptionPersonnel.count({ where: { role: 'ENSEIGNANT', supprimer: false } }),
+                teachers: await InscriptionPersonnel.count({ where: { role: { [Op.like]: '%ENSEIGNANT%' }, supprimer: false } }),
                 students: await Eleve.count({ where: { supprimer: false } })
             };
-        } else if (userRole === "ENSEIGNANT") {
+        } else if (roles.includes("ENSEIGNANT")) {
             stats.value = await Eleve.count({ where: { supprimer: false } });
             stats.label = "Élèves suivis";
         } else {

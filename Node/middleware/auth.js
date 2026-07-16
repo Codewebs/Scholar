@@ -22,19 +22,36 @@ function verifyToken(req, res, next) {
     if (!req.user.idUtilisateur && decoded.userId) {
        req.user.idUtilisateur = decoded.userId;
     }
+    if (!req.user.userId && decoded.idUtilisateur) {
+       req.user.userId = decoded.idUtilisateur;
+    }
 
-    // Vérification du blocage au sein de l'établissement
+    // Vérification du blocage et synchronisation du rôle au sein de l'établissement
     const idEtablissement = req.headers['id-etablissement'] || req.body.idEtablissement;
     if (idEtablissement) {
       try {
         const p = await InscriptionPersonnel.findOne({
-          where: { idUtilisateur: req.user.idUtilisateur, idEtablissement, bloque: true }
+          where: { idUtilisateur: req.user.idUtilisateur, idEtablissement, supprimer: false }
         });
+
         if (p) {
-          return res.status(403).json({ success: false, message: "Utilisateur bloqué", code: "USER_BLOCKED" });
+          if (p.bloque) {
+            return res.status(403).json({ success: false, message: "Utilisateur bloqué", code: "USER_BLOCKED" });
+          }
+
+          // Mise à jour dynamique du rôle et des permissions basés sur l'inscription réelle dans cet établissement
+          // Cela permet de gérer les utilisateurs ayant des rôles multiples ou contextuels
+          req.user.role = p.role;
+          if (p.permissionsAjoutees) {
+            try {
+              req.user.permissions = JSON.parse(p.permissionsAjoutees);
+            } catch (e) {
+              req.user.permissions = [];
+            }
+          }
         }
       } catch (e) {
-        console.error("Erreur lors de la vérification du statut bloqué:", e);
+        console.error("Erreur lors de la vérification de l'inscription:", e);
       }
     }
 

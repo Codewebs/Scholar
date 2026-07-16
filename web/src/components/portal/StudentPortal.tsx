@@ -28,18 +28,19 @@ const StudentPortal: React.FC = () => {
   }>({ notes: [], finance: null });
 
   useEffect(() => {
-    if (selectedYear?.idServeur) {
+    const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
+    if (yearId) {
         setLoading(true);
         // Backend filters by linked user for STUDENT role
-        studentService.getAllStudents(selectedYear.idServeur).then(async res => {
+        studentService.getAllStudents(yearId).then(async res => {
             if (res.data.length > 0) {
                 const s = res.data[0];
                 setStudent(s);
 
                 try {
                     const [finRes, noteRes] = await Promise.all([
-                        financeService.getStudentPaymentDetails(s.idEleve, selectedYear.idServeur!),
-                        gradeService.getNotesByStudent(s.idEleve, 1, selectedYear.idServeur!, 0)
+                        financeService.getStudentPaymentDetails(s.idEleve, yearId),
+                        gradeService.getNotesByStudent(s.idEleve, 1, yearId, 0)
                     ]);
                     setData({ finance: finRes.data, notes: noteRes.data });
                 } catch (e) {
@@ -48,6 +49,8 @@ const StudentPortal: React.FC = () => {
             }
             setLoading(false);
         }).catch(() => setLoading(false));
+    } else {
+        setLoading(false);
     }
   }, [selectedYear]);
 

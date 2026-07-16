@@ -10,7 +10,9 @@ module.exports = (requiredPermission) => {
         console.log(`🔐 [AUTH] Vérification: '${requiredPermission}' | User: ${userId} | Rôle: ${userRole}`);
 
         // 1. Les administrateurs ont tous les droits
-        if (userRole === "ADMINISTRATEUR") {
+        // Gestion des rôles multiples (séparés par des virgules)
+        const roles = (userRole || "").split(",").map(r => r.trim().toUpperCase());
+        if (roles.includes("ADMINISTRATEUR")) {
             return next();
         }
 

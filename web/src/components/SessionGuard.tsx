@@ -42,10 +42,11 @@ const SessionGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         const currentRole = (user.role || '').toUpperCase();
         const isDefaultRole = currentRole === 'DEMANDEUR' || currentRole === 'SANS_ROLE' || currentRole === '';
 
-        // On ne rafraîchit que si on est encore en rôle par défaut
-        // ou si on a une école mais pas encore de permissions chargées en mémoire
-        // Sauf pour ADMINISTRATEUR qui n'a pas forcément de permissions personnalisées
-        const needsRefresh = isDefaultRole || (!!schoolId && user.permissions.length === 0 && currentRole !== 'ADMINISTRATEUR');
+        // On rafraîchit si :
+        // 1. Rôle par défaut
+        // 2. Pas de permissions chargées
+        // 3. On n'a pas encore synchronisé pour CETTE école dans cette session
+        const needsRefresh = isDefaultRole || !lastSyncedRef.current || lastSyncedRef.current !== syncKey;
 
         if (needsRefresh) {
             setLoading(true);

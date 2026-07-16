@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useSchoolYear } from '../context/SchoolYearContext';
 import { dashboardService } from '../api/dashboardService';
 import { SetupProgress } from '../types/models';
@@ -19,6 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const SetupProgressWidget: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { selectedYear } = useSchoolYear();
   const [isOpen, setIsProgressOpen] = useState(false);
   const [progress, setProgress] = useState<SetupProgress | null>(null);
@@ -26,9 +28,25 @@ const SetupProgressWidget: React.FC = () => {
 
   const currentSchoolId = Number(localStorage.getItem('school_id') || 0);
 
+  const fetchProgress = async () => {
+    if (!currentSchoolId) return;
+    const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
+    try {
+      const res = await dashboardService.getSetupProgress(currentSchoolId, yearId);
+      setProgress(res.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   useEffect(() => {
     fetchProgress();
   }, [currentSchoolId, selectedYear]);
+
+  const roles = (user?.role || '').toUpperCase().split(',').map(r => r.trim());
+  const isUsagerOnly = roles.length > 0 && roles.every(r => r === 'PARENT' || r === 'ELEVE' || r === 'DEMANDEUR' || r === 'SANS_ROLE');
+
+  if (isUsagerOnly) return null;
 
   const itemPaths: Record<string, string> = {
     schoolYear: "/app/admin/config",
@@ -50,16 +68,6 @@ const SetupProgressWidget: React.FC = () => {
     periods: "Divise l'année scolaire en grandes étapes (ex: Trimestres ou Semestres).",
     subPeriods: "Découpe les périodes en unités d'évaluation (ex: Séquences ou Mois).",
     subjects: "Liste les matières enseignées et définit les coefficients pour le calcul des moyennes."
-  };
-
-  const fetchProgress = async () => {
-    if (!currentSchoolId) return;
-    try {
-      const res = await dashboardService.getSetupProgress(currentSchoolId, selectedYear?.idServeur);
-      setProgress(res.data);
-    } catch (error) {
-      console.error(error);
-    }
   };
 
   const nextStep = useMemo(() => {

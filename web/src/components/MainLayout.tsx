@@ -41,10 +41,13 @@ const MainLayout: React.FC = () => {
     }
   }, [location]);
 
-  const filteredGroups = menuGroups.map(group => ({
-    ...group,
-    items: group.items.filter(item => !item.permission || hasPermission(item.permission))
-  })).filter(group => group.items.length > 0);
+  const filteredGroups = React.useMemo(() => {
+    if (user?.role === 'PARENT' || user?.role === 'ELEVE') return [];
+    return menuGroups.map(group => ({
+      ...group,
+      items: group.items.filter(item => !item.permission || hasPermission(item.permission))
+    })).filter(group => group.items.length > 0);
+  }, [user?.role, hasPermission]);
 
   return (
     <div className="flex h-screen bg-[#F5F7FB] text-primary font-sans relative overflow-hidden">

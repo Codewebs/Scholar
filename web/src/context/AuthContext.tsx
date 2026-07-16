@@ -93,10 +93,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return false;
         }
 
-        const role = (user.role || '').toUpperCase();
+        // Gestion des rôles multiples (ex: "ADMINISTRATEUR,PARENT")
+        const roles = (user.role || '').toUpperCase().split(',').map(r => r.trim());
 
         // 1. L'administrateur a tous les droits
-        if (role === 'ADMINISTRATEUR') return true;
+        if (roles.includes('ADMINISTRATEUR')) return true;
 
         // 2. Permissions de base accordées à tout membre du personnel validé
         const basePermissions = [
@@ -109,15 +110,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ];
 
         if (basePermissions.includes(permission)) {
-            // Si c'est une permission de base, on l'accorde si l'utilisateur a un rôle valide
-            if (role !== 'DEMANDEUR' && role !== 'SANS_ROLE' && role !== '') {
+            // Si c'est une permission de base, on l'accorde si l'utilisateur a au moins un rôle valide
+            if (roles.some(r => r !== 'DEMANDEUR' && r !== 'SANS_ROLE' && r !== '')) {
                 return true;
             }
             // Fallback pour Lucien : Si on a un school_id en cache, on est probablement en train de synchroniser
             if (localStorage.getItem('school_id')) return true;
         }
 
-        // 3. Récupérer les permissions par défaut du rôle
+        // 3. Récupérer les permissions par défaut de TOUS les rôles de l'utilisateur
         const roleDefaultPermissions: Record<string, string[]> = {
             'FONDATEUR': ['DASHBOARD_ETABLISSEMENT', 'WEB_VERSION', 'ACADEMIC_STATS', 'FINANCIAL_BALANCE_SHEET', 'PRINT_SCHOOL_INFO', 'SUMMARY'],
             'DIRECTEUR': ['DASHBOARD_ETABLISSEMENT', 'WEB_VERSION', 'ACADEMIC_STATS', 'VIEW_STUDENT_LIST', 'STUDENT_DOSSIER', 'MANAGE_ACADEMIC_CONFIG', 'VALIDATE_GRADES', 'GRADES_REPORT_SHEET', 'GLOBAL_ATTENDANCE', 'SUMMARY'],
@@ -130,7 +131,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             'ELEVE': ['DASHBOARD_ETABLISSEMENT', 'VIEW_MY_GRADES', 'VIEW_MY_ATTENDANCE', 'VIEW_MY_FINANCE', 'SUMMARY'],
         };
 
-        const defaultPerms = roleDefaultPermissions[role] || [];
+        // On fusionne les permissions par défaut de tous les rôles
+        let allDefaultPerms: string[] = [];
+        roles.forEach(r => {
+            const perms = roleDefaultPermissions[r] || [];
+            allDefaultPerms = [...allDefaultPerms, ...perms];
+        });
 
         // 4. Vérification des permissions spécifiques (surcharges)
         let userPerms: string[] = [];
@@ -147,16 +153,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         // Combiner par défaut + personnalisées
-        const allUserPerms = [...new Set([...defaultPerms, ...userPerms])];
+        const allUserPerms = [...new Set([...allDefaultPerms, ...userPerms])];
 
         const hasIt = allUserPerms.includes(permission.toString());
-
-        // Debug intensif pour diagnostiquer le problème de menu
-        if (role !== 'ADMINISTRATEUR') {
-            if (!hasIt && !basePermissions.includes(permission)) {
-                console.log(`[PermissionDenied] User: ${user.nom}, Role: ${role}, Missing: ${permission}, Has: ${userPerms.length} custom perms`);
-            }
-        }
 
         return hasIt;
     };

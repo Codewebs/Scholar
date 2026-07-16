@@ -33,26 +33,34 @@ const ParentPortal: React.FC = () => {
   const [activeModal, setActiveModal] = useState<'NOTES' | 'FINANCE' | 'ABSENCES' | 'DOCS' | null>(null);
 
   useEffect(() => {
-    if (selectedYear?.idServeur) {
-        studentService.getAllStudents(selectedYear.idServeur).then(res => {
+    const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
+    if (yearId) {
+        studentService.getAllStudents(yearId).then(res => {
             setChildren(res.data);
             if (res.data.length > 0) setSelectedChild(res.data[0]);
             setLoading(false);
         }).catch(() => setLoading(false));
+    } else {
+        // Si pas d'année sélectionnée, on ne peut pas charger les enfants mais on arrête le loading
+        setLoading(false);
     }
   }, [selectedYear]);
 
   useEffect(() => {
-    if (selectedChild && selectedYear?.idServeur) {
+    const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
+    if (selectedChild && yearId) {
         fetchChildDetails(selectedChild.idEleve);
     }
   }, [selectedChild, selectedYear]);
 
   const fetchChildDetails = async (idEleve: number) => {
+      const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
+      if (!yearId) return;
+
       try {
           const [finRes, noteRes] = await Promise.all([
-              financeService.getStudentPaymentDetails(idEleve, selectedYear!.idServeur!),
-              gradeService.getNotesByStudent(idEleve, 1, selectedYear!.idServeur!, 0) // Example params
+              financeService.getStudentPaymentDetails(idEleve, yearId),
+              gradeService.getNotesByStudent(idEleve, 1, yearId, 0) // Example params
           ]);
           setDetails({
               finance: finRes.data,

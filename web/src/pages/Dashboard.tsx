@@ -72,10 +72,16 @@ const Dashboard: React.FC = () => {
      }
   }, [selectedSchool, selectedYear]);
 
-  const flatMenuItems = menuGroups.flatMap(g => g.items).filter(item => !item.permission || hasPermission(item.permission));
+  const flatMenuItems = React.useMemo(() => {
+    return menuGroups.flatMap(g => g.items).filter(item => !item.permission || hasPermission(item.permission));
+  }, [hasPermission]);
 
-  const isParent = user?.role === 'PARENT';
-  const isStudent = user?.role === 'ELEVE';
+  const roles = (user?.role || '').toUpperCase().split(',').map(r => r.trim());
+  // On ne considère comme "pur parent/élève" que ceux qui n'ont pas d'outils d'administration (plus de 2 items de menu)
+  const hasAdminTools = flatMenuItems.length > 2;
+
+  const isParent = roles.includes('PARENT') && !roles.includes('ADMINISTRATEUR') && !hasAdminTools;
+  const isStudent = roles.includes('ELEVE') && !roles.includes('ADMINISTRATEUR') && !hasAdminTools;
 
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
@@ -175,7 +181,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="animate-in fade-in duration-500 flex flex-col" style={{ gap: `${2.5 * settings.globalDensity}rem` }}>
       {/* Onboarding Banner */}
-      {showOnboardingBanner && user?.role === 'ADMINISTRATEUR' && (
+      {showOnboardingBanner && (user?.role || '').includes('ADMINISTRATEUR') && (
         <div className="bg-red-600 text-white p-6 rounded-[24px] shadow-2xl shadow-red-200 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 duration-500">
            <div className="flex items-center space-x-6">
               <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
