@@ -19,7 +19,8 @@ import {
     Shield,
     BadgeCheck,
     GraduationCap,
-    User as UserIcon
+    User as UserIcon,
+    UserMinus
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { PermissionGrouping } from '../../components/admin/PermissionGrouping';
@@ -166,11 +167,21 @@ export const permissionGroups = {
         AcademicPermission.ABOUT,
         AcademicPermission.WEB_VERSION,
         AcademicPermission.CHOOSE_BUTTON
+    ],
+    "Portails": [
+        AcademicPermission.VIEW_MY_CHILDREN,
+        AcademicPermission.VIEW_CHILD_GRADES,
+        AcademicPermission.VIEW_CHILD_ATTENDANCE,
+        AcademicPermission.VIEW_CHILD_FINANCE,
+        AcademicPermission.VIEW_MY_GRADES,
+        AcademicPermission.VIEW_MY_ATTENDANCE,
+        AcademicPermission.VIEW_MY_FINANCE,
+        AcademicPermission.VIEW_MY_PAYMENT_STATUS
     ]
 };
 
 
-const roles = ["DIRECTEUR", "DIRECTEUR_DES_ETUDES", "SURVEILLANT_GENERAL", "ENSEIGNANT", "INTENDANT", "SECRETAIRE", "ADMINISTRATEUR"];
+const roles = ["DIRECTEUR", "DIRECTEUR_DES_ETUDES", "SURVEILLANT_GENERAL", "ENSEIGNANT", "INTENDANT", "SECRETAIRE", "ADMINISTRATEUR", "PARENT", "ELEVE"];
 
 const StaffManagementPage: React.FC = () => {
   const { t } = useTranslation();
@@ -273,18 +284,60 @@ const StaffManagementPage: React.FC = () => {
       return req.profilDemande === requestCategory;
   });
 
+  const groupedParentRequests = React.useMemo(() => {
+    if (requestCategory !== 'PARENT') return [];
+    const groups: Record<number, { idUtilisateur: number, nom: string, prenom: string, email: string, telephone1: number, demands: DemandeInscription[] }> = {};
+
+    requests.filter(r => r.profilDemande === 'PARENT').forEach(req => {
+        if (!groups[req.idUtilisateur]) {
+            groups[req.idUtilisateur] = {
+                idUtilisateur: req.idUtilisateur,
+                nom: req.nom,
+                prenom: req.prenom,
+                email: req.email,
+                telephone1: req.telephone1,
+                demands: []
+            };
+        }
+        groups[req.idUtilisateur].demands.push(req);
+    });
+    return Object.values(groups);
+  }, [requests, requestCategory]);
+
   const openValidationModal = (req: DemandeInscription) => {
       setSelectedRequest(req);
+
+      let defaultAdded: string[] = [];
+      if (req.profilDemande === 'PARENT') {
+          defaultAdded = [
+              AcademicPermission.VIEW_MY_CHILDREN,
+              AcademicPermission.VIEW_CHILD_GRADES,
+              AcademicPermission.VIEW_CHILD_ATTENDANCE,
+              AcademicPermission.VIEW_CHILD_FINANCE,
+              AcademicPermission.VIEW_MY_PAYMENT_STATUS,
+              AcademicPermission.SUMMARY,
+              AcademicPermission.DASHBOARD_ETABLISSEMENT
+          ];
+      } else if (req.profilDemande === 'ELEVE') {
+          defaultAdded = [
+              AcademicPermission.VIEW_MY_GRADES,
+              AcademicPermission.VIEW_MY_ATTENDANCE,
+              AcademicPermission.VIEW_MY_FINANCE,
+              AcademicPermission.SUMMARY,
+              AcademicPermission.DASHBOARD_ETABLISSEMENT
+          ];
+      }
+
       setValForm({
-          matricule: '',
+          matricule: req.profilDemande === 'ELEVE' ? (req.idEleveLinked ? 'LINKED' : '') : '',
           role: req.profilDemande,
           dateNaissance: '',
           lieuNaissance: '',
           sexe: 'M',
           diplomes: '',
-          addedPerms: [],
+          addedPerms: defaultAdded,
           removedPerms: [],
-          idEleveLinked: null
+          idEleveLinked: req.idEleveLinked || null
       });
       setStudentSearch('');
       setStudentResults([]);
@@ -293,8 +346,8 @@ const StaffManagementPage: React.FC = () => {
 
   const handleConfirmValidation = async () => {
       if (!selectedRequest || !valForm.role) return;
-      // Matricule is mandatory for Staff, optional for Parent/Student?
       const isStaff = !['ELEVE', 'PARENT'].includes(valForm.role);
+
       if (isStaff && !valForm.matricule) {
           alert("Le matricule est obligatoire pour le personnel.");
           return;
@@ -305,12 +358,12 @@ const StaffManagementPage: React.FC = () => {
           await staffService.validerDemande({
               idDemande: selectedRequest.idDemande,
               idAnneeScolaire: yearId!,
-              matricule: valForm.matricule,
+              matricule: isStaff ? valForm.matricule : (selectedRequest.profilDemande === 'ELEVE' ? 'ELEVE' : 'PARENT'),
               role: valForm.role,
-              dateNaissance: valForm.dateNaissance,
-              lieuNaissance: valForm.lieuNaissance,
+              dateNaissance: isStaff ? valForm.dateNaissance : '2000-01-01',
+              lieuNaissance: isStaff ? valForm.lieuNaissance : 'N/A',
               sexe: valForm.sexe,
-              diplomes: valForm.diplomes,
+              diplomes: isStaff ? valForm.diplomes : 'N/A',
               permissionsAjoutees: valForm.addedPerms,
               permissionsRetirees: valForm.removedPerms,
               idEleveLinked: valForm.idEleveLinked
@@ -329,6 +382,19 @@ const StaffManagementPage: React.FC = () => {
     setLoading(true);
     try {
         await staffService.rejeterDemande(idDemande);
+        loadData();
+    } catch (err) {
+        alert(t('common.error'));
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleDissocierParent = async (idUtilisateur: number) => {
+    if (!window.confirm("Voulez-vous vraiment délier ce parent de tous ses enfants dans cet établissement ? Il perdra son accès Parent.")) return;
+    setLoading(true);
+    try {
+        await staffService.dissocierParent(idUtilisateur, schoolId);
         loadData();
     } catch (err) {
         alert(t('common.error'));
@@ -578,6 +644,52 @@ const StaffManagementPage: React.FC = () => {
                                     <span className="text-[10px] font-bold">{member.utilisateur?.telephone || member.utilisateur?.telephone1 || member.telephone1}</span>
                                 </div>
                             </div>
+
+                            {/* Linked Children (For Parents) - MOVED BELOW PHONE */}
+                            {member.role.includes('PARENT') && (
+                                <div className="mt-4 mb-6 p-4 bg-gray-50 rounded-[24px] border border-gray-100 animate-in fade-in duration-500">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <p className="text-[8px] font-black uppercase tracking-widest text-[#9E9E9E] flex items-center">
+                                            <GraduationCap size={10} className="mr-1.5 text-blue-500" />
+                                            {t('staff.linked_children', { defaultValue: 'Enfants liés' })}
+                                            ({member.utilisateur?.Enfants?.length || 0})
+                                        </p>
+                                        <button
+                                            onClick={() => handleDissocierParent(member.idUtilisateur)}
+                                            className="p-1.5 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all"
+                                            title="Tout dissocier"
+                                        >
+                                            <UserMinus size={10} />
+                                        </button>
+                                    </div>
+
+                                    {member.utilisateur?.Enfants && member.utilisateur.Enfants.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {member.utilisateur.Enfants.map(enfant => {
+                                                const enrollment = enfant.Inscriptions?.[0];
+                                                const salle = enrollment?.Salle?.nomSalle;
+                                                console.log(`[StaffCard] Parent ${member.nom} -> Enfant: ${enfant.nom}, Salle: ${salle || 'N/A'}`);
+                                                return (
+                                                    <div key={enfant.idEleve} className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-gray-50 shadow-sm">
+                                                        <span className="text-[9px] font-black uppercase text-black truncate pr-2">
+                                                            {enfant.nom} {enfant.prenom}
+                                                        </span>
+                                                        {salle ? (
+                                                            <span className="bg-blue-50 px-2 py-0.5 rounded-full text-[7px] font-black text-blue-600 uppercase tracking-tighter border border-blue-100">
+                                                                {salle}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[7px] font-bold text-gray-300 uppercase italic">Non inscrit</span>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <p className="text-[8px] font-bold text-gray-400 italic text-center py-2">Aucun enfant lié</p>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <div className="pt-6 border-t border-gray-50 flex items-center justify-between">
@@ -604,48 +716,109 @@ const StaffManagementPage: React.FC = () => {
             </div>
         ) : (
             <div className="space-y-6">
-                {filteredRequests.length === 0 ? (
-                    <div className="p-32 text-center border-4 border-dashed border-gray-50 rounded-[56px] bg-white/50">
-                        <Clock size={64} className="text-gray-200 mx-auto mb-8" />
-                        <h3 className="text-2xl font-black uppercase text-black mb-2">{t('staff.no_request')}</h3>
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#9E9E9E]">Aucune demande en attente pour cette catégorie</p>
-                    </div>
-                ) : (
-                    filteredRequests.map((req) => (
-                        <div key={req.idDemande} className="bg-white border border-gray-100 rounded-[40px] p-10 flex flex-col md:flex-row items-center justify-between gap-10 hover:border-black transition-all shadow-sm">
-                            <div className="flex items-center space-x-8">
-                                <div className="w-20 h-20 bg-gray-50 rounded-[24px] flex items-center justify-center text-black font-black text-2xl border-4 border-white shadow-xl">
-                                    {req.nom.charAt(0)}
-                                </div>
-                                <div>
-                                    <h4 className="text-2xl font-black uppercase tracking-tight text-black">{req.nom} {req.prenom}</h4>
-                                    <div className="flex items-center space-x-6 mt-2">
-                                        <div className="flex items-center space-x-2 text-yellow-600">
-                                            <Zap size={14} />
-                                            <p className="text-[11px] font-black uppercase tracking-widest">{req.profilDemande}</p>
+                {requestCategory === 'PARENT' ? (
+                    groupedParentRequests.length === 0 ? (
+                        <div className="p-32 text-center border-4 border-dashed border-gray-50 rounded-[56px] bg-white/50">
+                            <Clock size={64} className="text-gray-200 mx-auto mb-8" />
+                            <h3 className="text-2xl font-black uppercase text-black mb-2">{t('staff.no_request')}</h3>
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#9E9E9E]">Aucune demande de parent en attente</p>
+                        </div>
+                    ) : (
+                        groupedParentRequests.map((group) => (
+                            <div key={group.idUtilisateur} className="bg-white border border-gray-100 rounded-[40px] p-10 flex flex-col md:flex-row items-center justify-between gap-10 hover:border-black transition-all shadow-sm">
+                                <div className="flex items-center space-x-8 flex-1">
+                                    <div className="w-20 h-20 bg-gray-50 rounded-[24px] flex items-center justify-center text-black font-black text-2xl border-4 border-white shadow-xl">
+                                        {group.nom.charAt(0)}
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="text-2xl font-black uppercase tracking-tight text-black">{group.nom} {group.prenom}</h4>
+                                        <div className="flex items-center space-x-6 mt-2">
+                                            <div className="flex items-center space-x-2 text-yellow-600">
+                                                <UserIcon size={14} />
+                                                <p className="text-[11px] font-black uppercase tracking-widest">PARENT</p>
+                                            </div>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{group.email}</p>
                                         </div>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{req.email}</p>
+
+                                        <div className="mt-6 flex flex-wrap gap-2">
+                                            {group.demands.map(dem => (
+                                                <div key={dem.idDemande} className="bg-gray-50 px-4 py-2 rounded-xl border border-gray-100 flex items-center space-x-3 group/dem">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[9px] font-black uppercase text-black">
+                                                            {dem.Eleve ? `${dem.Eleve.nom} ${dem.Eleve.prenom}` : 'Enfant inconnu'}
+                                                        </span>
+                                                        <span className="text-[7px] font-bold text-gray-400 uppercase tracking-tighter">
+                                                            {dem.Eleve?.matricule || 'Sans matricule'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex space-x-1">
+                                                        <button
+                                                            onClick={() => openValidationModal(dem)}
+                                                            className="p-1.5 hover:bg-black hover:text-white rounded-lg transition-colors text-green-600"
+                                                            title="Valider ce lien"
+                                                        >
+                                                            <Check size={12} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleRejectRequest(dem.idDemande)}
+                                                            className="p-1.5 hover:bg-red-500 hover:text-white rounded-lg transition-colors text-red-400"
+                                                            title="Rejeter"
+                                                        >
+                                                            <X size={12} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-
-                            <div className="flex items-center space-x-4">
-                                <button
-                                    onClick={() => openValidationModal(req)}
-                                    className="px-10 py-5 bg-black text-white rounded-sharp font-black uppercase text-[11px] tracking-[0.2em] flex items-center space-x-3 hover:scale-105 transition-all shadow-2xl shadow-gray-200"
-                                >
-                                    <Check size={20} className="text-yellow-500" />
-                                    <span>{t('staff.recruit')}</span>
-                                </button>
-                                <button
-                                    onClick={() => handleRejectRequest(req.idDemande)}
-                                    className="p-5 bg-red-50 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-all shadow-sm"
-                                >
-                                    <X size={24} />
-                                </button>
-                            </div>
+                        ))
+                    )
+                ) : (
+                    filteredRequests.length === 0 ? (
+                        <div className="p-32 text-center border-4 border-dashed border-gray-50 rounded-[56px] bg-white/50">
+                            <Clock size={64} className="text-gray-200 mx-auto mb-8" />
+                            <h3 className="text-2xl font-black uppercase text-black mb-2">{t('staff.no_request')}</h3>
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#9E9E9E]">Aucune demande en attente pour cette catégorie</p>
                         </div>
-                    ))
+                    ) : (
+                        filteredRequests.map((req) => (
+                            <div key={req.idDemande} className="bg-white border border-gray-100 rounded-[40px] p-10 flex flex-col md:flex-row items-center justify-between gap-10 hover:border-black transition-all shadow-sm">
+                                <div className="flex items-center space-x-8">
+                                    <div className="w-20 h-20 bg-gray-50 rounded-[24px] flex items-center justify-center text-black font-black text-2xl border-4 border-white shadow-xl">
+                                        {req.nom.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <h4 className="text-2xl font-black uppercase tracking-tight text-black">{req.nom} {req.prenom}</h4>
+                                        <div className="flex items-center space-x-6 mt-2">
+                                            <div className="flex items-center space-x-2 text-yellow-600">
+                                                <Zap size={14} />
+                                                <p className="text-[11px] font-black uppercase tracking-widest">{req.profilDemande}</p>
+                                            </div>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{req.email}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center space-x-4">
+                                    <button
+                                        onClick={() => openValidationModal(req)}
+                                        className="px-10 py-5 bg-black text-white rounded-sharp font-black uppercase text-[11px] tracking-[0.2em] flex items-center space-x-3 hover:scale-105 transition-all shadow-2xl shadow-gray-200"
+                                    >
+                                        <Check size={20} className="text-yellow-500" />
+                                        <span>{t('staff.recruit')}</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleRejectRequest(req.idDemande)}
+                                        className="p-5 bg-red-50 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                                    >
+                                        <X size={24} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )
                 )}
             </div>
         )}
@@ -727,89 +900,112 @@ const StaffManagementPage: React.FC = () => {
                   </div>
 
                   <div className="p-12 space-y-8 max-h-[60vh] overflow-y-auto">
-                        <div className="grid grid-cols-2 gap-4">
-                            <AuthInput
-                                label="Matricule"
-                                placeholder="PERS-..."
-                                value={valForm.matricule}
-                                onChange={e => setValForm({...valForm, matricule: e.target.value.toUpperCase()})}
-                            />
-                            <AuthInput
-                                label="Date Naissance"
-                                type="date"
-                                value={valForm.dateNaissance}
-                                onChange={e => setValForm({...valForm, dateNaissance: e.target.value})}
-                            />
-                        </div>
+                        {!['ELEVE', 'PARENT'].includes(valForm.role) && (
+                            <>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <AuthInput
+                                        label="Matricule"
+                                        placeholder="PERS-..."
+                                        value={valForm.matricule}
+                                        onChange={e => setValForm({...valForm, matricule: e.target.value.toUpperCase()})}
+                                    />
+                                    <AuthInput
+                                        label="Date Naissance"
+                                        type="date"
+                                        value={valForm.dateNaissance}
+                                        onChange={e => setValForm({...valForm, dateNaissance: e.target.value})}
+                                    />
+                                </div>
 
-                        <AuthInput
-                            label="Lieu Naissance"
-                            value={valForm.lieuNaissance}
-                            onChange={e => setValForm({...valForm, lieuNaissance: e.target.value})}
-                        />
+                                <AuthInput
+                                    label="Lieu Naissance"
+                                    value={valForm.lieuNaissance}
+                                    onChange={e => setValForm({...valForm, lieuNaissance: e.target.value})}
+                                />
 
-                        <AuthInput
-                            label="Diplômes / Qualifications"
-                            placeholder="Doctorat, Master, etc."
-                            value={valForm.diplomes}
-                            onChange={e => setValForm({...valForm, diplomes: e.target.value})}
-                        />
+                                <AuthInput
+                                    label="Diplômes / Qualifications"
+                                    placeholder="Doctorat, Master, etc."
+                                    value={valForm.diplomes}
+                                    onChange={e => setValForm({...valForm, diplomes: e.target.value})}
+                                />
+                            </>
+                        )}
 
                         {['ELEVE', 'PARENT'].includes(valForm.role) && (
                             <div className="space-y-4 p-6 bg-gray-50 rounded-[32px] border border-gray-100 animate-in slide-in-from-top-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">
                                     {valForm.role === 'ELEVE' ? "Lier à quel élève ?" : "Lier à quel enfant (Élève) ?"}
                                 </label>
-                                <div className="relative">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
-                                    <input
-                                        type="text"
-                                        className="w-full pl-12 pr-4 py-3 bg-white border-2 border-transparent focus:border-black rounded-xl text-xs font-bold outline-none transition-all"
-                                        placeholder="Rechercher par nom ou matricule..."
-                                        value={studentSearch}
-                                        onChange={e => setStudentSearch(e.target.value)}
-                                    />
-                                </div>
-                                {searchingStudents && <p className="text-[9px] font-bold text-gray-400 animate-pulse">Recherche...</p>}
-                                <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                                    {studentResults.map(s => (
-                                        <div
-                                            key={s.idEleve}
-                                            onClick={() => setValForm({...valForm, idEleveLinked: s.idEleve})}
+                                {valForm.idEleveLinked ? (
+                                    <div className="flex items-center justify-between p-4 bg-black text-white rounded-2xl">
+                                        <div className="flex items-center space-x-3">
+                                            <GraduationCap size={20} className="text-yellow-500" />
+                                            <span className="text-[11px] font-black uppercase">Élève lié par la demande</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setValForm({...valForm, idEleveLinked: null})}
+                                            className="text-[9px] font-black uppercase tracking-widest text-red-400 hover:text-red-500"
+                                        >
+                                            Changer
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="relative">
+                                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+                                            <input
+                                                type="text"
+                                                className="w-full pl-12 pr-4 py-3 bg-white border-2 border-transparent focus:border-black rounded-xl text-xs font-bold outline-none transition-all"
+                                                placeholder="Rechercher par nom ou matricule..."
+                                                value={studentSearch}
+                                                onChange={e => setStudentSearch(e.target.value)}
+                                            />
+                                        </div>
+                                        {searchingStudents && <p className="text-[9px] font-bold text-gray-400 animate-pulse">Recherche...</p>}
+                                        <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                                            {studentResults.map(s => (
+                                                <div
+                                                    key={s.idEleve}
+                                                    onClick={() => setValForm({...valForm, idEleveLinked: s.idEleve})}
+                                                    className={clsx(
+                                                        "p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between",
+                                                        valForm.idEleveLinked === s.idEleve ? "border-black bg-black text-white" : "border-white bg-white hover:border-gray-100"
+                                                    )}
+                                                >
+                                                    <div className="flex flex-col">
+                                                        <span className="font-black text-[10px] uppercase">{s.nom} {s.prenom}</span>
+                                                        <span className="text-[8px] opacity-60 font-bold">{s.matricule}</span>
+                                                    </div>
+                                                    {valForm.idEleveLinked === s.idEleve && <Check size={14} />}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+
+                        {!['ELEVE', 'PARENT'].includes(valForm.role) && (
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">{t('common.status')}</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {roles.filter(r => !['ELEVE', 'PARENT'].includes(r)).map(role => (
+                                        <button
+                                            key={role}
+                                            type="button"
+                                            onClick={() => setValForm({...valForm, role})}
                                             className={clsx(
-                                                "p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between",
-                                                valForm.idEleveLinked === s.idEleve ? "border-black bg-black text-white" : "border-white bg-white hover:border-gray-100"
+                                                "p-3 rounded-[16px] text-[9px] font-black uppercase transition-all border",
+                                                valForm.role === role ? "border-black bg-gray-900 text-white" : "border-gray-200 text-gray-400"
                                             )}
                                         >
-                                            <div className="flex flex-col">
-                                                <span className="font-black text-[10px] uppercase">{s.nom} {s.prenom}</span>
-                                                <span className="text-[8px] opacity-60 font-bold">{s.matricule}</span>
-                                            </div>
-                                            {valForm.idEleveLinked === s.idEleve && <Check size={14} />}
-                                        </div>
+                                            {role.replace(/_/g, ' ')}
+                                        </button>
                                     ))}
                                 </div>
                             </div>
                         )}
-
-                        <div className="space-y-3">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] ml-1">{t('common.status')}</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                {roles.map(role => (
-                                    <button
-                                        key={role}
-                                        type="button"
-                                        onClick={() => setValForm({...valForm, role})}
-                                        className={clsx(
-                                            "p-3 rounded-[16px] text-[9px] font-black uppercase transition-all border",
-                                            valForm.role === role ? "border-black bg-gray-900 text-white" : "border-gray-200 text-gray-400"
-                                        )}
-                                    >
-                                        {role.replace(/_/g, ' ')}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
 
                         <div className="space-y-3 border-t pt-6">
                             <label className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">{t('staff.permissions_title')}</label>

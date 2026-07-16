@@ -650,7 +650,7 @@ exports.getRecouvrementStats = async (req, res) => {
     try {
         const { idClasse, idAnneeScolaire } = req.params;
         const tarifs = await TarifFraisExigible.findAll({ where: { idClasse, idAnneeScolaire, supprimer: false }, include: [{ model: FraisExigible, as: "Frais" }], order: [['ordrePaiement', 'ASC']] });
-        const nbEleves = await Inscription.count({ where: { idAnneeScolaire, supprimer: false }, include: [{ model: Salle, where: { idClasse } }] });
+        const nbEleves = await Inscription.count({ where: { idAnneeScolaire, supprimer: false }, include: [{ model: Salle, as: 'Salle', where: { idClasse } }] });
         const stats = await Promise.all(tarifs.map(async (t) => {
             const totalAttendu = t.montantFraisExigible * nbEleves;
             const totalEncaisse = await PaiementFraisExigible.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idAnneeScolaire, annule: 0 }, attributes: [] }], where: { idTarifFraisExigible: t.idTarifFraisExigible } }) || 0;
@@ -666,7 +666,7 @@ exports.getRecouvrementStats = async (req, res) => {
 exports.getStudentPaymentDetails = async (req, res) => {
     try {
         const { idEleve, idAnneeScolaire } = req.params;
-        const ins = await Inscription.findOne({ where: { idEleve, idAnneeScolaire, supprimer: false }, include: [{ model: Eleve }, { model: Salle, include: [{ model: Classe, as: 'Classe' }] }] });
+        const ins = await Inscription.findOne({ where: { idEleve, idAnneeScolaire, supprimer: false }, include: [{ model: Eleve }, { model: Salle, as: 'Salle', include: [{ model: Classe, as: 'Classe' }] }] });
         if (!ins || !ins.Salle || !ins.Salle.Classe) return res.status(404).json({ error: "Élève non inscrit pour cette année." });
         const idClasse = ins.Salle.Classe.idClasse;
         const tarifs = await TarifFraisExigible.findAll({ where: { idClasse, idAnneeScolaire, supprimer: false }, include: [{ model: FraisExigible, as: "Frais" }], order: [['ordrePaiement', 'ASC']] });
@@ -762,7 +762,7 @@ exports.getRegistrationReceiptData = async (req, res) => {
         }));
         const totalDejaVerse = fullHistory.reduce((sum, h) => sum + h.dejaPaye, 0);
         const totalTotalDu = fullHistory.reduce((sum, h) => sum + h.montantTotal, 0);
-        res.json({ schoolInfo: { name: school?.nomFr || "INSTITUT BILINGUE ROGER AMPERE", devise: school?.devise || "Discipline - Travail - Succès", ministry: school?.tutelle || "Ministère des Enseignements Secondaires", address: school?.adresse, bp: school?.bp, phones: school?.telephone1?.toString(), email: school?.email, authorizationNo: school?.numeroAgrement, logoUrl: school?.logo }, receiptInfo: { title: "REÇU DE PAIEMENT", receiptNo: `FS-${lastPayment.idPaiementFraisGlobal}`, schoolYear: ins.AnneeScolaire.libelleAnneeScolaire, dateTime: lastPayment.datePaiement, operationTime: lastPayment.datePaiement }, studentInfo: { matricule: ins.Eleve.matricule, fullName: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(), classLabel: `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}`, dateNaissance: ins.Eleve.dateNaissance, lieuNaissance: ins.Eleve.lieuNaissance, sexe: ins.Eleve.sexe === 'M' ? 'MASCULIN' : 'FEMININ', redoublant: ins.nouveau ? 'NON' : 'OUI' }, financialDetail: { nature: "Paiement frais de scolarité", amountDigits: lastPayment.montantTotal, amountWords: "...", paymentMode: lastPayment.modePaiement, balance: totalDejaVerse, remaining: totalTotalDu - totalDejaVerse, penalties: 0, printedBy: lastPayment.Caissier?.nom || "ADMINISTRATEUR", todayBreakdown, fullHistory }, validation: { cashierName: lastPayment.Caissier?.nom || "La Caisse", qrContent: `REF:${lastPayment.idPaiementFraisGlobal}-EL:${idEleve}` } });
+        res.json({ schoolInfo: { name: school?.nomFr || "INSTITUT BILINGUE ROGER AMPERE", devise: school?.devise || "Discipline - Travail - Succès", ministry: school?.tutelle || "Ministère des Enseignements Secondaires", address: school?.adresse, bp: school?.bp, phones: school?.telephone1?.toString(), email: school?.email, authorizationNo: school?.numeroAgrement, logoUrl: school?.logo, pinSecurite: school?.pinSecurite }, receiptInfo: { title: "REÇU DE PAIEMENT", receiptNo: `FS-${lastPayment.idPaiementFraisGlobal}`, schoolYear: ins.AnneeScolaire.libelleAnneeScolaire, dateTime: lastPayment.datePaiement, operationTime: lastPayment.datePaiement }, studentInfo: { matricule: ins.Eleve.matricule, fullName: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(), classLabel: `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}`, dateNaissance: ins.Eleve.dateNaissance, lieuNaissance: ins.Eleve.lieuNaissance, sexe: ins.Eleve.sexe === 'M' ? 'MASCULIN' : 'FEMININ', redoublant: ins.nouveau ? 'NON' : 'OUI', codeInscription: ins.codeInscription }, financialDetail: { nature: "Paiement frais de scolarité", amountDigits: lastPayment.montantTotal, amountWords: "...", paymentMode: lastPayment.modePaiement, balance: totalDejaVerse, remaining: totalTotalDu - totalDejaVerse, penalties: 0, printedBy: lastPayment.Caissier?.nom || "ADMINISTRATEUR", todayBreakdown, fullHistory }, validation: { cashierName: lastPayment.Caissier?.nom || "La Caisse", qrContent: `REF:${lastPayment.idPaiementFraisGlobal}-EL:${idEleve}` } });
     } catch (error) {
         console.error("Error in getRegistrationReceiptData:", error);
         res.status(500).json({ error: error.message });
@@ -854,7 +854,7 @@ exports.getSimpleRegistrationReceipt = async (req, res) => {
         const ins = await Inscription.findOne({ where: { idEleve, idAnneeScolaire, supprimer: false }, include: [{ model: Eleve }, { model: AnneeScolaire }, { model: Salle, include: [{ model: Classe, as: 'Classe' }] }] });
         if (!ins) return res.status(404).json({ error: "Inscription non trouvée." });
         const school = await Etablissement.findOne();
-        res.json({ schoolInfo: { name: school?.nomFr || "INSTITUT BILINGUE ROGER AMPERE", devise: school?.devise || "Discipline - Travail - Succès", ministry: school?.tutelle || "Ministère des Enseignements Secondaires", address: school?.adresse, bp: school?.bp, phones: school?.telephone1?.toString(), email: school?.email, logoUrl: school?.logo }, receiptInfo: { title: "FICHE D'INSCRIPTION", receiptNo: `INS-${ins.idInscription}`, schoolYear: ins.AnneeScolaire.libelleAnneeScolaire, dateTime: ins.dateInscription }, studentInfo: { matricule: ins.Eleve.matricule, fullName: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(), classLabel: `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}`, dateNaissance: ins.Eleve.dateNaissance, lieuNaissance: ins.Eleve.lieuNaissance, sexe: ins.Eleve.sexe === 'M' ? 'MASCULIN' : 'FEMININ', redoublant: ins.nouveau ? 'NON' : 'OUI' }, validation: { qrContent: `INSCRIPTION:${ins.idInscription}-MAT:${ins.Eleve.matricule}` } });
+        res.json({ schoolInfo: { name: school?.nomFr || "INSTITUT BILINGUE ROGER AMPERE", devise: school?.devise || "Discipline - Travail - Succès", ministry: school?.tutelle || "Ministère des Enseignements Secondaires", address: school?.adresse, bp: school?.bp, phones: school?.telephone1?.toString(), email: school?.email, logoUrl: school?.logo, pinSecurite: school?.pinSecurite }, receiptInfo: { title: "FICHE D'INSCRIPTION", receiptNo: `INS-${ins.idInscription}`, schoolYear: ins.AnneeScolaire.libelleAnneeScolaire, dateTime: ins.dateInscription }, studentInfo: { matricule: ins.Eleve.matricule, fullName: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(), classLabel: `${ins.Salle.Classe.libelleClasseFr} ${ins.Salle.nomSalle}`, dateNaissance: ins.Eleve.dateNaissance, lieuNaissance: ins.Eleve.lieuNaissance, sexe: ins.Eleve.sexe === 'M' ? 'MASCULIN' : 'FEMININ', redoublant: ins.nouveau ? 'NON' : 'OUI', codeInscription: ins.codeInscription }, validation: { qrContent: `INSCRIPTION:${ins.idInscription}-MAT:${ins.Eleve.matricule}` } });
     } catch (error) {
         console.error("❌ [CockpitAggregates] Error:", error);
         res.status(500).json({ error: error.message, stack: error.stack });
@@ -970,7 +970,7 @@ exports.getInsolvablesList = async (req, res) => {
         if (!tarif) return res.status(404).json({ error: "Tranche non trouvée" });
         const whereIns = { idAnneeScolaire, supprimer: false };
         if (idSalle) whereIns.idSalle = idSalle;
-        const inscriptions = await Inscription.findAll({ where: whereIns, include: [{ model: Eleve }, { model: Salle, include: [{ model: Classe, as: 'Classe' }] }] });
+        const inscriptions = await Inscription.findAll({ where: whereIns, include: [{ model: Eleve }, { model: Salle, as: 'Salle', include: [{ model: Classe, as: 'Classe' }] }] });
         const result = [];
         for (const ins of inscriptions) {
             const verse = await PaiementFraisExigible.sum('montantAlloue', { include: [{ model: PaiementFraisGlobal, where: { idEleve: ins.idEleve, idAnneeScolaire, annule: 0 }, attributes: [] }], where: { idTarifFraisExigible: idTranche } }) || 0;
@@ -1064,7 +1064,7 @@ exports.payerFraisPeriscolaires = async (req, res) => {
 exports.getStudentPeriscolaireDetails = async (req, res) => {
     try {
         const { idEleve, idAnneeScolaire } = req.params;
-        const ins = await Inscription.findOne({ where: { idEleve, idAnneeScolaire, supprimer: false }, include: [{ model: Eleve }, { model: Salle, include: [{ model: Classe, as: "Classe" }] }] });
+        const ins = await Inscription.findOne({ where: { idEleve, idAnneeScolaire, supprimer: false }, include: [{ model: Eleve }, { model: Salle, as: 'Salle', include: [{ model: Classe, as: "Classe" }] }] });
         if (!ins) return res.status(404).json({ error: "Élève non trouvé." });
         const tarifs = await TarifFraisPeriscolaire.findAll({ where: { idAnneeScolaire, supprimer: false }, include: [{ model: FraisActivitePeriscolaire, as: "Frais" }], order: [['createdAt', 'ASC']] });
         const details = await Promise.all(tarifs.map(async (t) => {

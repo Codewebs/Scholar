@@ -456,7 +456,7 @@ exports.exportBulletins = async (req, res) => {
 
         const inscriptions = await Inscription.findAll({
             where: whereInscriptions,
-            include: [{ model: Eleve }, { model: Salle, include: [{ model: Classe, as: 'Classe' }] }],
+            include: [{ model: Eleve }, { model: Salle, as: 'Salle', include: [{ model: Classe, as: 'Classe' }] }],
             order: [[{ model: Eleve }, 'nom', 'ASC']]
         });
 

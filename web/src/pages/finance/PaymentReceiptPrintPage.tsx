@@ -152,6 +152,24 @@ const PaymentReceiptPrintPage: React.FC = () => {
                     </div>
                 </div>
 
+                {/* Accès Espace Parent */}
+                <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-2 mb-4 flex justify-between items-center px-4">
+                    <div className="flex items-center space-x-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></div>
+                        <span className="text-[7px] font-black uppercase text-blue-700">Paramètres d'accès Espace Parent :</span>
+                    </div>
+                    <div className="flex space-x-8">
+                        <div>
+                            <span className="text-[7px] font-bold text-gray-500 uppercase mr-2">PIN Établissement:</span>
+                            <span className="text-[9px] font-black font-mono text-blue-800">{data.schoolInfo.pinSecurite || '****'}</span>
+                        </div>
+                        <div>
+                            <span className="text-[7px] font-bold text-gray-500 uppercase mr-2">Code Inscription Élève:</span>
+                            <span className="text-[9px] font-black font-mono text-blue-800">{data.studentInfo.codeInscription || 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+
                 {/* 4. Tableaux Financiers */}
                 <div className="flex gap-4 mb-4 flex-1">
                     {/* Tableau A */}

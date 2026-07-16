@@ -26,7 +26,8 @@ fun StudentPortalScreen(
     apiService: ApiService,
     userName: String,
     schoolName: String,
-    yearId: Long
+    yearId: Long,
+    onNavigateToSetup: () -> Unit
 ) {
     var student by remember { mutableStateOf<EleveUiModel?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -46,10 +47,18 @@ fun StudentPortalScreen(
             CircularProgressIndicator()
         }
     } else if (student == null) {
-        EmptyPortalState(
-            title = "Profile not found",
-            subtitle = "Your account is not linked to any student record. Please contact administration."
-        )
+        Box(modifier = Modifier.fillMaxSize()) {
+            EmptyPortalState(
+                title = "Profile not found",
+                subtitle = "Your account is not linked to any student record. Please contact administration."
+            )
+            IconButton(
+                onClick = onNavigateToSetup,
+                modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+            ) {
+                Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary)
+            }
+        }
     } else {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -57,16 +66,23 @@ fun StudentPortalScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             item {
-                Text(
-                    text = "Welcome back, ${userName.split(" ")[0]}! 🎓",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    text = "$schoolName • ${student?.classeLabel ?: "N/A"}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
-                )
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Welcome back, ${userName.split(" ")[0]}! 🎓",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = "$schoolName • ${student?.classeLabel ?: "N/A"}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                    }
+                    IconButton(onClick = onNavigateToSetup) {
+                        Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
             }
 
             item {

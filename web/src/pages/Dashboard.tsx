@@ -251,6 +251,19 @@ const Dashboard: React.FC = () => {
                 EN
               </button>
             </div>
+
+            {/* Back to Setup Button */}
+            <button
+                onClick={() => {
+                    localStorage.removeItem('setup_complete');
+                    window.location.href = '/initial-config';
+                }}
+                className="flex items-center bg-black text-white px-4 py-2 border border-black rounded-sharp hover:bg-accent hover:border-accent transition-all group"
+                title="Revenir à la configuration"
+            >
+                <Plus size={14} className="mr-2" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Setup</span>
+            </button>
           </div>
         </div>
 

@@ -170,6 +170,19 @@ object ReceiptUtils {
         metaTable.addCell(createMetaCell("Pénalités : ", "${data.financialDetail.penalties} FCFA", TextAlignment.RIGHT, redColor))
         leftContentCell.add(metaTable)
 
+        // --- 3b. PARENTAL ACCESS INFO ---
+        val accessTable = Table(UnitValue.createPercentArray(floatArrayOf(100f))).useAllAvailableWidth().setMarginTop(1f)
+        val accessCell = Cell().setBackgroundColor(DeviceRgb(240, 245, 255)).setBorder(DashedBorder(DeviceRgb(100, 100, 255), 0.5f)).setPadding(2f)
+        val accessPara = Paragraph().setFontSize(7f)
+            .add(Text("ACCÈS ESPACE PARENT : ").setBold().setFontColor(DeviceRgb(0, 0, 150)))
+            .add(Text(" PIN École : ").setFontSize(6.5f))
+            .add(Text(data.schoolInfo.pinSecurite ?: "****").setBold())
+            .add(Text(" | Code Élève : ").setFontSize(6.5f))
+            .add(Text(data.studentInfo.codeInscription ?: "N/A").setBold())
+        accessCell.add(accessPara)
+        accessTable.addCell(accessCell)
+        leftContentCell.add(accessTable)
+
         // --- 4. DATA TABLES ---
         val tablesContainer = Table(UnitValue.createPercentArray(floatArrayOf(30f, 70f))).useAllAvailableWidth().setMarginTop(2f)
 

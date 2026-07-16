@@ -14,8 +14,11 @@ const {
     RepartitionMatiere,
     InscriptionPersonnel,
     RepartitionEnseignant,
+    Inscription,
+    Cycle,
     sequelize
 } = require("../models");
+const { Op } = require("sequelize");
 
 exports.getSystemStats = async (req, res) => {
     try {
@@ -108,7 +111,7 @@ exports.getSetupProgress = async (req, res) => {
 
         const allClasses = await Classe.findAll({
             include: [{
-                model: require("../models").Cycle,
+                model: Cycle,
                 as: 'Cycle',
                 required: true,
                 include: [{
@@ -172,7 +175,7 @@ exports.getSetupProgress = async (req, res) => {
         };
 
         // 8. Enseignants
-        const totalTeachers = await InscriptionPersonnel.count({ where: { idAnneeScolaire: targetYearId, role: 'ENSEIGNANT', supprimer: false } });
+        const totalTeachers = await InscriptionPersonnel.count({ where: { idAnneeScolaire: targetYearId, role: { [Op.like]: '%ENSEIGNANT%' }, supprimer: false } });
         const assignedTeachers = await RepartitionEnseignant.count({
             distinct: true,
             col: 'idInscriptionPersonnel',
@@ -195,8 +198,9 @@ exports.getSetupProgress = async (req, res) => {
 
         // 9. Éleves
         const studentsCount = await Eleve.count({
-            include: [{ model: require("../models").Inscription, where: { idAnneeScolaire: targetYearId, supprimer: false } }],
-            where: { supprimer: false }
+            include: [{ model: Inscription, as: 'Inscriptions', where: { idAnneeScolaire: targetYearId, supprimer: false }, required: true }],
+            where: { supprimer: false },
+            distinct: true
         });
         results.students = { count: studentsCount };
 

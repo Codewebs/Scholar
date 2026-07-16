@@ -56,6 +56,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun InitialSetupScreen(
     viewModel: InitialSetupViewModel,
+    onLogout: () -> Unit,
     onSetupComplete: (Long, Long, String) -> Unit,
     onNavigateToTracker: () -> Unit
 ) {
@@ -79,8 +80,12 @@ fun InitialSetupScreen(
                     title = {},
                     navigationIcon = {
                         if (uiState.currentStep != SetupStep.LANDING) {
-                            IconButton(onClick = { /* Implement back logic in VM */ }) {
+                            IconButton(onClick = { viewModel.jumpToStep(SetupStep.LANDING) }) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
+                        } else {
+                            IconButton(onClick = onLogout) {
+                                Icon(Icons.Default.LogOut, contentDescription = "Logout", tint = Color.Red)
                             }
                         }
                     },
@@ -474,20 +479,31 @@ fun SchoolStep(viewModel: InitialSetupViewModel, onNavigateToTracker: () -> Unit
                     val existingAssoc = uiState.userAssociations.find { it.school.idServeur == school.idServeur }
                     val status = existingAssoc?.etat
                     
-                    SchoolItem(school, school == uiState.selectedSchool, status) {
-                        viewModel.selectSchool(school)
-                        when (status) {
-                            "VALIDE" -> {
-                                isNewDemandFlow = false
-                                viewModel.validateSchool { }
-                            }
-                            "EN_ATTENTE", "REJETE" -> {
-                                isNewDemandFlow = false
-                                showAlreadyAppliedSheet = true
-                            }
-                            else -> isNewDemandFlow = true
+            SchoolItem(school, school == uiState.selectedSchool, status) {
+                viewModel.selectSchool(school)
+                when (status) {
+                    "VALIDE" -> {
+                        if (uiState.selectedProfile == "PARENT") {
+                             // On autorise un parent valide à lier un autre enfant
+                             isNewDemandFlow = true
+                             viewModel.jumpToStep(SetupStep.SEARCH_CHILD)
+                        } else {
+                             isNewDemandFlow = false
+                             viewModel.validateSchool { }
                         }
                     }
+                    "EN_ATTENTE", "REJETE" -> {
+                        if (uiState.selectedProfile == "PARENT") {
+                             isNewDemandFlow = true
+                             viewModel.jumpToStep(SetupStep.SEARCH_CHILD)
+                        } else {
+                            isNewDemandFlow = false
+                            showAlreadyAppliedSheet = true
+                        }
+                    }
+                    else -> isNewDemandFlow = true
+                }
+            }
                 }
             }
         }

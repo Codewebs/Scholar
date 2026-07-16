@@ -9,6 +9,7 @@ export interface UserAssociation {
     idAnneeScolaire: number;
     permissionsAjoutees?: string[];
     permissionsRetirees?: string[];
+    enfant?: { nom: string; prenom: string } | null;
 }
 
 export interface DemandeInscriptionPayload {

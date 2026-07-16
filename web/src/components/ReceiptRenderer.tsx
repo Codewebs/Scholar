@@ -75,6 +75,15 @@ const SingleReceipt: React.FC<{ data: ReceiptData, label: string }> = ({ data, l
         </div>
       </div>
 
+      {/* Parental Portal Access Info */}
+      <div className="mb-6 bg-gray-50 p-3 rounded-xl border border-gray-200 flex justify-between items-center px-6">
+        <span className="text-[9px] font-black uppercase text-secondary">Accès Espace Parent :</span>
+        <div className="flex space-x-10">
+            <p className="text-[10px] font-bold uppercase"><span className="text-gray-400 mr-2">PIN Étab:</span> {(data as any).pinEtablissement || '****'}</p>
+            <p className="text-[10px] font-bold uppercase"><span className="text-gray-400 mr-2">Code Élève:</span> {(data as any).codeInscription || 'N/A'}</p>
+        </div>
+      </div>
+
       {/* Table Section (Asymmetrical) */}
       <div className="flex flex-1 gap-4 overflow-hidden">
         {/* Left Table (28%) - Today's breakdown */}

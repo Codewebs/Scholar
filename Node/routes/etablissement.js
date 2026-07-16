@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { Etablissement } = require("../models");
+const { Etablissement, Eleve, Inscription, AnneeScolaire, sequelize } = require("../models");
 const { Op } = require("sequelize");
 const multer = require("multer");
 const path = require("path");
@@ -144,7 +144,6 @@ router.get("/:schoolId/students/search", async (req, res) => {
   try {
     const { schoolId } = req.params;
     const { q } = req.query;
-    const { Eleve, Inscription, AnneeScolaire } = require("../models");
 
     const students = await Eleve.findAll({
       where: {
@@ -156,15 +155,18 @@ router.get("/:schoolId/students/search", async (req, res) => {
       },
       include: [{
         model: Inscription,
+        as: 'Inscriptions',
         required: true,
         where: { supprimer: false },
         include: [{
             model: AnneeScolaire,
+            as: 'AnneeScolaire',
             required: true,
-            where: { idEtablissement: schoolId, supprimer: false }
+            where: { idEtablissement: schoolId }
         }]
       }],
-      limit: 20
+      limit: 20,
+      subQuery: false
     });
 
     res.json(students);

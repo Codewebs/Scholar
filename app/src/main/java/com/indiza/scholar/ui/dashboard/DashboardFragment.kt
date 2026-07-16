@@ -33,6 +33,12 @@ class DashboardFragment : Fragment() {
         val schoolName = appConfig.getString("school_name", "Mon École") ?: "Mon École"
         val yearId = appConfig.getLong("year_id", 0L)
 
+        val onNavigateToSetup = {
+            requireContext().getSharedPreferences("app_config", android.content.Context.MODE_PRIVATE)
+                .edit().putBoolean("setup_complete", false).apply()
+            requireActivity().recreate()
+        }
+
         return ComposeView(requireContext()).apply {
             setContent {
                 ScholarTheme {
@@ -43,7 +49,8 @@ class DashboardFragment : Fragment() {
                                 userId = userId,
                                 schoolId = schoolId,
                                 schoolName = schoolName,
-                                yearId = yearId
+                                yearId = yearId,
+                                onNavigateToSetup = onNavigateToSetup
                             )
                         }
                         userRole.contains("ELEVE", ignoreCase = true) -> {
@@ -51,7 +58,8 @@ class DashboardFragment : Fragment() {
                                 apiService = apiService,
                                 userName = userName,
                                 schoolName = schoolName,
-                                yearId = yearId
+                                yearId = yearId,
+                                onNavigateToSetup = onNavigateToSetup
                             )
                         }
                         else -> {
@@ -62,11 +70,7 @@ class DashboardFragment : Fragment() {
                                 userRole = userRole,
                                 schoolId = schoolId,
                                 schoolName = schoolName,
-                                onNavigateToSetup = {
-                                    requireContext().getSharedPreferences("app_config", android.content.Context.MODE_PRIVATE)
-                                        .edit().putBoolean("setup_complete", false).apply()
-                                    requireActivity().recreate()
-                                }
+                                onNavigateToSetup = onNavigateToSetup
                             )
                         }
                     }

@@ -8,6 +8,7 @@ const {
   Salle,
   Etablissement,
   Inscription,
+  Eleve,
   sequelize
 } = require("../models");
 const { Op } = require("sequelize");
@@ -35,16 +36,24 @@ exports.envoyerDemande = async (req, res) => {
         }
 
         // 2. Vérifier si une demande IDENTIQUE en attente existe
+        // Pour les parents/élèves, on vérifie aussi l'élève lié pour permettre plusieurs liaisons (ex: multi-enfants)
+        const demandCriteria = {
+            idUtilisateur,
+            idEtablissement,
+            profilDemande,
+            etat: 'EN_ATTENTE'
+        };
+
+        if (idEleveLinked) {
+            demandCriteria.idEleveLinked = idEleveLinked;
+        }
+
         const existingDemand = await DemandeInscriptionPersonnel.findOne({
-            where: {
-                idUtilisateur,
-                idEtablissement,
-                profilDemande,
-                etat: 'EN_ATTENTE'
-            }
+            where: demandCriteria
         });
+
         if (existingDemand) {
-            return res.status(409).json({ error: "Une demande pour ce rôle est déjà en cours d'étude." });
+            return res.status(409).json({ error: "Une demande identique est déjà en cours d'étude." });
         }
 
         // 3. Récupérer TOUTES les inscriptions de l'utilisateur (ou liées par email/tel) dans cet établissement
@@ -63,8 +72,22 @@ exports.envoyerDemande = async (req, res) => {
         const existingRoles = currentInscriptions.map(ins => ins.role);
 
         // Si l'utilisateur a déjà exactement ce rôle
-        if (existingRoles.includes(profilDemande)) {
+        // Exception pour les PARENTS: ils peuvent avoir plusieurs liaisons (un pour chaque enfant)
+        if (existingRoles.includes(profilDemande) && profilDemande !== 'PARENT') {
             return res.status(409).json({ error: `Cet utilisateur est déjà enregistré comme ${profilDemande} dans cet établissement.` });
+        }
+
+        // Pour les parents, vérifier si déjà lié à CET enfant précis
+        if (profilDemande === 'PARENT') {
+            if (!idEleveLinked) {
+                return res.status(400).json({ error: "Une liaison avec un enfant est obligatoire pour le profil Parent." });
+            }
+            const alreadyLinked = await Eleve.findOne({
+                where: { idEleve: idEleveLinked, idUtilisateurParent: idUtilisateur }
+            });
+            if (alreadyLinked) {
+                return res.status(409).json({ error: "Vous êtes déjà lié à cet enfant dans cet établissement." });
+            }
         }
 
         // 4. Vérifier les CONFLITS (Règles 1 & 2)
@@ -96,10 +119,14 @@ exports.envoyerDemande = async (req, res) => {
                 return res.status(403).json({ error: "Code de recrutement invalide pour rejoindre le Staff." });
             }
         } else if (isNewUsager) {
+            if (!code) {
+                return res.status(400).json({ error: "Le code d'inscription est obligatoire pour rejoindre en tant qu'élève ou parent." });
+            }
             const validInscription = await Inscription.findOne({
                 where: { codeInscription: code },
                 include: [{
                     model: Salle,
+                    as: 'Salle',
                     where: { idEtablissement }
                 }]
             });
@@ -135,31 +162,63 @@ exports.validerDemande = async (req, res) => {
         if (!demande) return res.status(404).json({ error: "Demande introuvable." });
 
         const idEleveLinked = bodyIdEleveLinked || demande.idEleveLinked;
+        const finalRole = role || demande.profilDemande;
+
+        if (finalRole === 'PARENT' && !idEleveLinked) {
+            return res.status(400).json({ error: "Liaison avec un élève obligatoire pour valider un parent." });
+        }
 
         // Update diplomas in global user profile if provided
         if (diplomes) {
             await Utilisateur.update({ diplomes }, { where: { idUtilisateur: demande.idUtilisateur }, transaction: t });
         }
 
-        // Créer l'inscription avec surcharges de droits
-        const finalRole = role || demande.profilDemande;
-        const inscription = await InscriptionPersonnel.create({
-            matricule,
-            nom: demande.nom,
-            prenom: demande.prenom,
-            dateNaissance,
-            lieuNaissance,
-            sexe,
-            telephone1: demande.telephone1,
-            email: demande.email,
-            role: finalRole,
-            idUtilisateur: demande.idUtilisateur,
-            idAnneeScolaire,
-            idEtablissement: demande.idEtablissement,
-            idDemandeSource: idDemande,
-            permissionsAjoutees: permissionsAjoutees ? JSON.stringify(permissionsAjoutees) : null,
-            permissionsRetirees: permissionsRetirees ? JSON.stringify(permissionsRetirees) : null
-        }, { transaction: t });
+        // Créer ou récupérer l'inscription
+        let [inscription, created] = await InscriptionPersonnel.findOrCreate({
+            where: {
+                idUtilisateur: demande.idUtilisateur,
+                idAnneeScolaire,
+                idEtablissement: demande.idEtablissement
+            },
+            defaults: {
+                matricule: matricule || `USER-${demande.idUtilisateur}`,
+                nom: demande.nom,
+                prenom: demande.prenom,
+                dateNaissance,
+                lieuNaissance,
+                sexe,
+                telephone1: demande.telephone1,
+                email: demande.email,
+                role: finalRole,
+                idUtilisateur: demande.idUtilisateur,
+                idAnneeScolaire,
+                idEtablissement: demande.idEtablissement,
+                idDemandeSource: idDemande,
+                permissionsAjoutees: permissionsAjoutees ? JSON.stringify(permissionsAjoutees) : null,
+                permissionsRetirees: permissionsRetirees ? JSON.stringify(permissionsRetirees) : null
+            },
+            transaction: t
+        });
+
+        if (!created) {
+            // Si elle existe déjà, on peut mettre à jour le rôle (ex: cumuler les rôles ou garder le plus haut)
+            // Pour l'instant on ajoute le nouveau rôle s'il n'est pas présent
+            const existingRoles = inscription.role.split(',');
+            if (!existingRoles.includes(finalRole)) {
+                existingRoles.push(finalRole);
+                inscription.role = existingRoles.join(',');
+            }
+
+            // On fusionne aussi les permissions si besoin
+            if (permissionsAjoutees) {
+                let currentAdded = [];
+                try { currentAdded = inscription.permissionsAjoutees ? JSON.parse(inscription.permissionsAjoutees) : []; } catch(e) {}
+                const newAdded = Array.from(new Set([...currentAdded, ...permissionsAjoutees]));
+                inscription.permissionsAjoutees = JSON.stringify(newAdded);
+            }
+
+            await inscription.save({ transaction: t });
+        }
 
         // LIEN AVEC ELEVE (SI APPLICABLE)
         if (idEleveLinked) {
@@ -321,10 +380,17 @@ exports.getDemandesEnAttente = async (req, res) => {
         const { idEtablissement } = req.params;
         const demandes = await DemandeInscriptionPersonnel.findAll({
             where: { idEtablissement, etat: 'EN_ATTENTE' },
-            include: [{
-                model: Utilisateur,
-                attributes: ['idUtilisateur', 'nom', 'identifiant']
-            }],
+            include: [
+                {
+                    model: Utilisateur,
+                    attributes: ['idUtilisateur', 'nom', 'identifiant']
+                },
+                {
+                    model: Eleve,
+                    as: 'Eleve',
+                    attributes: ['idEleve', 'nom', 'prenom', 'matricule']
+                }
+            ],
             order: [['dateDemande', 'ASC']]
         });
         res.json(demandes);
@@ -341,8 +407,43 @@ exports.getPersonnelActif = async (req, res) => {
             where: { idEtablissement, idAnneeScolaire, supprimer: false },
             include: [
                 { model: Matiere, as: 'specialites' },
-                { model: Utilisateur, attributes: ['idUtilisateur', 'nom', 'email', 'telephone', 'diplomes', 'photo'] }
+                {
+                    model: Utilisateur,
+                    attributes: ['idUtilisateur', 'nom', 'email', 'telephone', 'diplomes', 'photo'],
+                    include: [
+                        {
+                            model: Eleve,
+                            as: 'Enfants',
+                            attributes: ['idEleve', 'nom', 'prenom'],
+                            include: [{
+                                model: Inscription,
+                                as: 'Inscriptions',
+                                where: { idAnneeScolaire },
+                                required: false,
+                                attributes: ['idInscription'],
+                                include: [{
+                                    model: Salle,
+                                    as: 'Salle',
+                                    where: { idEtablissement }, // Filtrer la salle par établissement
+                                    attributes: ['idSalle', 'nomSalle']
+                                }]
+                            }]
+                        }
+                    ]
+                }
             ]
+        });
+
+        console.log(`📊 [PersonnelCtrl] ${personnel.length} membres récupérés. Vérification des liaisons parents...`);
+        personnel.forEach(p => {
+            if (p.role && p.role.includes('PARENT')) {
+                const enfants = p.Utilisateur?.Enfants || [];
+                console.log(`   👨‍👩‍👧‍👦 Parent: ${p.nom} - Enfants trouvés: ${enfants.length}`);
+                enfants.forEach(e => {
+                    const salle = e.Inscriptions?.[0]?.Salle?.nomSalle || 'AUCUNE';
+                    console.log(`      - Enfant: ${e.nom} -> Salle: ${salle}`);
+                });
+            }
         });
 
         // Formatter pour s'assurer que les JSON strings sont parsés en tableaux pour Android
@@ -426,24 +527,32 @@ exports.getUserAssociations = async (req, res) => {
         idUtilisateur: userId,
         etat: { [Op.in]: ['EN_ATTENTE', 'VALIDE', 'REJETE'] }
       },
-      include: [{
-        model: Etablissement,
-        attributes: ['idEtablissement', 'nomFr', 'nomEn', 'ville', 'idCreateur', 'pinSecurite', 'telephone1', 'abreviation', 'logo', 'adresse', 'pays']
-      }]
+      include: [
+        {
+          model: Etablissement,
+          attributes: ['idEtablissement', 'nomFr', 'nomEn', 'ville', 'idCreateur', 'pinSecurite', 'telephone1', 'abreviation', 'logo', 'adresse', 'pays']
+        },
+        {
+          model: Eleve,
+          as: 'Eleve',
+          attributes: ['idEleve', 'nom', 'prenom']
+        }
+      ]
     });
 
     demandes.forEach(dem => {
         if (!dem.Etablissement) return;
         const schoolId = dem.Etablissement.idEtablissement;
-        // Pour les demandes, on n'a pas encore d'année scolaire définie dans l'association
-        // mais on peut utiliser une clé générique ou 0
-        const key = `${schoolId}-0`;
 
-        // Si on a déjà une inscription validée (dans la table inscription_personnel) pour cette école,
-        // on ne surcharge pas avec le statut de la demande.
-        // On vérifie s'il existe une clé schoolId-quelquechose déjà VALIDEE
-        const alreadyHasValid = Object.keys(associations).some(k => k.startsWith(`${schoolId}-`) && associations[k].etat === 'VALIDE');
-        if (alreadyHasValid) return;
+        // Pour regrouper au niveau du frontend par école, on utilise une clé par école.
+        // Mais on garde la distinction par enfant dans l'objet pour pouvoir lister les enfants.
+        const key = dem.profilDemande === 'PARENT' && dem.idEleveLinked
+            ? `${schoolId}-0-P-${dem.idEleveLinked}`
+            : `${schoolId}-0`;
+
+        // Si on a déjà une inscription validée EXACTEMENT pour ce rôle et cet élève (si parent), on ignore
+        // Sinon, on veut voir la demande.
+        if (associations[key] && associations[key].etat === 'VALIDE') return;
 
         associations[key] = {
             school: {
@@ -463,7 +572,8 @@ exports.getUserAssociations = async (req, res) => {
             roles: [dem.profilDemande],
             permissionsAjoutees: [],
             permissionsRetirees: [],
-            etat: dem.etat
+            etat: dem.etat,
+            enfant: dem.Eleve ? { nom: dem.Eleve.nom, prenom: dem.Eleve.prenom } : null
         };
     });
 
@@ -521,6 +631,63 @@ exports.updateProfile = async (req, res) => {
     } catch (error) {
         if (t) await t.rollback();
         console.error("❌ [PersonnelCtrl] updateProfile error:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 11. DISSOCIER UN PARENT (DÉLIER TOUS LES ENFANTS)
+exports.dissocierParent = async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { idUtilisateur, idEtablissement } = req.body;
+        console.log(`🔗 [PersonnelCtrl] Dissociation totale Parent: ${idUtilisateur} (School: ${idEtablissement})`);
+
+        // 1. Trouver les élèves du parent inscrits dans cet établissement
+        const linkedStudents = await Inscription.findAll({
+            include: [
+                {
+                    model: Salle,
+                    as: 'Salle',
+                    where: { idEtablissement }
+                },
+                {
+                    model: Eleve,
+                    where: { idUtilisateurParent: idUtilisateur }
+                }
+            ]
+        });
+
+        const studentIds = linkedStudents.map(ins => ins.idEleve);
+
+        if (studentIds.length > 0) {
+            await Eleve.update(
+                { idUtilisateurParent: null },
+                { where: { idEleve: studentIds }, transaction: t }
+            );
+            console.log(`   ✅ ${studentIds.length} enfants déliés.`);
+        }
+
+        // 2. Retirer le rôle PARENT de l'inscription personnel
+        const insPerso = await InscriptionPersonnel.findOne({
+            where: { idUtilisateur, idEtablissement, role: { [Op.like]: '%PARENT%' } }
+        });
+
+        if (insPerso) {
+            const roles = insPerso.role.split(',');
+            const newRoles = roles.filter(r => r !== 'PARENT');
+
+            if (newRoles.length === 0) {
+                await insPerso.update({ role: 'SANS_ROLE', statut: false }, { transaction: t });
+            } else {
+                await insPerso.update({ role: newRoles.join(',') }, { transaction: t });
+            }
+        }
+
+        await t.commit();
+        res.json({ success: true, message: "Parent dissocié avec succès." });
+    } catch (error) {
+        if (t) await t.rollback();
+        console.error("❌ [PersonnelCtrl] dissocierParent error:", error);
         res.status(500).json({ error: error.message });
     }
 };

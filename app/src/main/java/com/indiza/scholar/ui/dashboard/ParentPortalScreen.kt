@@ -31,7 +31,8 @@ fun ParentPortalScreen(
     userId: Long,
     schoolId: Long,
     schoolName: String,
-    yearId: Long
+    yearId: Long,
+    onNavigateToSetup: () -> Unit
 ) {
     var children by remember { mutableStateOf<List<EleveUiModel>>(emptyList()) }
     var selectedChild by remember { mutableStateOf<EleveUiModel?>(null) }
@@ -53,17 +54,30 @@ fun ParentPortalScreen(
             CircularProgressIndicator()
         }
     } else if (children.isEmpty()) {
-        EmptyPortalState(
-            title = "No children linked",
-            subtitle = "Please contact the administration to link your children to your account."
-        )
+        Box(modifier = Modifier.fillMaxSize()) {
+            EmptyPortalState(
+                title = "No children linked",
+                subtitle = "Please contact the administration to link your children to your account."
+            )
+            IconButton(
+                onClick = onNavigateToSetup,
+                modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+            ) {
+                Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary)
+            }
+        }
     } else {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            Text(
-                text = "Family Space",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Black
-            )
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    text = "Family Space",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Black
+                )
+                IconButton(onClick = onNavigateToSetup) {
+                    Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary)
+                }
+            }
             Text(
                 text = "Academic year: $schoolName",
                 style = MaterialTheme.typography.bodySmall,

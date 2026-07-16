@@ -149,14 +149,17 @@ SousPeriode.hasMany(RepartitionCompetence, { foreignKey: "idSousPeriode" });
 RepartitionCompetence.belongsTo(SousPeriode, { foreignKey: "idSousPeriode" });
 
 // ✅ Inscriptions et Éleves
-Eleve.hasMany(Inscription, { foreignKey: "idEleve" });
+Eleve.hasMany(Inscription, { foreignKey: "idEleve", as: "Inscriptions" });
 Inscription.belongsTo(Eleve, { foreignKey: "idEleve" });
 
+Utilisateur.hasMany(Eleve, { foreignKey: "idUtilisateurParent", as: "Enfants" });
+Eleve.belongsTo(Utilisateur, { foreignKey: "idUtilisateurParent", as: "Parent" });
+
 AnneeScolaire.hasMany(Inscription, { foreignKey: "idAnneeScolaire" });
-Inscription.belongsTo(AnneeScolaire, { foreignKey: "idAnneeScolaire" });
+Inscription.belongsTo(AnneeScolaire, { foreignKey: "idAnneeScolaire", as: "AnneeScolaire" });
 
 Salle.hasMany(Inscription, { foreignKey: "idSalle" });
-Inscription.belongsTo(Salle, { foreignKey: "idSalle" });
+Inscription.belongsTo(Salle, { foreignKey: "idSalle", as: "Salle" });
 
 // ✅ Personnel Associations
 Utilisateur.hasMany(InscriptionPersonnel, { foreignKey: "idUtilisateur" });
@@ -173,6 +176,9 @@ DemandeInscriptionPersonnel.belongsTo(Utilisateur, { foreignKey: "idUtilisateur"
 
 Etablissement.hasMany(DemandeInscriptionPersonnel, { foreignKey: "idEtablissement" });
 DemandeInscriptionPersonnel.belongsTo(Etablissement, { foreignKey: "idEtablissement" });
+
+DemandeInscriptionPersonnel.belongsTo(Eleve, { foreignKey: "idEleveLinked", as: "Eleve" });
+Eleve.hasMany(DemandeInscriptionPersonnel, { foreignKey: "idEleveLinked" });
 
 InscriptionPersonnel.belongsToMany(Matiere, {
   through: CompetenceEnseignant,

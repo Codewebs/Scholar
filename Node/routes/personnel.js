@@ -15,5 +15,6 @@ router.get("/actif/:idEtablissement/:idAnneeScolaire", verifyToken, controller.g
 router.get("/user-associations/:userId", verifyToken, controller.getUserAssociations);
 router.get("/my-demands/:userId", verifyToken, controller.getMyDemands);
 router.put("/profile/:idUtilisateur", verifyToken, controller.updateProfile);
+router.post("/dissocier-parent", verifyToken, controller.dissocierParent);
 
 module.exports = router;

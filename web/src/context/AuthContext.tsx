@@ -126,6 +126,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             'SECRETAIRE': ['DASHBOARD_ETABLISSEMENT', 'WEB_VERSION', 'REGISTER_STUDENT', 'ENROLL_STUDENT', 'VIEW_STUDENT_LIST', 'STUDENT_DOSSIER', 'PRINT_STUDENT_INFO', 'ATTENDANCE_CERTIFICATE'],
             'SURVEILLANT_GENERAL': ['DASHBOARD_ETABLISSEMENT', 'WEB_VERSION', 'VIEW_STUDENT_LIST', 'STUDENT_DOSSIER', 'GLOBAL_ATTENDANCE', 'MANAGE_JUSTIFICATIONS', 'MANAGE_SANCTIONS', 'EXIT_SLIP'],
             'ENSEIGNANT': ['DASHBOARD_ETABLISSEMENT', 'WEB_VERSION', 'MANAGE_GRADES', 'EDIT_STUDENT_NOTE', 'GRADES_REPORT_SHEET', 'SUMMARY'],
+            'PARENT': ['DASHBOARD_ETABLISSEMENT', 'VIEW_MY_CHILDREN', 'VIEW_CHILD_GRADES', 'VIEW_CHILD_ATTENDANCE', 'VIEW_CHILD_FINANCE', 'VIEW_MY_PAYMENT_STATUS', 'SUMMARY'],
+            'ELEVE': ['DASHBOARD_ETABLISSEMENT', 'VIEW_MY_GRADES', 'VIEW_MY_ATTENDANCE', 'VIEW_MY_FINANCE', 'SUMMARY'],
         };
 
         const defaultPerms = roleDefaultPermissions[role] || [];
@@ -133,7 +135,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // 4. Vérification des permissions spécifiques (surcharges)
         let userPerms: string[] = [];
         if (Array.isArray(user.permissions)) {
-            userPerms = user.permissions.map(p => p.toString());
+            userPerms = user.permissions
+                .filter(p => p !== null && p !== undefined)
+                .map(p => p.toString());
         } else if (typeof user.permissions === 'string') {
             try {
                 userPerms = JSON.parse(user.permissions);

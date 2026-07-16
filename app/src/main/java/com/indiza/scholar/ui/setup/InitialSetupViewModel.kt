@@ -250,8 +250,13 @@ class InitialSetupViewModel(
             val assoc = state.userAssociations.find { it.school.idServeur == school.idServeur }
             Log.d("InitialSetupVM", "🔍 [ValidateSchool] Existing Association: ${assoc?.etat ?: "NONE"}")
             
-            if (assoc != null) {
-                // Scenario A: Existing association
+            // Si c'est un parent et qu'on est en mode "Nouvelle demande" (isNewDemandFlow dans le UI)
+            // On force la soumission d'une nouvelle demande même si une association existe déjà.
+            // Note: On pourrait aussi vérifier si l'enfant sélectionné est différent.
+            val isParentAddingChild = state.selectedProfile == "PARENT" && state.selectedChild != null
+
+            if (assoc != null && !isParentAddingChild) {
+                // Scenario A: Existing association (Not a parent adding another child)
                 if (assoc.etat == "VALIDE") {
                     Log.d("InitialSetupVM", "✅ Association VALIDE trouvée pour l'école ${school.nomFr}")
                     if (assoc.roles.size > 1) {

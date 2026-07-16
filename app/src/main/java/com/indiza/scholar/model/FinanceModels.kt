@@ -136,7 +136,8 @@ data class SchoolInfo(
     val phones: String?,
     val email: String?,
     val authorizationNo: String?,
-    val logoUrl: String?
+    val logoUrl: String?,
+    val pinSecurite: String? = null
 )
 
 data class ReceiptInfo(
@@ -155,7 +156,8 @@ data class StudentReceiptInfo(
     val dateNaissance: String? = null,
     val lieuNaissance: String? = null,
     val sexe: String? = null,
-    val redoublant: String? = null
+    val redoublant: String? = null,
+    val codeInscription: String? = null
 )
 
 data class FinancialReceiptDetail(

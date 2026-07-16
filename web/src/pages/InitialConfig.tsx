@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSchoolYear } from '../context/SchoolYearContext';
@@ -19,7 +19,9 @@ import {
   Check,
   Calendar,
   User as UserIcon,
-  X
+  X,
+  LogOut,
+  UserPlus
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import ServerConfigModal from '../components/ServerConfigModal';
@@ -41,7 +43,7 @@ enum SetupStep {
 const InitialConfig: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { user, isAuthenticated, isInitialized, updateUser } = useAuth();
+  const { user, isAuthenticated, isInitialized, updateUser, logout } = useAuth();
   const { years, fetchYears, selectYear, createYear } = useSchoolYear();
   const [step, setStep] = useState<SetupStep>(SetupStep.LANDING);
   const [loading, setLoading] = useState(false);
@@ -84,6 +86,33 @@ const InitialConfig: React.FC = () => {
 
   const createdSchoolsCount = associations.filter(a => a.school.idCreateur === user?.id).length;
   const isStudentElsewhere = associations.some(a => a.roles.includes('ELEVE') && a.etat === 'VALIDE');
+
+  const displayAssociations = useMemo(() => {
+    const map = new Map<number, UserAssociation & { enfants?: string[] }>();
+    associations.forEach(assoc => {
+      const sId = assoc.school.idServeur || assoc.school.idEtablissement;
+      if (sId) {
+        if (!map.has(sId)) {
+          map.set(sId, {
+            ...assoc,
+            roles: [...assoc.roles],
+            enfants: assoc.enfant ? [`${assoc.enfant.nom} ${assoc.enfant.prenom}`] : []
+          });
+        } else {
+          const existing = map.get(sId)!;
+          assoc.roles.forEach(r => {
+            if (!existing.roles.includes(r)) existing.roles.push(r);
+          });
+          if (assoc.enfant) {
+              const name = `${assoc.enfant.nom} ${assoc.enfant.prenom}`;
+              if (!existing.enfants?.includes(name)) existing.enfants?.push(name);
+          }
+          if (assoc.etat === 'VALIDE') existing.etat = 'VALIDE';
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [associations]);
 
   // Year Creation Form State
   const [newYearLabel, setNewYearLabel] = useState('');
@@ -228,7 +257,9 @@ const InitialConfig: React.FC = () => {
     setError(null);
     const schoolId = selectedSchool.idServeur || selectedSchool.idEtablissement;
     try {
-      const assoc = associations.find(a => (a.school.idServeur || a.school.idEtablissement) === schoolId);
+      const schoolAssocs = associations.filter(a => (a.school.idServeur || a.school.idEtablissement) === schoolId);
+      const assoc = schoolAssocs.find(a => a.etat === 'VALIDE') || schoolAssocs[0];
+      const isParentLinkingNewChild = selectedProfile === 'PARENT' && selectedChild !== null;
 
       // --- NOUVELLES RESTRICTIONS DE RÔLE ---
       const isTryingToBeStudentOrParent = selectedProfile === 'ELEVE' || selectedProfile === 'PARENT';
@@ -261,7 +292,14 @@ const InitialConfig: React.FC = () => {
       }
       // -------------------------------------
 
-      if (assoc?.etat === 'VALIDE') {
+      if (assoc?.etat === 'VALIDE' && !isParentLinkingNewChild) {
+        if (selectedProfile === 'PARENT' && step === SetupStep.SELECT_SCHOOL) {
+            // Un parent validé peut vouloir lier un autre enfant
+            setStep(SetupStep.SEARCH_CHILD);
+            setLoading(false);
+            return;
+        }
+
         if (assoc.roles.length > 1) {
           setAvailableProfiles(assoc.roles);
           setStep(SetupStep.SELECT_PROFILE);
@@ -296,7 +334,13 @@ const InitialConfig: React.FC = () => {
           if (schoolId) await fetchYears(schoolId as number);
           setStep(SetupStep.SELECT_YEAR);
         }
-      } else if (assoc?.etat === 'EN_ATTENTE') {
+      } else if (assoc?.etat === 'EN_ATTENTE' && !isParentLinkingNewChild) {
+        if (selectedProfile === 'PARENT' && step === SetupStep.SELECT_SCHOOL) {
+             // On autorise un parent à lier un autre enfant même si une demande est en attente
+             setStep(SetupStep.SEARCH_CHILD);
+             setLoading(false);
+             return;
+        }
         setError(t('setup.select_school.demande_en_attente_msg', { defaultValue: "Votre demande est déjà en cours d'étude." }));
       } else if (isCreatingSchool) {
         setSelectedProfile('ADMINISTRATEUR');
@@ -304,22 +348,38 @@ const InitialConfig: React.FC = () => {
         setStep(SetupStep.SELECT_YEAR);
       } else {
         // Code verification
-        const isStaff = selectedProfile !== 'ELEVE' && selectedProfile !== 'PARENT';
-        const entered = isStaff ? recruitmentCode : inscriptionCode;
-        const expected = isStaff ? (isStaff ? selectedSchool.codeRecrutement : selectedSchool.codeInscription) : selectedSchool.codeInscription;
-
-        if (entered !== expected) {
-          setError(t('setup.select_school.code_invalide_msg', {
-            defaultValue: `Code ${isStaff ? 'de recrutement' : 'd\'inscription'} invalide`,
-            type: isStaff ? t('setup.select_school.recruitment_code') : t('setup.select_school.inscription_code')
-          }));
-          setLoading(false);
-          return;
-        }
-
-        if (selectedProfile === 'PARENT' && !selectedChild) {
+        if (selectedProfile === 'PARENT') {
+          if (step === SetupStep.SELECT_SCHOOL) {
+            if (recruitmentCode !== selectedSchool.pinSecurite) {
+              setError("PIN de l'établissement invalide.");
+              setLoading(false); return;
+            }
             setStep(SetupStep.SEARCH_CHILD);
             setLoading(false); return;
+          } else if (step === SetupStep.SEARCH_CHILD) {
+            if (!selectedChild) {
+              setError("Veuillez sélectionner un enfant.");
+              setLoading(false); return;
+            }
+            const childCode = selectedChild.Inscriptions?.[0]?.codeInscription || selectedChild.codeInscription;
+            if (inscriptionCode !== childCode) {
+              setError("Code d'inscription de l'élève invalide.");
+              setLoading(false); return;
+            }
+          }
+        } else {
+          const isStaff = selectedProfile !== 'ELEVE' && selectedProfile !== 'PARENT';
+          const entered = isStaff ? recruitmentCode : inscriptionCode;
+          const expected = isStaff ? (isStaff ? selectedSchool.codeRecrutement : selectedSchool.codeInscription) : selectedSchool.codeInscription;
+
+          if (entered !== expected) {
+            setError(t('setup.select_school.code_invalide_msg', {
+              defaultValue: `Code ${isStaff ? 'de recrutement' : 'd\'inscription'} invalide`,
+              type: isStaff ? t('setup.select_school.recruitment_code') : t('setup.select_school.inscription_code')
+            }));
+            setLoading(false);
+            return;
+          }
         }
 
         await submitDemand();
@@ -334,6 +394,12 @@ const InitialConfig: React.FC = () => {
   const submitDemand = async () => {
     if (!selectedSchool || !user) return;
     const schoolId = selectedSchool.idServeur || selectedSchool.idEtablissement;
+
+    // Pour le personnel, on envoie le code de recrutement.
+    // Pour les usagers (Eleve/Parent), on envoie le code d'inscription.
+    const isStaff = selectedProfile !== 'ELEVE' && selectedProfile !== 'PARENT';
+    const codeToSend = isStaff ? recruitmentCode : inscriptionCode;
+
     const payload: DemandeInscriptionPayload = {
         idUtilisateur: user.id,
         idEtablissement: schoolId!,
@@ -343,7 +409,8 @@ const InitialConfig: React.FC = () => {
         telephone1: 0,
         email: user.email,
         specialites: selectedProfile === 'ENSEIGNANT' ? selectedMatieres.join(',') : null,
-        idEleveLinked: selectedChild?.idEleve || null
+        idEleveLinked: selectedChild?.idEleve || null,
+        code: codeToSend
     };
 
     try {
@@ -694,7 +761,8 @@ const InitialConfig: React.FC = () => {
 
       case SetupStep.SELECT_SCHOOL:
         const schoolId = selectedSchool?.idServeur || selectedSchool?.idEtablissement;
-        const currentAssoc = schoolId ? associations.find(a => (a.school.idServeur || a.school.idEtablissement) === schoolId) : null;
+        const schoolAssocs = schoolId ? associations.filter(a => (a.school.idServeur || a.school.idEtablissement) === schoolId) : [];
+        const currentAssoc = schoolAssocs.find(a => a.etat === 'VALIDE') || schoolAssocs[0];
         const isAlreadyValidated = currentAssoc?.etat === 'VALIDE';
 
         return (
@@ -707,12 +775,12 @@ const InitialConfig: React.FC = () => {
 
             <div className="space-y-6 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar p-1">
               {/* 1. Show existing associations (Recrutements ou demandes) */}
-              {associations.length > 0 && schools.length === 0 && (
+              {displayAssociations.length > 0 && schools.length === 0 && (
                 <div className="space-y-3">
                   <p className="text-[10px] font-black uppercase tracking-widest text-accent ml-1 flex items-center gap-2">
                     <ShieldCheck size={12} /> {t('setup.select_school.my_schools')}
                   </p>
-                  {associations.map((assoc, index) => {
+                  {displayAssociations.map((assoc, index) => {
                     const school = assoc.school;
                     const sId = school.idServeur || school.idEtablissement;
                     const selectedSId = selectedSchool?.idServeur || selectedSchool?.idEtablissement;
@@ -767,6 +835,16 @@ const InitialConfig: React.FC = () => {
                               <p className="text-[7px] font-bold text-accent uppercase mt-1">
                                   {isConflicting ? "CONFLIT DE RÔLE" : `Rôles: ${assoc.roles.join(', ')}`}
                               </p>
+                          )}
+                          {/* Affichage des enfants pour les parents */}
+                          {(assoc as any).enfants && (assoc as any).enfants.length > 0 && (
+                             <div className="mt-2 flex flex-wrap gap-1">
+                                {(assoc as any).enfants.map((name: string, i: number) => (
+                                   <span key={i} className="text-[7px] bg-gray-100 px-1.5 py-0.5 rounded-full font-bold text-gray-500 uppercase tracking-tight">
+                                      {name}
+                                   </span>
+                                ))}
+                             </div>
                           )}
                         </div>
                         {selectedSId === sId && <CheckCircle2 size={18} className="text-black" />}
@@ -855,10 +933,15 @@ const InitialConfig: React.FC = () => {
             {selectedSchool && !isCreatingSchool && !isAlreadyValidated && currentAssoc?.etat !== 'EN_ATTENTE' && (
               <div className="pt-4 animate-in fade-in duration-300">
                  <AuthInput
-                   label={selectedProfile === 'ELEVE' ? t('setup.select_school.inscription_code') : t('setup.select_school.recruitment_code')}
-                   placeholder={t('setup.select_school.code_placeholder')}
+                   label={
+                     selectedProfile === 'ELEVE'
+                       ? t('setup.select_school.inscription_code')
+                       : (selectedProfile === 'PARENT' ? "PIN de l'établissement" : t('setup.select_school.recruitment_code'))
+                   }
+                   placeholder={selectedProfile === 'PARENT' ? "4 chiffres (ex: 1234)" : t('setup.select_school.code_placeholder')}
                    value={selectedProfile === 'ELEVE' ? inscriptionCode : recruitmentCode}
                    onChange={(e) => selectedProfile === 'ELEVE' ? setInscriptionCode(e.target.value) : setRecruitmentCode(e.target.value)}
+                   maxLength={selectedProfile === 'PARENT' ? 4 : undefined}
                  />
               </div>
             )}
@@ -866,9 +949,10 @@ const InitialConfig: React.FC = () => {
             <div className="pt-8">
               <AuthButton
                 onClick={handleValidateSchool}
-                disabled={!selectedSchool || loading || currentAssoc?.etat === 'EN_ATTENTE'}
+                disabled={!selectedSchool || loading}
               >
                 {loading ? t('common.loading') :
+                 (selectedProfile === 'PARENT' && (isAlreadyValidated || currentAssoc?.etat === 'EN_ATTENTE')) ? "Lier un autre enfant" :
                  currentAssoc?.etat === 'EN_ATTENTE' ? t('setup.select_school.demande_en_attente_msg', { defaultValue: "Demande en attente" }) :
                  isAlreadyValidated ? t('common.success') : t('setup.select_school.confirm_button')}
               </AuthButton>
@@ -961,10 +1045,21 @@ const InitialConfig: React.FC = () => {
               )}
             </div>
 
+            {selectedChild && (
+                <div className="pt-4 animate-in fade-in duration-300">
+                    <AuthInput
+                        label="Code d'inscription de l'enfant"
+                        placeholder="Disponible sur le reçu d'inscription"
+                        value={inscriptionCode}
+                        onChange={(e) => setInscriptionCode(e.target.value)}
+                    />
+                </div>
+            )}
+
             <div className="pt-8">
               <AuthButton
                 onClick={handleValidateSchool}
-                disabled={!selectedChild || loading}
+                disabled={!selectedChild || (selectedProfile === 'PARENT' && !inscriptionCode) || loading}
               >
                 {loading ? t('common.loading') : "Confirmer et lier"}
               </AuthButton>
@@ -1081,6 +1176,14 @@ const InitialConfig: React.FC = () => {
         <source src={videoBg} type="video/mp4" />
       </video>
       <div className="absolute top-0 left-0 w-full h-full bg-black/40 z-[1]"></div>
+
+      <button
+        onClick={() => logout?.()}
+        className="absolute top-8 left-8 p-4 bg-white rounded-soft shadow-xl border border-gray-100 group transition-all active:scale-95 z-20 flex items-center space-x-2"
+      >
+        <LogOut size={20} className="text-red-500" />
+        <span className="text-[10px] font-black uppercase tracking-widest hidden md:block">Déconnexion</span>
+      </button>
 
       <button
         onClick={() => setIsConfigOpen(true)}
