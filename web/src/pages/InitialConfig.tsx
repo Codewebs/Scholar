@@ -20,8 +20,7 @@ import {
   Calendar,
   User as UserIcon,
   X,
-  LogOut,
-  UserPlus
+  LogOut
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import ServerConfigModal from '../components/ServerConfigModal';
