@@ -292,13 +292,6 @@ const InitialConfig: React.FC = () => {
       // -------------------------------------
 
       if (assoc?.etat === 'VALIDE' && !isParentLinkingNewChild) {
-        if (selectedProfile === 'PARENT' && step === SetupStep.SELECT_SCHOOL) {
-            // Un parent validé peut vouloir lier un autre enfant
-            setStep(SetupStep.SEARCH_CHILD);
-            setLoading(false);
-            return;
-        }
-
         if (assoc.roles.length > 1) {
           setAvailableProfiles(assoc.roles);
           setStep(SetupStep.SELECT_PROFILE);
@@ -334,12 +327,6 @@ const InitialConfig: React.FC = () => {
           setStep(SetupStep.SELECT_YEAR);
         }
       } else if (assoc?.etat === 'EN_ATTENTE' && !isParentLinkingNewChild) {
-        if (selectedProfile === 'PARENT' && step === SetupStep.SELECT_SCHOOL) {
-             // On autorise un parent à lier un autre enfant même si une demande est en attente
-             setStep(SetupStep.SEARCH_CHILD);
-             setLoading(false);
-             return;
-        }
         setError(t('setup.select_school.demande_en_attente_msg', { defaultValue: "Votre demande est déjà en cours d'étude." }));
       } else if (isCreatingSchool) {
         setSelectedProfile('ADMINISTRATEUR');
@@ -945,16 +932,25 @@ const InitialConfig: React.FC = () => {
               </div>
             )}
 
-            <div className="pt-8">
+            <div className="pt-8 space-y-3">
               <AuthButton
                 onClick={handleValidateSchool}
                 disabled={!selectedSchool || loading}
               >
                 {loading ? t('common.loading') :
-                 (selectedProfile === 'PARENT' && (isAlreadyValidated || currentAssoc?.etat === 'EN_ATTENTE')) ? "Lier un autre enfant" :
                  currentAssoc?.etat === 'EN_ATTENTE' ? t('setup.select_school.demande_en_attente_msg', { defaultValue: "Demande en attente" }) :
-                 isAlreadyValidated ? t('common.success') : t('setup.select_school.confirm_button')}
+                 isAlreadyValidated ? (selectedProfile === 'PARENT' ? "Continuer vers l'espace parent" : t('common.success')) : t('setup.select_school.confirm_button')}
               </AuthButton>
+
+              {selectedProfile === 'PARENT' && selectedSchool && (isAlreadyValidated || currentAssoc?.etat === 'EN_ATTENTE') && (
+                <button
+                  onClick={() => setStep(SetupStep.SEARCH_CHILD)}
+                  className="w-full py-4 bg-gray-50 text-black font-black uppercase text-[10px] tracking-widest rounded-sharp hover:bg-gray-100 transition-all border border-gray-100 flex items-center justify-center gap-2"
+                >
+                  <Plus size={14} />
+                  Lier un autre enfant
+                </button>
+              )}
             </div>
           </div>
         );
