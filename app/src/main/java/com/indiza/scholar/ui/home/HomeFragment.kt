@@ -382,6 +382,12 @@ fun HomeScreen(
                                     val intent = Intent(context, SettingsActivity::class.java)
                                     context.startActivity(intent)
                                 }
+                                com.indiza.scholar.model.AppMenu.DISCIPLINE -> {
+                                    val intent = Intent(context, com.indiza.scholar.ui.discipline.DisciplineActivity::class.java).apply {
+                                        putExtra("idAnneeScolaire", intentAnneeId)
+                                    }
+                                    context.startActivity(intent)
+                                }
                                 else -> {}
                             }
                         })

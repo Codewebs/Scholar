@@ -138,8 +138,11 @@ exports.getStudentsByRoom = async (req, res) => {
 
         const result = inscriptions.map(ins => ({
             idEleve: ins.Eleve.idEleve,
+            idInscription: ins.idInscription,
             matricule: ins.Eleve.matricule || "N/A",
             nomComplet: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(),
+            nom: ins.Eleve.nom,
+            prenom: ins.Eleve.prenom,
             sexe: ins.Eleve.sexe,
             statutInscription: ins.statut,
             idClasse: ins.Salle?.Classe?.idClasse || 0,

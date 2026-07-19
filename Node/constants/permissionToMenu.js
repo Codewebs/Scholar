@@ -11,6 +11,7 @@ const PermissionToMenu = {
     "ACADEMIC_STATS": "Statistiques de réussite scolaire",
     "GRADES_COMPLETION_RATE": "Taux de complétion des notes",
     "GLOBAL_ATTENDANCE": "Présences / Absences globales",
+    "MANAGE_ABSENCES": "Gérer les absences",
     "ATTENDANCE_CERTIFICATE": "Attestation de fréquentation",
     "EXPORT_PDF_CLASS": "Export PDF de classe / matière",
     "MANAGE_SEQUENCES": "Séquences",

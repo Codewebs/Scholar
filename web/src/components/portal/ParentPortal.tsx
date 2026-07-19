@@ -3,6 +3,7 @@ import { useSchoolYear } from '../../context/SchoolYearContext';
 import { studentService } from '../../api/studentService';
 import { financeService } from '../../api/financeService';
 import { gradeService } from '../../api/gradeService';
+import { pedagogyService } from '../../api/pedagogyService';
 import { EleveUiModel } from '../../types/student';
 import {
   Users,
@@ -14,8 +15,11 @@ import {
   TrendingUp,
   AlertCircle,
   ChevronRight,
+  ChevronDown,
   Download,
-  X
+  X,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -27,10 +31,23 @@ const ParentPortal: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [details, setDetails] = useState<{
       finance?: any;
+      periscolaire?: any;
+      transport?: any;
       notes?: any[];
-      absences?: number;
+      summary?: {
+          moyenneGenerale: number;
+          nbSequences: number;
+          totalAbsences: number;
+          sequences: any[];
+      };
   }>({});
   const [activeModal, setActiveModal] = useState<'NOTES' | 'FINANCE' | 'ABSENCES' | 'DOCS' | null>(null);
+
+  const [sequences, setSequences] = useState<any[]>([]);
+  const [activeSequence, setActiveSequence] = useState<any>(null);
+  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [allInscriptions, setAllInscriptions] = useState<any[]>([]);
+  const [selectedInscription, setSelectedInscription] = useState<any>(null);
 
   useEffect(() => {
     const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
@@ -55,21 +72,64 @@ const ParentPortal: React.FC = () => {
 
   const fetchChildDetails = async (idEleve: number) => {
       const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
-      if (!yearId) return;
+      if (!yearId || !selectedChild) return;
 
       try {
-          const [finRes, noteRes] = await Promise.all([
-              financeService.getStudentPaymentDetails(idEleve, yearId),
-              gradeService.getNotesByStudent(idEleve, 1, yearId, 0) // Example params
-          ]);
-          setDetails({
-              finance: finRes.data,
-              notes: noteRes.data,
-              absences: 0 // Fetch from attendance service when available
+          // 0. Historique des inscriptions pour le sélecteur d'année
+          studentService.getStudent(idEleve).then(res => {
+              const inscriptions = (res.data as any).Inscriptions || [];
+              setAllInscriptions(inscriptions);
+              // On cherche l'inscription correspondant à l'année sélectionnée
+              const current = inscriptions.find((ins: any) => ins.idAnneeScolaire === yearId);
+              if (current) setSelectedInscription(current);
           });
+
+          // 1. Finance (Exigibles, Periscolaires, Transport) - Utilisation de Promise.allSettled pour ne pas bloquer si un service échoue (ex: pas de transport)
+          Promise.allSettled([
+              financeService.getStudentPaymentDetails(idEleve, yearId),
+              financeService.getStudentPeriscolaireDetails(idEleve, yearId),
+              financeService.getStudentTransportSubscription(idEleve, yearId)
+          ]).then((results) => {
+              setDetails(prev => ({
+                  ...prev,
+                  finance: results[0].status === 'fulfilled' ? (results[0] as PromiseFulfilledResult<any>).value.data : null,
+                  periscolaire: results[1].status === 'fulfilled' ? (results[1] as PromiseFulfilledResult<any>).value.data : null,
+                  transport: results[2].status === 'fulfilled' ? (results[2] as PromiseFulfilledResult<any>).value.data : null
+              }));
+          });
+
+          // 2. Séquences et Notes
+          const seqRes = await pedagogyService.getSequenceRepartition(yearId, selectedChild.idClasse);
+          setSequences(seqRes.data);
+
+          // 3. Résumé global (Moyenne annuelle, Absences)
+          gradeService.getStudentSummary(selectedChild.idInscription, yearId).then(res => {
+              setDetails(prev => ({ ...prev, summary: res.data }));
+          });
+
+          if (seqRes.data.length > 0) {
+              const currentSeq = seqRes.data[seqRes.data.length - 1]; // Par défaut la dernière séquence
+              setActiveSequence(currentSeq);
+              fetchNotes(selectedChild.idInscription, currentSeq.idSousPeriode, yearId, selectedChild.idClasse);
+          } else {
+              setDetails(prev => ({ ...prev, notes: [] }));
+              setActiveSequence(null);
+          }
       } catch (err) {
           console.error("Error fetching child details", err);
       }
+  };
+
+  const fetchNotes = async (idInscription: number, idSequence: number, yearId: number, idClasse: number) => {
+    setLoadingNotes(true);
+    try {
+        const noteRes = await gradeService.getNotesByStudent(idInscription, idSequence, yearId, idClasse);
+        setDetails(prev => ({ ...prev, notes: noteRes.data }));
+    } catch (err) {
+        console.error("Error fetching notes", err);
+    } finally {
+        setLoadingNotes(false);
+    }
   };
 
   if (loading) {
@@ -177,9 +237,30 @@ const ParentPortal: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-12 pt-10 border-t border-gray-100">
                     {[
-                        { label: 'Moyenne Actuelle', val: '14.5', sub: '/20', icon: TrendingUp, color: 'text-indigo-600', onClick: () => setActiveModal('NOTES') },
-                        { label: 'Assiduité', val: '02', sub: 'Absences', icon: Calendar, color: 'text-rose-600', onClick: () => setActiveModal('ABSENCES') },
-                        { label: 'État Financier', val: details.finance?.soldeRestant === 0 ? 'À JOUR' : `${details.finance?.soldeRestant || 0} CFA`, sub: 'À Payer', icon: CreditCard, color: 'text-emerald-600', onClick: () => setActiveModal('FINANCE') },
+                        {
+                            label: 'Moyenne Actuelle',
+                            val: details.summary?.moyenneGenerale ? details.summary.moyenneGenerale.toFixed(2) : '--',
+                            sub: `/20 (${details.summary?.nbSequences || 0} séq.)`,
+                            icon: TrendingUp,
+                            color: 'text-indigo-600',
+                            onClick: () => setActiveModal('NOTES')
+                        },
+                        {
+                            label: 'Assiduité',
+                            val: details.summary?.totalAbsences?.toString().padStart(2, '0') || '00',
+                            sub: 'Heures d\'Absence',
+                            icon: Calendar,
+                            color: 'text-rose-600',
+                            onClick: () => setActiveModal('ABSENCES')
+                        },
+                        {
+                            label: 'État Financier (Scolarité)',
+                            val: (details.finance?.resteGlobal || 0) === 0 ? 'À JOUR' : `${(details.finance?.resteGlobal || 0).toLocaleString()} CFA`,
+                            sub: (details.finance?.resteGlobal || 0) === 0 ? 'Solvable' : 'À Payer',
+                            icon: CreditCard,
+                            color: (details.finance?.resteGlobal || 0) === 0 ? 'text-emerald-600' : 'text-rose-600',
+                            onClick: () => setActiveModal('FINANCE')
+                        },
                     ].map((stat, i) => (
                         <div key={i} onClick={stat.onClick} className="cursor-pointer group/stat p-6 rounded-[24px] hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100 shadow-sm hover:shadow-md">
                             <div className="flex items-center space-x-3 mb-4">
@@ -270,89 +351,476 @@ const ParentPortal: React.FC = () => {
         {activeModal === 'NOTES' && (
             <Modal title="Relevé de Notes" onClose={() => setActiveModal(null)}>
                 <div className="space-y-8">
-                    <div className="flex items-center justify-between bg-gray-50 p-6 rounded-[24px]">
-                        <div>
-                            <p className="text-[8px] font-black text-[#9E9E9E] uppercase tracking-widest">Séquence Actuelle</p>
-                            <h4 className="text-xl font-black uppercase tracking-tight">Première Séquence</h4>
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between bg-gray-50 p-8 rounded-[32px] gap-6">
+                        <div className="flex items-center space-x-6">
+                            <div className="w-14 h-14 bg-black text-white rounded-2xl flex items-center justify-center text-xl font-black">
+                                <FileText size={24} />
+                            </div>
+                            <div>
+                                <p className="text-[8px] font-black text-[#9E9E9E] uppercase tracking-widest mb-1">Année Scolaire</p>
+                                <div className="relative">
+                                    <select
+                                        className="bg-transparent border-none p-0 font-black uppercase text-sm focus:ring-0 cursor-pointer pr-8"
+                                        value={selectedInscription?.idAnneeScolaire || ''}
+                                        onChange={async (e) => {
+                                            const idAnn = Number(e.target.value);
+                                            const ins = allInscriptions.find(i => i.idAnneeScolaire === idAnn);
+                                            if (ins) {
+                                                setSelectedInscription(ins);
+                                                // On récupère les nouvelles séquences pour cette classe de cette année
+                                                const seqRes = await pedagogyService.getSequenceRepartition(idAnn, ins.idSalle ? ins.Salle?.idClasse : undefined);
+                                                setSequences(seqRes.data);
+                                                if (seqRes.data.length > 0) {
+                                                    const last = seqRes.data[seqRes.data.length - 1];
+                                                    setActiveSequence(last);
+                                                    fetchNotes(ins.idInscription, last.idSousPeriode, idAnn, ins.Salle?.idClasse || 0);
+                                                } else {
+                                                    setDetails(prev => ({ ...prev, notes: [] }));
+                                                    setActiveSequence(null);
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        {allInscriptions.map(ins => (
+                                            <option key={ins.idInscription} value={ins.idAnneeScolaire}>
+                                                {ins.AnneeScolaire?.libelleAnneeScolaire || 'N/A'} — {ins.Salle?.Classe?.libelleClasseFr || 'Classe'}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown size={14} className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                </div>
+                            </div>
                         </div>
-                        <div className="text-right">
-                            <p className="text-[8px] font-black text-[#9E9E9E] uppercase tracking-widest">Moyenne Générale</p>
-                            <span className="text-2xl font-black text-indigo-600">14.50</span>
+                        <div className="flex flex-wrap items-center gap-8">
+                            <div className="text-right">
+                                <p className="text-[8px] font-black text-[#9E9E9E] uppercase tracking-widest">Période</p>
+                                <h4 className="text-[10px] font-black uppercase tracking-tight">{activeSequence?.SousPeriode?.Periode?.libellePeriodeFr || 'N/A'}</h4>
+                            </div>
+                            <div className="hidden sm:block w-px h-8 bg-gray-200"></div>
+                            <div className="text-right">
+                                <p className="text-[8px] font-black text-[#9E9E9E] uppercase tracking-widest">Moyenne Générale</p>
+                                <span className="text-2xl font-black text-indigo-600">
+                                    {(() => {
+                                        if (!details.notes || details.notes.length === 0) return '--';
+
+                                        // 1. Grouper par matière
+                                        const groups = (details.notes || []).reduce((acc: any, n: any) => {
+                                            const key = n.idRepartitionMatiere;
+                                            if (!acc[key]) {
+                                                acc[key] = { coef: n.coef || 1, notes: [] };
+                                            }
+                                            acc[key].notes.push(n.note || 0);
+                                            return acc;
+                                        }, {});
+
+                                        // 2. Calculer moyenne de chaque matière et pondérer
+                                        let totalPoints = 0;
+                                        let totalCoef = 0;
+
+                                        Object.values(groups).forEach((g: any) => {
+                                            const subjectAvg = Math.round((g.notes.reduce((s: number, v: number) => s + v, 0) / g.notes.length) * 100) / 100;
+                                            totalPoints += (subjectAvg * g.coef);
+                                            totalCoef += g.coef;
+                                        });
+
+                                        return totalCoef > 0 ? (totalPoints / totalCoef).toFixed(2) : '--';
+                                    })()}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="border border-border rounded-[32px] overflow-hidden">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-gray-50 border-b border-border">
-                                <tr>
-                                    <th className="p-6 text-[10px] font-black uppercase tracking-widest">Matière</th>
-                                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-center">Note /20</th>
-                                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-center">Coef</th>
-                                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-center">Observation</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {(details.notes || []).map((n: any, i) => (
-                                    <tr key={i} className="hover:bg-gray-50 transition-colors">
-                                        <td className="p-6 font-black uppercase text-[10px] tracking-tight">{n.libelleMatiere}</td>
-                                        <td className="p-6 text-center font-black text-xs">{n.note}</td>
-                                        <td className="p-6 text-center text-[10px] font-bold text-gray-500">{n.coefficient}</td>
-                                        <td className="p-6 text-center">
-                                            <span className={clsx(
-                                                "text-[8px] font-black px-3 py-1 rounded-full uppercase",
-                                                n.note >= 10 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                                            )}>
-                                                {n.note >= 12 ? 'Très Bien' : n.note >= 10 ? 'Passable' : 'Insuffisant'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    {/* Onglets des Séquences */}
+                    <div className="flex overflow-x-auto pb-2 gap-2 no-scrollbar border-b border-gray-100">
+                        {sequences.map((seq, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => {
+                                    if (!selectedInscription) return;
+                                    setActiveSequence(seq);
+                                    fetchNotes(selectedInscription.idInscription, seq.idSousPeriode, selectedInscription.idAnneeScolaire, selectedInscription.Salle?.idClasse || 0);
+                                }}
+                                className={clsx(
+                                    "flex-none px-6 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
+                                    activeSequence?.idSousPeriode === seq.idSousPeriode
+                                        ? "bg-black text-white shadow-lg"
+                                        : "bg-white text-gray-400 hover:text-black border border-gray-100"
+                                )}
+                            >
+                                {seq.SousPeriode?.libelleSousPeriodeFr}
+                            </button>
+                        ))}
                     </div>
+
+                    {loadingNotes ? (
+                        <div className="py-20 flex flex-col items-center justify-center space-y-4">
+                            <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Chargement des notes...</p>
+                        </div>
+                    ) : (
+                        <div className="border border-border rounded-[32px] overflow-hidden bg-white shadow-sm">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-gray-50 border-b border-border">
+                                    <tr>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest">Matière</th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-center">Note /20</th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-center">Coeff</th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-center">Appréciation</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {details.notes && details.notes.length > 0 ? (
+                                        Object.values((details.notes || []).reduce((acc: any, n: any) => {
+                                            const key = n.idRepartitionMatiere;
+                                            if (!acc[key]) {
+                                                acc[key] = {
+                                                    matiereLabel: n.matiereLabel,
+                                                    coef: n.coef || 1,
+                                                    notes: []
+                                                };
+                                            }
+                                            acc[key].notes.push(n);
+                                            return acc;
+                                        }, {})).map((group: any, idx: number) => {
+                                            const avg = Math.round((group.notes.reduce((s: number, n: any) => s + (n.note || 0), 0) / group.notes.length) * 100) / 100;
+
+                                            return (
+                                                <React.Fragment key={idx}>
+                                                    {/* Subject Header Row */}
+                                                    <tr className="bg-gray-50/30">
+                                                        <td className="p-6">
+                                                            <div className="font-black uppercase text-[11px] tracking-tight text-black">
+                                                                {group.matiereLabel}
+                                                            </div>
+                                                            <div className="text-[8px] font-bold text-gray-400 uppercase mt-1">
+                                                                {group.notes.length} Compétence(s) évaluée(s)
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-6 text-center font-black text-sm text-indigo-600">
+                                                            {avg.toFixed(2)}
+                                                        </td>
+                                                        <td className="p-6 text-center text-[10px] font-bold text-gray-400">
+                                                            x{group.coef}
+                                                        </td>
+                                                        <td className="p-6 text-center">
+                                                            <span className={clsx(
+                                                                "text-[8px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-sm",
+                                                                avg >= 10 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                                                            )}>
+                                                                {avg >= 12 ? 'Très Bien' : avg >= 10 ? 'Passable' : 'Insuffisant'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    {/* Competency Sub-Rows */}
+                                                    {group.notes.map((n: any, i: number) => (
+                                                        <tr key={`${idx}-${i}`} className="hover:bg-gray-50/50 transition-colors border-l-4 border-l-gray-100">
+                                                            <td className="py-4 px-10">
+                                                                <div className="text-[9px] font-bold uppercase text-gray-500 italic">
+                                                                    — {n.competenceLabel || 'Compétence sans libellé'}
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-4 text-center font-bold text-[10px] text-gray-600">
+                                                                {n.note !== null ? n.note.toFixed(2) : '--'}
+                                                            </td>
+                                                            <td className="py-4"></td>
+                                                            <td className="py-4 text-center">
+                                                                <div className="text-[8px] font-bold text-gray-400 uppercase">
+                                                                    {n.appreciation}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </React.Fragment>
+                                            );
+                                        })
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={4} className="p-20 text-center">
+                                                <div className="flex flex-col items-center space-y-4">
+                                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center">
+                                                        <FileText size={24} className="text-gray-200" />
+                                                    </div>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                                        Aucune note disponible pour cette séquence.
+                                                    </p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </Modal>
         )}
 
         {activeModal === 'FINANCE' && (
             <Modal title="Situation Financière" onClose={() => setActiveModal(null)}>
-                <div className="space-y-10">
+                <div className="space-y-12">
+                    {/* Synthèse Globale */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="bg-emerald-50 p-8 rounded-[32px] border border-emerald-100">
-                            <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-2">Total Payé</p>
-                            <p className="text-3xl font-black text-emerald-900">{details.finance?.totalPaye || 0} CFA</p>
+                            <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-2">Total Versé</p>
+                            <p className="text-3xl font-black text-emerald-900">
+                                {((details.finance?.totalDejaVerse || 0) + (details.periscolaire?.totalDejaVerse || 0) + (details.transport?.echeances?.reduce((acc: number, e: any) => acc + (e.montantPaye || 0), 0) || 0)).toLocaleString()} CFA
+                            </p>
                         </div>
                         <div className="bg-rose-50 p-8 rounded-[32px] border border-rose-100">
                             <p className="text-[9px] font-black text-rose-600 uppercase tracking-widest mb-2">Reste à Payer</p>
-                            <p className="text-3xl font-black text-rose-900">{details.finance?.soldeRestant || 0} CFA</p>
+                            <p className="text-3xl font-black text-rose-900">
+                                {((details.finance?.resteGlobal || 0) + (details.periscolaire?.resteGlobal || 0) + (details.transport?.echeances?.reduce((acc: number, e: any) => acc + (e.montantDu - e.montantPaye), 0) || 0)).toLocaleString()} CFA
+                            </p>
                         </div>
                         <div className="bg-black p-8 rounded-[40px] text-white flex flex-col justify-between">
-                            <p className="text-[9px] font-black opacity-60 uppercase tracking-widest mb-4">Prochaine Échéance</p>
-                            <p className="text-lg font-black uppercase tracking-tighter">15 Décembre 2024</p>
+                            <p className="text-[9px] font-black opacity-60 uppercase tracking-widest mb-4">Statut Global</p>
+                            <div className="flex items-center space-x-3">
+                                <div className={clsx(
+                                    "w-3 h-3 rounded-full animate-pulse",
+                                    (details.finance?.resteGlobal || 0) === 0 ? "bg-green-500" : "bg-amber-500"
+                                )}></div>
+                                <p className="text-lg font-black uppercase tracking-tighter">
+                                    {(details.finance?.resteGlobal || 0) === 0 ? 'SOLVABLE' : 'INSOLVABLE'}
+                                </p>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="space-y-6">
-                        <h4 className="text-xs font-black uppercase tracking-widest px-2">Historique des Versements</h4>
-                        <div className="space-y-4">
-                            {(details.finance?.transactions || []).map((t: any, i: number) => (
-                                <div key={i} className="bg-white border border-border p-6 rounded-[24px] flex items-center justify-between hover:border-black transition-all">
-                                    <div className="flex items-center space-x-5">
-                                        <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-emerald-600 shadow-inner">
-                                            <CreditCard size={20} />
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase tracking-tight">{t.libelleFrais}</p>
-                                            <p className="text-[9px] font-bold text-gray-400 uppercase mt-1">{new Date(t.datePaiement).toLocaleDateString()}</p>
-                                        </div>
+                    {/* Tableaux de Répartition */}
+                    <div className="space-y-10">
+                        {/* 1. Frais Exigibles */}
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between px-2">
+                                <h4 className="text-xs font-black uppercase tracking-widest flex items-center">
+                                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full mr-2"></div>
+                                    Frais Exigibles (Scolarité)
+                                </h4>
+                            </div>
+                            <div className="border border-border rounded-[28px] overflow-hidden bg-white shadow-sm">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-gray-50 border-b border-border">
+                                        <tr>
+                                            <th className="p-5 text-[9px] font-black uppercase tracking-widest">Libellé Frais</th>
+                                            <th className="p-5 text-[9px] font-black uppercase tracking-widest text-center">Montant Du</th>
+                                            <th className="p-5 text-[9px] font-black uppercase tracking-widest text-center">Déjà Versé</th>
+                                            <th className="p-5 text-[9px] font-black uppercase tracking-widest text-center">Reste</th>
+                                            <th className="p-5 text-[9px] font-black uppercase tracking-widest text-center">Statut</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {(details.finance?.frais || []).map((f: any, i: number) => (
+                                            <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="p-5 text-[10px] font-black uppercase">{f.libelle}</td>
+                                                <td className="p-5 text-[10px] font-bold text-center">{f.montantDu?.toLocaleString()}</td>
+                                                <td className="p-5 text-[10px] font-bold text-center text-emerald-600">{f.montantPaye?.toLocaleString()}</td>
+                                                <td className="p-5 text-[10px] font-bold text-center text-rose-600">{f.reste?.toLocaleString()}</td>
+                                                <td className="p-5 text-center">
+                                                    {f.isComplet ?
+                                                        <CheckCircle2 size={16} className="text-emerald-500 mx-auto" /> :
+                                                        <Clock size={16} className="text-amber-500 mx-auto" />
+                                                    }
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {/* Résumé Frais Exigibles */}
+                            <div className="bg-indigo-50/50 p-6 rounded-[24px] border border-indigo-100 flex justify-around items-center">
+                                <div className="text-center">
+                                    <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-1">Total Exigible</p>
+                                    <p className="text-sm font-black text-indigo-900">{details.finance?.totalTotalDu?.toLocaleString()} CFA</p>
+                                </div>
+                                <div className="w-px h-8 bg-indigo-100"></div>
+                                <div className="text-center">
+                                    <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-1">Réglé</p>
+                                    <p className="text-sm font-black text-emerald-600">{details.finance?.totalDejaVerse?.toLocaleString()} CFA</p>
+                                </div>
+                                <div className="w-px h-8 bg-indigo-100"></div>
+                                <div className="text-center">
+                                    <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-1">Solde Restant</p>
+                                    <p className="text-sm font-black text-rose-600">{details.finance?.resteGlobal?.toLocaleString()} CFA</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2. Frais Périscolaires */}
+                        {details.periscolaire?.frais?.length > 0 && (
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between px-2">
+                                    <h4 className="text-xs font-black uppercase tracking-widest flex items-center">
+                                        <div className="w-1.5 h-1.5 bg-emerald-600 rounded-full mr-2"></div>
+                                        Frais Périscolaires
+                                    </h4>
+                                </div>
+                                <div className="border border-border rounded-[28px] overflow-hidden bg-white shadow-sm">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-gray-50 border-b border-border">
+                                            <tr>
+                                                <th className="p-5 text-[9px] font-black uppercase tracking-widest">Libellé Activité</th>
+                                                <th className="p-5 text-[9px] font-black uppercase tracking-widest text-center">Montant Du</th>
+                                                <th className="p-5 text-[9px] font-black uppercase tracking-widest text-center">Déjà Versé</th>
+                                                <th className="p-5 text-[9px] font-black uppercase tracking-widest text-center">Reste</th>
+                                                <th className="p-5 text-[9px] font-black uppercase tracking-widest text-center">Statut</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {details.periscolaire.frais.map((f: any, i: number) => (
+                                                <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                                                    <td className="p-5 text-[10px] font-black uppercase">{f.libelle}</td>
+                                                    <td className="p-5 text-[10px] font-bold text-center">{f.montantDu?.toLocaleString()}</td>
+                                                    <td className="p-5 text-[10px] font-bold text-center text-emerald-600">{f.montantPaye?.toLocaleString()}</td>
+                                                    <td className="p-5 text-[10px] font-bold text-center text-rose-600">{f.reste?.toLocaleString()}</td>
+                                                    <td className="p-5 text-center">
+                                                        {f.isComplet ?
+                                                            <CheckCircle2 size={16} className="text-emerald-500 mx-auto" /> :
+                                                            <Clock size={16} className="text-amber-500 mx-auto" />
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {/* Résumé Frais Périscolaires */}
+                                <div className="bg-emerald-50/50 p-6 rounded-[24px] border border-emerald-100 flex justify-around items-center">
+                                    <div className="text-center">
+                                        <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest mb-1">Total Périscolaire</p>
+                                        <p className="text-sm font-black text-emerald-900">{details.periscolaire?.totalTotalDu?.toLocaleString()} CFA</p>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-sm font-black text-black">{t.montantVerse} CFA</p>
-                                        <button className="text-[8px] font-black text-accent uppercase tracking-widest hover:underline mt-1">Reçu PDF</button>
+                                    <div className="w-px h-8 bg-emerald-100"></div>
+                                    <div className="text-center">
+                                        <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest mb-1">Payé</p>
+                                        <p className="text-sm font-black text-emerald-600">{details.periscolaire?.totalDejaVerse?.toLocaleString()} CFA</p>
+                                    </div>
+                                    <div className="w-px h-8 bg-emerald-100"></div>
+                                    <div className="text-center">
+                                        <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest mb-1">Dû</p>
+                                        <p className="text-sm font-black text-rose-600">{details.periscolaire?.resteGlobal?.toLocaleString()} CFA</p>
                                     </div>
                                 </div>
-                            ))}
+                            </div>
+                        )}
+
+                        {/* 3. Transport */}
+                        {details.transport && (
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between px-2">
+                                    <h4 className="text-xs font-black uppercase tracking-widest flex items-center">
+                                        <div className="w-1.5 h-1.5 bg-amber-600 rounded-full mr-2"></div>
+                                        Service de Transport ({details.transport.TarifTransport?.Quartier?.libelle})
+                                    </h4>
+                                </div>
+                                <div className="border border-border rounded-[28px] overflow-hidden bg-white shadow-sm">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-gray-50 border-b border-border">
+                                            <tr>
+                                                <th className="p-5 text-[9px] font-black uppercase tracking-widest">Échéance</th>
+                                                <th className="p-5 text-[9px] font-black uppercase tracking-widest text-center">Date Limite</th>
+                                                <th className="p-5 text-[9px] font-black uppercase tracking-widest text-center">Montant Du</th>
+                                                <th className="p-5 text-[9px] font-black uppercase tracking-widest text-center">Déjà Versé</th>
+                                                <th className="p-5 text-[9px] font-black uppercase tracking-widest text-center">Statut</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {(details.transport.echeances || []).map((e: any, i: number) => (
+                                                <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                                                    <td className="p-5 text-[10px] font-black uppercase">{e.libelle}</td>
+                                                    <td className="p-5 text-[10px] font-bold text-center">{new Date(e.dateLimite).toLocaleDateString()}</td>
+                                                    <td className="p-5 text-[10px] font-bold text-center">{e.montantDu?.toLocaleString()}</td>
+                                                    <td className="p-5 text-[10px] font-bold text-center text-emerald-600">{e.montantPaye?.toLocaleString()}</td>
+                                                    <td className="p-5 text-center">
+                                                        {e.montantPaye >= e.montantDu ?
+                                                            <CheckCircle2 size={16} className="text-emerald-500 mx-auto" /> :
+                                                            <Clock size={16} className="text-amber-500 mx-auto" />
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {/* Résumé Transport */}
+                                <div className="bg-amber-50/50 p-6 rounded-[24px] border border-amber-100 flex justify-around items-center">
+                                    <div className="text-center">
+                                        <p className="text-[8px] font-black text-amber-400 uppercase tracking-widest mb-1">Total Transport</p>
+                                        <p className="text-sm font-black text-amber-900">{(details.transport.echeances || []).reduce((acc: number, e: any) => acc + (e.montantDu || 0), 0).toLocaleString()} CFA</p>
+                                    </div>
+                                    <div className="w-px h-8 bg-amber-100"></div>
+                                    <div className="text-center">
+                                        <p className="text-[8px] font-black text-amber-400 uppercase tracking-widest mb-1">Payé</p>
+                                        <p className="text-sm font-black text-emerald-600">{(details.transport.echeances || []).reduce((acc: number, e: any) => acc + (e.montantPaye || 0), 0).toLocaleString()} CFA</p>
+                                    </div>
+                                    <div className="w-px h-8 bg-amber-100"></div>
+                                    <div className="text-center">
+                                        <p className="text-[8px] font-black text-amber-400 uppercase tracking-widest mb-1">Reste</p>
+                                        <p className="text-sm font-black text-rose-600">{(details.transport.echeances || []).reduce((acc: number, e: any) => acc + ((e.montantDu - e.montantPaye) || 0), 0).toLocaleString()} CFA</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </Modal>
+        )}
+
+        {activeModal === 'ABSENCES' && (
+            <Modal title="Détails des Absences & Discipline" onClose={() => setActiveModal(null)}>
+                <div className="space-y-8">
+                    <div className="bg-rose-50 p-8 rounded-[32px] border border-rose-100 flex items-center justify-between">
+                        <div>
+                            <p className="text-[9px] font-black text-rose-600 uppercase tracking-widest mb-2">Total des Absences</p>
+                            <p className="text-3xl font-black text-rose-900">{details.summary?.totalAbsences || 0} Heures</p>
                         </div>
+                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm">
+                            <Clock size={32} className="text-rose-500" />
+                        </div>
+                    </div>
+
+                    <div className="border border-border rounded-[32px] overflow-hidden bg-white shadow-sm">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-gray-50 border-b border-border">
+                                <tr>
+                                    <th className="p-6 text-[10px] font-black uppercase tracking-widest">Compétence / Activité</th>
+                                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-center">Justifiées</th>
+                                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-center">Non Justifiées</th>
+                                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-center">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {details.summary?.sequences?.filter((s: any) => s.absences?.length > 0).map((seq: any) => (
+                                    <React.Fragment key={seq.idSequence}>
+                                        <tr className="bg-gray-50/50">
+                                            <td colSpan={4} className="p-4 px-6 text-[9px] font-black uppercase tracking-widest text-gray-400">
+                                                {seq.libelle}
+                                            </td>
+                                        </tr>
+                                        {seq.absences.map((abs: any, idx: number) => (
+                                            <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="p-6">
+                                                    <div className="font-black uppercase text-[10px] tracking-tight text-black">
+                                                        {abs.competenceLabel}
+                                                    </div>
+                                                    <div className="text-[8px] font-bold text-gray-400 uppercase mt-1">
+                                                        {abs.matiereLabel}
+                                                    </div>
+                                                </td>
+                                                <td className="p-6 text-center font-bold text-xs text-emerald-600">{abs.heuresAJ} H</td>
+                                                <td className="p-6 text-center font-bold text-xs text-rose-600">{abs.heuresANJ} H</td>
+                                                <td className="p-6 text-center font-black text-xs text-black">{abs.heuresAJ + abs.heuresANJ} H</td>
+                                            </tr>
+                                        ))}
+                                    </React.Fragment>
+                                ))}
+                                {(!details.summary?.sequences || details.summary.sequences.every((s: any) => !s.absences || s.absences.length === 0)) && (
+                                    <tr>
+                                        <td colSpan={4} className="p-20 text-center text-gray-400 uppercase font-black text-[10px] tracking-widest">
+                                            Aucune absence enregistrée.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </Modal>

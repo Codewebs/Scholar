@@ -1,4 +1,4 @@
-const { Note, Eleve, Inscription, RepartitionMatiere, Periode, SousPeriode, Justification, SuiviAbsence, AnneeScolaire, Etablissement, Salle, Classe, Matiere, GroupeMatiere, RepartitionCompetence, Competence, sequelize } = require("../models");
+const { Note, Eleve, Inscription, RepartitionMatiere, Periode, SousPeriode, Justification, SuiviAbsence, AnneeScolaire, Etablissement, Salle, Classe, Matiere, GroupeMatiere, RepartitionCompetence, Competence, RepartitionSousPeriode, sequelize } = require("../models");
 const { Op } = require("sequelize");
 
 const getGradingInfo = (m) => {
@@ -148,7 +148,7 @@ exports.saveNotes = async (req, res) => {
 // 2. SAISIE PAR ÉLÈVE
 exports.getNotesByStudent = async (req, res) => {
     try {
-        const { idInscription, idSequence, idAnneeScolaire, idClasse } = req.query;
+        const { idInscription, idSequence, idAnneeScolaire } = req.query;
         const user = req.user;
 
         let noteWhere = { idInscription, idSequence, idAnneeScolaire, supprimer: false };
@@ -168,7 +168,6 @@ exports.getNotesByStudent = async (req, res) => {
 
             const assignedRepMatiereIds = affs.map(a => a.idRepartitionMatiere).filter(Boolean);
 
-            // On filtre les notes pour ne renvoyer que celles liées aux compétences des matières de l'enseignant
             noteWhere.idRepartitionCompetence = {
                 [Op.in]: sequelize.literal(`(
                     SELECT id FROM repartition_competence_sous_periode
@@ -180,10 +179,42 @@ exports.getNotesByStudent = async (req, res) => {
 
         console.log(`🔍 [NotesByStudent] Filter:`, noteWhere);
         const notes = await Note.findAll({
-            where: noteWhere
+            where: noteWhere,
+            include: [{
+                model: RepartitionCompetence,
+                include: [
+                    {
+                        model: RepartitionMatiere,
+                        include: [{ model: Matiere }]
+                    },
+                    {
+                        model: Competence
+                    }
+                ]
+            }]
         });
-        console.log(`✅ [NotesByStudent] Found ${notes.length} notes`);
-        res.json(notes);
+
+        const result = notes.map(n => {
+            const repMat = n.RepartitionCompetence?.RepartitionMatiere;
+            const comp = n.RepartitionCompetence?.Competence;
+            return {
+                idNote: n.idNote,
+                note: n.note,
+                cote: n.cote,
+                appreciation: n.appreciation,
+                nonClasse: n.nonClasse,
+                idJustification: n.idJustification,
+                idRepartitionCompetence: n.idRepartitionCompetence,
+                idRepartitionMatiere: repMat?.idRepartitionMatiere,
+                matiereLabel: repMat?.Matiere?.libelleFr || "N/A",
+                matiereAbrev: repMat?.Matiere?.abreviation || "N/A",
+                coef: repMat?.coef || 1,
+                competenceLabel: comp?.libelle || "N/A"
+            };
+        });
+
+        console.log(`✅ [NotesByStudent] Found ${result.length} notes`);
+        res.json(result);
     } catch (error) {
         console.error("❌ [NotesByStudent] Error:", error.message);
         res.status(500).json({ error: error.message });
@@ -278,33 +309,290 @@ exports.bulkActionNotes = async (req, res) => {
 // 4. SUIVI ABSENCES
 exports.getAbsencesBySalle = async (req, res) => {
     try {
-        const { idSalle, idSequence, idAnneeScolaire } = req.query;
+        const { idSalle, idSequence, idAnneeScolaire, idRepartitionCompetence } = req.query;
+
         const inscriptions = await Inscription.findAll({
             where: { idSalle, idAnneeScolaire, supprimer: false },
             include: [{ model: Eleve, attributes: ['idEleve', 'nom', 'prenom', 'matricule'] }],
             order: [[{ model: Eleve }, 'nom', 'ASC']]
         });
-        const absences = await SuiviAbsence.findAll({ where: { idSequence, idAnneeScolaire, supprimer: false } });
+
+        // IMPORTANT: We must filter by idRepartitionCompetence (or null for global)
+        // to avoid picking records that belong to different competencies for the same student.
+        const targetComp = idRepartitionCompetence || null;
+
+        const absences = await SuiviAbsence.findAll({
+            where: {
+                idSequence,
+                idAnneeScolaire,
+                idRepartitionCompetence: targetComp,
+                supprimer: false
+            }
+        });
+
         const result = inscriptions.map(ins => {
             const abs = absences.find(a => a.idInscription === ins.idInscription);
-            return { idInscription: ins.idInscription, nomComplet: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(), matricule: ins.Eleve.matricule, heuresAJ: abs ? abs.heuresAJ : 0, heuresANJ: abs ? abs.heuresANJ : 0, idSuiviAbsence: abs ? abs.idSuiviAbsence : null };
+            return {
+                idInscription: ins.idInscription,
+                nomComplet: `${ins.Eleve.nom} ${ins.Eleve.prenom || ""}`.trim(),
+                matricule: ins.Eleve.matricule,
+                heuresAJ: abs ? abs.heuresAJ : 0,
+                heuresANJ: abs ? abs.heuresANJ : 0,
+                idSuiviAbsence: abs ? abs.idSuiviAbsence : null,
+                idRepartitionCompetence: targetComp
+            };
         });
+        res.json(result);
+    } catch (error) {
+        console.error("❌ [getAbsencesBySalle] Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.saveAbsences = async (req, res) => {
+    console.log("📥 [saveAbsences] Payload received:", JSON.stringify(req.body, null, 2));
+    const t = await sequelize.transaction();
+    try {
+        const { absences, idSequence, idAnneeScolaire, idRepartitionCompetence } = req.body;
+
+        if (!absences || !Array.isArray(absences)) {
+            console.warn("⚠️ [saveAbsences] No absences array in payload");
+            return res.status(400).json({ error: "Le champ 'absences' est requis et doit être un tableau." });
+        }
+
+        for (const item of absences) {
+            const targetComp = idRepartitionCompetence || item.idRepartitionCompetence || null;
+            const data = {
+                heuresAJ: parseInt(item.heuresAJ) || 0,
+                heuresANJ: parseInt(item.heuresANJ) || 0,
+                idSequence: idSequence || item.idSequence,
+                idAnneeScolaire: idAnneeScolaire || item.idAnneeScolaire,
+                idInscription: item.idInscription,
+                idRepartitionCompetence: targetComp,
+                supprimer: false
+            };
+
+            console.log(`🔄 [saveAbsences] Processing student ${item.idInscription}: AJ=${data.heuresAJ}, ANJ=${data.heuresANJ}, Comp=${targetComp}`);
+
+            const [abs, created] = await SuiviAbsence.findOrCreate({
+                where: {
+                    idInscription: item.idInscription,
+                    idSequence: data.idSequence,
+                    idAnneeScolaire: data.idAnneeScolaire,
+                    idRepartitionCompetence: targetComp,
+                    supprimer: false
+                },
+                defaults: data,
+                transaction: t
+            });
+
+            if (!created) {
+                console.log(`   -> Updating existing record ${abs.idSuiviAbsence}`);
+                abs.heuresAJ = data.heuresAJ;
+                abs.heuresANJ = data.heuresANJ;
+                await abs.save({ transaction: t });
+            } else {
+                console.log(`   -> Created new record ${abs.idSuiviAbsence}`);
+            }
+        }
+        await t.commit();
+        console.log("✅ [saveAbsences] Transaction committed successfully");
+        res.json({ message: "Absences enregistrées avec succès" });
+    } catch (error) {
+        if (t) await t.rollback();
+        console.error("❌ [saveAbsences] Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.getStudentSummary = async (req, res) => {
+    try {
+        const { idInscription, idAnneeScolaire } = req.query;
+
+        if (!idInscription || !idAnneeScolaire) {
+            return res.status(400).json({ error: "idInscription et idAnneeScolaire sont requis" });
+        }
+
+        // 1. Get student and its class
+        const ins = await Inscription.findByPk(idInscription, {
+            include: [{
+                model: Salle,
+                as: 'Salle',
+                include: [{ model: Classe, as: 'Classe' }]
+            }]
+        });
+
+        if (!ins) return res.status(404).json({ error: "Inscription non trouvée" });
+
+        const idClasse = ins.Salle?.idClasse;
+        if (!idClasse) {
+            return res.json({
+                moyenneGenerale: 0,
+                nbSequences: 0,
+                totalAbsences: 0,
+                sequences: []
+            });
+        }
+
+        // 2. Get all sequences for this class
+        const sequences = await RepartitionSousPeriode.findAll({
+            where: { idAnneeScolaire, idClasse, supprimer: false },
+            include: [{ model: SousPeriode, as: 'SousPeriode' }]
+        });
+
+        // 3. Fetch all notes and absences
+        const notes = await Note.findAll({
+            where: { idInscription, idAnneeScolaire, supprimer: false },
+            include: [{
+                model: RepartitionCompetence,
+                include: [{
+                    model: RepartitionMatiere,
+                    include: [{ model: Matiere }]
+                }]
+            }]
+        });
+
+        const absences = await SuiviAbsence.findAll({
+            where: { idInscription, idAnneeScolaire, supprimer: false },
+            include: [{
+                model: RepartitionCompetence,
+                include: [{
+                    model: RepartitionMatiere,
+                    include: [{ model: Matiere }]
+                }, {
+                    model: Competence
+                }]
+            }]
+        });
+
+        const totalAbsences = absences.reduce((sum, a) => sum + (a.heuresAJ || 0) + (a.heuresANJ || 0), 0);
+        const detailedAbsences = absences.map(a => ({
+            idSequence: a.idSequence,
+            heuresAJ: a.heuresAJ,
+            heuresANJ: a.heuresANJ,
+            competenceLabel: a.RepartitionCompetence?.Competence?.libelle || "N/A",
+            matiereLabel: a.RepartitionCompetence?.RepartitionMatiere?.Matiere?.libelleFr || "N/A"
+        }));
+
+        // 3. Calculate averages per sequence
+        const seqSummaries = [];
+        for (const seq of sequences) {
+            const seqNotes = notes.filter(n => n.idSequence === seq.idSousPeriode);
+            const seqAbsences = detailedAbsences.filter(a => a.idSequence === seq.idSousPeriode);
+
+            let moyenne = null;
+            if (seqNotes.length > 0) {
+                const groups = seqNotes.reduce((acc, n) => {
+                    const key = n.RepartitionCompetence?.idRepartitionMatiere;
+                    if (!key) return acc;
+                    if (!acc[key]) acc[key] = { coef: n.RepartitionCompetence?.RepartitionMatiere?.coef || 1, notes: [] };
+                    acc[key].notes.push(n.note || 0);
+                    return acc;
+                }, {});
+
+                let totalPoints = 0;
+                let totalCoef = 0;
+                Object.values(groups).forEach(g => {
+                    const avg = Math.round((g.notes.reduce((s, v) => s + v, 0) / g.notes.length) * 100) / 100;
+                    totalPoints += (avg * g.coef);
+                    totalCoef += g.coef;
+                });
+                if (totalCoef > 0) moyenne = totalPoints / totalCoef;
+            }
+
+            seqSummaries.push({
+                idSequence: seq.idSousPeriode,
+                libelle: seq.SousPeriode?.libelleSousPeriodeFr,
+                moyenne,
+                absences: seqAbsences
+            });
+        }
+
+        const validSeqs = seqSummaries.filter(s => s.moyenne !== null);
+        const globalAvg = validSeqs.length > 0
+            ? validSeqs.reduce((sum, s) => sum + s.moyenne, 0) / validSeqs.length
+            : 0;
+
+        res.json({
+            moyenneGenerale: globalAvg,
+            nbSequences: validSeqs.length,
+            totalAbsences,
+            sequences: seqSummaries
+        });
+
+    } catch (error) {
+        console.error("Error in getStudentSummary:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.getAbsencesByStudent = async (req, res) => {
+    try {
+        const { idInscription, idAnneeScolaire, idSequence } = req.query;
+        const where = { idInscription, idAnneeScolaire, supprimer: false };
+        if (idSequence) where.idSequence = idSequence;
+
+        const list = await SuiviAbsence.findAll({
+            where,
+            include: [{
+                model: RepartitionCompetence,
+                include: [{
+                    model: RepartitionMatiere,
+                    include: [{ model: Matiere }]
+                }, {
+                    model: Competence
+                }]
+            }]
+        });
+
+        const result = list.map(a => ({
+            idSuiviAbsence: a.idSuiviAbsence,
+            heuresAJ: a.heuresAJ,
+            heuresANJ: a.heuresANJ,
+            idSequence: a.idSequence,
+            idRepartitionCompetence: a.idRepartitionCompetence,
+            competenceLabel: a.RepartitionCompetence?.Competence?.libelle || "N/A",
+            matiereLabel: a.RepartitionCompetence?.RepartitionMatiere?.Matiere?.libelleFr || "N/A"
+        }));
+
         res.json(result);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
 
-exports.saveAbsences = async (req, res) => {
+exports.saveAbsenceEntry = async (req, res) => {
     try {
-        const { absences, idSequence, idAnneeScolaire } = req.body;
-        for (const item of absences) {
-            const data = { heuresAJ: item.heuresAJ, heuresANJ: item.heuresANJ, idSequence, idAnneeScolaire, idInscription: item.idInscription };
-            if (item.idSuiviAbsence) await SuiviAbsence.update(data, { where: { idSuiviAbsence: item.idSuiviAbsence } });
-            else await SuiviAbsence.create(data);
+        const { idInscription, idAnneeScolaire, idSequence, idRepartitionCompetence, heuresAJ, heuresANJ } = req.body;
+        const targetComp = idRepartitionCompetence || null;
+
+        const [absence, created] = await SuiviAbsence.findOrCreate({
+            where: {
+                idInscription,
+                idAnneeScolaire,
+                idSequence,
+                idRepartitionCompetence: targetComp,
+                supprimer: false
+            },
+            defaults: {
+                heuresAJ,
+                heuresANJ,
+                idInscription,
+                idAnneeScolaire,
+                idSequence,
+                idRepartitionCompetence: targetComp
+            }
+        });
+
+        if (!created) {
+            absence.heuresAJ = heuresAJ;
+            absence.heuresANJ = heuresANJ;
+            await absence.save();
         }
-        res.json({ message: "Absences enregistrées" });
+
+        res.json(absence);
     } catch (error) {
+        console.error("❌ [saveAbsenceEntry] Error:", error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -604,7 +892,8 @@ exports.exportBulletins = async (req, res) => {
                         const comps = (rep.RepartitionCompetences || []).filter(rc => rc.idSousPeriode === seqId);
                         const compIds = comps.map(rc => rc.id);
                         const v = notesForSubject.filter(n => compIds.includes(n.idRepartitionCompetence)).map(n => n.note).filter(v => v !== null && v !== undefined);
-                        return v.length > 0 ? (v.reduce((s, val) => s + val, 0) / v.length) : null;
+                        // Arrondir la moyenne de la séquence à 2 décimales
+                        return v.length > 0 ? (Math.round((v.reduce((s, val) => s + val, 0) / v.length) * 100) / 100) : null;
                     };
                     n1 = getSeqAvg(targetSequenceIds[0]);
                     n2 = targetSequenceIds.length >= 2 ? getSeqAvg(targetSequenceIds[1]) : null;
@@ -612,7 +901,8 @@ exports.exportBulletins = async (req, res) => {
                     avgNote = validSeqAvgs.length > 0 ? (validSeqAvgs.reduce((s, v) => s + v, 0) / validSeqAvgs.length) : null;
                 } else {
                     const v = notesForSubject.map(n => n.note).filter(v => v !== null && v !== undefined);
-                    avgNote = v.length > 0 ? (v.reduce((sum, v) => sum + v, 0) / v.length) : null;
+                    // Arrondir la moyenne de la séquence à 2 décimales
+                    avgNote = v.length > 0 ? (Math.round((v.reduce((sum, v) => sum + v, 0) / v.length) * 100) / 100) : null;
                 }
 
                 const competencyMap = new Map();

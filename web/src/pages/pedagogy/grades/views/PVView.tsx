@@ -52,7 +52,7 @@ const PVView: React.FC<PVViewProps> = ({ salle: propSalle, sequence: propSequenc
       const normalizedRooms = roomsRes.data.map((r: any) => ({
           ...r,
           nomSalle: r.nomSalle || r.nom || 'N/A',
-          nomComplet: `${r.Classe?.libelleFr || r.Classe?.nomClasse || 'N/A'} ${r.nomSalle || r.nom || ''}`.trim()
+          classeLabel: r.Classe?.libelleClasseFr || r.classeLabel || 'N/A'
       }));
       setSalles(normalizedRooms);
       setPeriodes(periodsRes.data);

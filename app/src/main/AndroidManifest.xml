@@ -148,6 +148,12 @@
             android:theme="@style/Theme.Scholar" />
 
         <activity
+            android:name=".ui.discipline.DisciplineActivity"
+            android:exported="false"
+            android:label="Discipline et Assiduité"
+            android:theme="@style/Theme.Scholar" />
+
+        <activity
             android:name=".ui.components.PdfViewerActivity"
             android:exported="false"
             android:label="Aperçu PDF"

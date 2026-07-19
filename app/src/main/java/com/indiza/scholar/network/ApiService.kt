@@ -442,7 +442,8 @@ interface ApiService {
     suspend fun getAbsences(
         @Query("idSalle") idSalle: Long,
         @Query("idSequence") idSequence: Long,
-        @Query("idAnneeScolaire") idAnneeScolaire: Long
+        @Query("idAnneeScolaire") idAnneeScolaire: Long,
+        @Query("idRepartitionCompetence") idRepartitionCompetence: Long? = null
     ): Response<List<com.indiza.scholar.model.AbsenceUiModel>>
 
     @GET("pedagogy/notes/progress/salle")

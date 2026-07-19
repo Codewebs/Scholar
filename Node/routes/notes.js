@@ -15,9 +15,12 @@ router.post("/student/save", verifyToken, checkPermission("MANAGE_GRADES"), cont
 
 // Suivi absences
 router.get("/absences", verifyToken, controller.getAbsencesBySalle);
+router.get("/absences/student", verifyToken, controller.getAbsencesByStudent);
 router.post("/absences/save", verifyToken, checkPermission("MANAGE_ABSENCES"), controller.saveAbsences);
+router.post("/absences/student/save", verifyToken, checkPermission("MANAGE_ABSENCES"), controller.saveAbsenceEntry);
 
 // PV et Rapports
+router.get("/summary", verifyToken, controller.getStudentSummary);
 router.get("/pv", verifyToken, controller.getPVData);
 router.get("/bulletins/export", verifyToken, controller.exportBulletins);
 

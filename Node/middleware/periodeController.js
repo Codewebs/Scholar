@@ -249,10 +249,14 @@ exports.getRepartitionSequences = async (req, res) => {
         const repartition = await RepartitionSousPeriode.findAll({
             where,
             include: [
-                { model: SousPeriode, include: [{ model: Periode, attributes: ['libellePeriodeFr'] }] },
+                {
+                    model: SousPeriode,
+                    as: 'SousPeriode',
+                    include: [{ model: Periode, attributes: ['libellePeriodeFr'] }]
+                },
                 { model: Classe, attributes: ['libelleClasseFr'] }
             ],
-            order: [['idClasse', 'ASC'], [{ model: SousPeriode }, 'ordreSousPeriode', 'ASC']]
+            order: [['idClasse', 'ASC'], [{ model: SousPeriode, as: 'SousPeriode' }, 'ordreSousPeriode', 'ASC']]
         });
 
         res.json(repartition);

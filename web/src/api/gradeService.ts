@@ -18,6 +18,11 @@ export const gradeService = {
         params: { idInscription: inscriptionId, idSequence: sequenceId, idAnneeScolaire: yearId, idClasse: classId }
     }),
 
+  getStudentSummary: (inscriptionId: number, yearId: number) =>
+    api.get<any>('/pedagogy/notes/summary', {
+        params: { idInscription: inscriptionId, idAnneeScolaire: yearId }
+    }),
+
   getSalleProgress: (roomId: number, sequenceId: number, yearId: number) =>
     api.get('/pedagogy/notes/progress/salle', {
         params: { idSalle: roomId, idSequence: sequenceId, idAnneeScolaire: yearId }
@@ -28,13 +33,21 @@ export const gradeService = {
         params: { type, idAnneeScolaire: yearId, idSalle: roomId, idSequence: sequenceId, idPeriode: periodId }
     }),
 
-  getAbsencesBySalle: (roomId: number, sequenceId: number, yearId: number) =>
+  getAbsencesBySalle: (roomId: number, sequenceId: number, yearId: number, competenceId?: number) =>
     api.get('/pedagogy/notes/absences', {
-        params: { idSalle: roomId, idSequence: sequenceId, idAnneeScolaire: yearId }
+        params: { idSalle: roomId, idSequence: sequenceId, idAnneeScolaire: yearId, idRepartitionCompetence: competenceId }
+    }),
+
+  getAbsencesByStudent: (inscriptionId: number, yearId: number, sequenceId?: number) =>
+    api.get('/pedagogy/notes/absences/student', {
+        params: { idInscription: inscriptionId, idAnneeScolaire: yearId, idSequence: sequenceId }
     }),
 
   saveAbsences: (payload: { absences: any[], idSequence: number, idAnneeScolaire: number }) =>
     api.post('/pedagogy/notes/absences/save', payload),
+
+  saveAbsenceEntry: (payload: any) =>
+    api.post('/pedagogy/notes/absences/student/save', payload),
 
   getJustifications: () =>
     api.get<any[]>('/pedagogy/notes/justifications'),

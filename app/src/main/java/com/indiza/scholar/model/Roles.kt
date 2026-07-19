@@ -185,6 +185,9 @@ sealed class AppModule(val title: String, val permissions: List<AcademicPermissi
 
     // STATS
     object GlobalStats : AppModule("Statistiques", listOf(AcademicPermission.ACADEMIC_STATS, AcademicPermission.GLOBAL_TUITION_STATUS, AcademicPermission.SUMMARY))
+
+    // DISCIPLINE
+    object DisciplineAssiduite : AppModule("Discipline & Assiduité", listOf(AcademicPermission.GLOBAL_ATTENDANCE, AcademicPermission.MANAGE_JUSTIFICATIONS, AcademicPermission.MANAGE_SANCTIONS))
 }
 
 enum class AppMenu(val title: String, val emoji: String, val description: String, val modules: List<AppModule>) {
@@ -198,7 +201,8 @@ enum class AppMenu(val title: String, val emoji: String, val description: String
     BULLETINS("Bulletins", "📊", "Génération des résultats", listOf(AppModule.ReportCards)),
     CLASSES("Classes", "🏫", "Salles et répartitions", listOf(AppModule.ClassesConfig)),
     PARAMETRES("Paramètres", "⚙️", "Configuration du système", listOf(AppModule.SystemUsers, AppModule.SystemMaintenance)),
-    STATS("Stats", "📈", "Statistiques globales", listOf(AppModule.GlobalStats));
+    STATS("Stats", "📈", "Statistiques globales", listOf(AppModule.GlobalStats)),
+    DISCIPLINE("Discipline", "⚖️", "Assiduité et conduite", listOf(AppModule.DisciplineAssiduite));
 }
 
 data class PermissionGroup(

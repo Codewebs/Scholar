@@ -9,11 +9,20 @@ const SuiviAbsence = sequelize.define("SuiviAbsence", {
   idInscription: { type: DataTypes.BIGINT, allowNull: false },
   idSequence: { type: DataTypes.BIGINT, allowNull: true },
   idPeriode: { type: DataTypes.BIGINT, allowNull: true },
+  idRepartitionCompetence: { type: DataTypes.BIGINT, allowNull: true },
   verrouille: { type: DataTypes.BOOLEAN, defaultValue: false },
   supprimer: { type: DataTypes.BOOLEAN, defaultValue: false }
 }, {
   tableName: "suivi_absence",
-  timestamps: false
+  timestamps: false,
+  indexes: [
+    {
+      name: 'idx_unique_absence_entry',
+      unique: true,
+      fields: ['idInscription', 'idSequence', 'idAnneeScolaire', 'idRepartitionCompetence'],
+      where: { supprimer: false }
+    }
+  ]
 });
 
 module.exports = SuiviAbsence;

@@ -88,10 +88,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
         .map((r: any) => ({
             ...r,
             nomSalle: r.nomSalle || r.nom || 'N/A',
-            Classe: {
-                ...r.Classe,
-                nomClasse: r.Classe?.libelleFr || r.Classe?.nomClasse || 'N/A'
-            }
+            classeLabel: r.Classe?.libelleClasseFr || r.classeLabel || 'N/A'
         }));
       setSalles(activeRooms);
       setJustifications(justRes.data);
@@ -359,7 +356,7 @@ const SaisieMatiereView: React.FC<SaisieMatiereViewProps> = ({ salle: propSalle,
                 {salles.map(s => (
                     <SelectionCard
                         key={s.idSalle}
-                        title={`${s.Classe?.nomClasse} ${s.nomLettre || s.nomSalle}`}
+                        title={`${s.classeLabel} ${s.nomLettre || s.nomSalle}`}
                         subtitle={s.nomSalle}
                         icon={Building2}
                         onClick={() => { setSelectedSalleId(s.idSalle); setStep('REPARTITION'); }}

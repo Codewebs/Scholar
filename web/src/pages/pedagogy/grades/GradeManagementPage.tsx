@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useSchoolYear } from '../../../context/SchoolYearContext';
+import { AcademicPermission } from '../../../types/permissions';
 import { gradeService } from '../../../api/gradeService';
 import { studentService } from '../../../api/studentService';
 import { pedagogyService } from '../../../api/pedagogyService';
@@ -20,15 +21,18 @@ import {
     SortAsc,
     SortDesc,
     CheckCircle2,
-    Users
+    Users,
+    ChevronRight
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import SaisieMatiereView from './views/SaisieMatiereView';
 import SaisieEleveView from './views/SaisieEleveView';
 import AbsenceView from './views/AbsenceView';
+import DisciplineView from './views/DisciplineView';
 import PVView from './views/PVView';
 import JustificationManagement from './components/JustificationManagement';
 import GradeSequentialEntry from './components/GradeSequentialEntry';
+import DisciplineSequentialEntry from './components/DisciplineSequentialEntry';
 import { useTranslation } from 'react-i18next';
 
 interface Salle {
@@ -70,17 +74,18 @@ interface Eleve {
 type SortOrder = 'ASC' | 'DESC';
 type SalleSortField = 'NAME' | 'COUNT';
 
-type ViewType = 'matiere' | 'eleve' | 'absences' | 'pv' | 'config';
+type ViewType = 'matiere' | 'eleve' | 'discipline' | 'absences' | 'pv' | 'config';
 
 const GradeManagementPage: React.FC = () => {
     const { t, i18n } = useTranslation();
     const lang = i18n.language;
-    const { user } = useAuth();
+    const { user, hasPermission } = useAuth();
     const role = (user?.role || '').toUpperCase();
     const { selectedYear } = useSchoolYear();
     const yearId = selectedYear?.idServeur || selectedYear?.idAnneeScolaire;
 
     const [activeView, setActiveView] = useState<ViewType>('matiere');
+    const [expandedBlock, setExpandedBlock] = useState<number | null>(1); // 1: Salle, 2: Seq, 3: Mat, 4: Eleve/Comp
 
     // Selection State
     const [salles, setSalles] = useState<Salle[]>([]);
@@ -94,11 +99,13 @@ const GradeManagementPage: React.FC = () => {
 
     const [eleves, setEleves] = useState<Eleve[]>([]);
     const [selectedEleve, setSelectedEleve] = useState<Eleve | null>(null);
+    const [selectedCompetence, setSelectedCompetence] = useState<any | null>(null);
     const [competences, setCompetences] = useState<any[]>([]);
     const [modalItems, setModalItems] = useState<any[]>([]);
     const [modalIndex, setModalIndex] = useState(0);
 
     const [gradeModalOpen, setGradeModalOpen] = useState(false);
+    const [disciplineModalOpen, setDisciplineModalOpen] = useState(false);
     const [completionPercentage, setCompletionPercentage] = useState(0);
 
     const [loading, setLoading] = useState(false);
@@ -476,12 +483,19 @@ const GradeManagementPage: React.FC = () => {
     };
 
     const menuItems = [
-        { id: 'matiere', label: t('grades.views.subject'), icon: BookOpen, desc: 'Group entry for a class' },
-        { id: 'eleve', label: t('grades.views.student'), icon: User, desc: 'All grades of a student' },
-        { id: 'absences', label: t('grades.views.absences'), icon: Clock, desc: 'Attendance & delays tracking' },
-        { id: 'pv', label: t('grades.views.pv'), icon: FileText, desc: 'Reports and deliberations' },
-        { id: 'config', label: t('grades.views.config'), icon: Layers, desc: 'Configuration' }
-    ];
+        { id: 'matiere', label: t('grades.views.subject'), icon: BookOpen, desc: 'Group entry for a class', permission: AcademicPermission.MANAGE_GRADES },
+        { id: 'eleve', label: t('grades.views.student'), icon: User, desc: 'All grades of a student', permission: AcademicPermission.MANAGE_GRADES },
+        { id: 'discipline', label: 'Discipline', icon: Zap, desc: 'Student absences by competence', permission: AcademicPermission.MANAGE_ABSENCES },
+        { id: 'absences', label: t('grades.views.absences'), icon: Clock, desc: 'Attendance & delays tracking', permission: AcademicPermission.MANAGE_ABSENCES },
+        { id: 'pv', label: t('grades.views.pv'), icon: FileText, desc: 'Reports and deliberations', permission: AcademicPermission.GRADES_REPORT_SHEET },
+        { id: 'config', label: t('grades.views.config'), icon: Layers, desc: 'Configuration', permission: AcademicPermission.MANAGE_JUSTIFICATIONS }
+    ].filter(item => hasPermission(item.permission));
+
+    useEffect(() => {
+        if (menuItems.length > 0 && !menuItems.find(m => m.id === activeView)) {
+            setActiveView(menuItems[0].id as ViewType);
+        }
+    }, [menuItems]);
 
     const sortedSalles = [...salles].sort((a, b) => {
         if (salleSort.field === 'NAME') {
@@ -511,7 +525,62 @@ const GradeManagementPage: React.FC = () => {
         return eleveSort === 'ASC' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
     });
 
-    const isEntryView = activeView === 'matiere' || activeView === 'eleve';
+    const isEntryView = activeView === 'matiere' || activeView === 'eleve' || activeView === 'discipline';
+
+    const handleOpenDisciplineModal = async (comp: any) => {
+        setLoading(true);
+        setSelectedCompetence(comp);
+        try {
+            const [studentsRes, existingAbsRes] = await Promise.all([
+                studentService.getStudentsBySalle(yearId!, selectedSalle!.idSalle),
+                gradeService.getAbsencesBySalle(selectedSalle!.idSalle, selectedSequence!.idSousPeriode, yearId!, comp.id)
+            ]);
+
+            const allStudents = studentsRes.data;
+            const allExistingAbs = existingAbsRes.data;
+
+            const gridData = allStudents.map((s: any) => {
+                const abs = allExistingAbs.find((a: any) => Number(a.idInscription) === Number(s.idInscription));
+                return {
+                    idInscription: s.idInscription,
+                    nomComplet: s.nomComplet || `${s.nom} ${s.prenom || ""}`.trim(),
+                    matricule: s.matricule,
+                    heuresAJ: abs?.heuresAJ || 0,
+                    heuresANJ: abs?.heuresANJ || 0,
+                    idSuiviAbsence: abs?.idSuiviAbsence
+                };
+            });
+
+            setModalItems(gridData);
+            setModalIndex(0);
+            setDisciplineModalOpen(true);
+        } catch (error) {
+            console.error("Error loading discipline data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDisciplineSave = async (index: number, heuresAJ: number, heuresANJ: number) => {
+        const item = modalItems[index];
+        try {
+            await gradeService.saveAbsenceEntry({
+                idInscription: item.idInscription,
+                idAnneeScolaire: yearId!,
+                idSequence: selectedSequence!.idSousPeriode,
+                idRepartitionCompetence: selectedCompetence!.id,
+                heuresAJ,
+                heuresANJ
+            });
+
+            const newModalItems = [...modalItems];
+            newModalItems[index] = { ...item, heuresAJ, heuresANJ };
+            setModalItems(newModalItems);
+            setRefreshTrigger(prev => prev + 1);
+        } catch (err) {
+            throw err;
+        }
+    };
 
     if (role === 'ELEVE' || role === 'PARENT') {
         return (
@@ -570,36 +639,63 @@ const GradeManagementPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Three-Column Selection Panel - Only for Entry Views */}
+            {/* Selection Panel - Multi-column on desktop, Accordion on mobile */}
             {isEntryView && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 animate-in slide-in-from-top-4 duration-500">
                     {/* Bloc 1: Salles */}
-                    <div className="bg-white border border-gray-100 rounded-[20px] p-3 shadow-sm">
-                        <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.35em] text-[#9E9E9E] flex items-center">
-                                <DoorOpen size={11} className="mr-1.5" /> {t('grades.selection.room')}
-                            </h3>
+                    <div className={clsx(
+                        "bg-white border border-gray-100 rounded-[20px] shadow-sm transition-all duration-300",
+                        expandedBlock !== 1 && "md:block h-fit"
+                    )}>
+                        <div
+                            onClick={() => setExpandedBlock(expandedBlock === 1 ? null : 1)}
+                            className="flex items-center justify-between p-3 cursor-pointer md:cursor-default"
+                        >
+                            <div className="flex flex-col">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.35em] text-[#9E9E9E] flex items-center">
+                                    <DoorOpen size={11} className="mr-1.5" /> {t('grades.selection.room')}
+                                </h3>
+                                {expandedBlock !== 1 && selectedSalle && (
+                                    <span className="text-[9px] font-black uppercase mt-1 md:hidden truncate max-w-[150px]">
+                                        {selectedSalle.classeLabel} {selectedSalle.nomSalle}
+                                    </span>
+                                )}
+                            </div>
                             <div className="flex items-center space-x-1">
-                                <button
-                                    onClick={() => setSalleSort(prev => ({ field: 'COUNT', order: prev.order === 'ASC' ? 'DESC' : 'ASC' }))}
-                                    className="p-1 hover:bg-gray-100 rounded text-gray-400"
-                                    title="Sort by head count"
-                                >
-                                    <Users size={10} />
-                                </button>
-                                <button
-                                    onClick={() => setSalleSort(prev => ({ field: 'NAME', order: prev.order === 'ASC' ? 'DESC' : 'ASC' }))}
-                                    className="p-1 hover:bg-gray-100 rounded text-gray-400"
-                                >
-                                    {salleSort.order === 'ASC' ? <SortAsc size={10} /> : <SortDesc size={10} />}
-                                </button>
+                                {expandedBlock === 1 ? (
+                                    <>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setSalleSort(prev => ({ field: 'COUNT', order: prev.order === 'ASC' ? 'DESC' : 'ASC' })); }}
+                                            className="p-1 hover:bg-gray-100 rounded text-gray-400"
+                                            title="Sort by head count"
+                                        >
+                                            <Users size={10} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setSalleSort(prev => ({ field: 'NAME', order: prev.order === 'ASC' ? 'DESC' : 'ASC' })); }}
+                                            className="p-1 hover:bg-gray-100 rounded text-gray-400"
+                                        >
+                                            {salleSort.order === 'ASC' ? <SortAsc size={10} /> : <SortDesc size={10} />}
+                                        </button>
+                                    </>
+                                ) : (
+                                    <ChevronRight size={14} className="text-gray-300 md:hidden" />
+                                )}
                             </div>
                         </div>
-                        <div className="space-y-1.5 max-h-[300px] overflow-y-auto custom-scrollbar">
+
+                        <div className={clsx(
+                            "px-3 pb-3 space-y-1.5 overflow-y-auto custom-scrollbar transition-all",
+                            expandedBlock === 1 ? "max-h-[300px] opacity-100" : "max-h-0 md:max-h-[300px] opacity-0 md:opacity-100"
+                        )}>
                             {sortedSalles.length > 0 ? sortedSalles.map(salle => (
                                 <button
                                     key={salle.idSalle}
-                                    onClick={() => setSelectedSalle(salle)}
+                                    onClick={() => {
+                                        setSelectedSalle(salle);
+                                        setSelectedCompetence(null);
+                                        if (window.innerWidth < 768) setExpandedBlock(2);
+                                    }}
                                     className={clsx(
                                         "w-full text-left border rounded-[14px] p-2.5 transition-all text-[9px] relative overflow-hidden",
                                         selectedSalle?.idSalle === salle.idSalle
@@ -623,23 +719,50 @@ const GradeManagementPage: React.FC = () => {
                     </div>
 
                     {/* Bloc 2: Séquences */}
-                    <div className="bg-white border border-gray-100 rounded-[20px] p-3 shadow-sm">
-                        <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.35em] text-[#9E9E9E] flex items-center">
-                                <Layers size={11} className="mr-1.5" /> {t('grades.selection.sequence')}
-                            </h3>
-                            <button
-                                onClick={() => setSequenceSort(prev => prev === 'ASC' ? 'DESC' : 'ASC')}
-                                className="p-1 hover:bg-gray-100 rounded text-gray-400"
-                            >
-                                {sequenceSort === 'ASC' ? <SortAsc size={10} /> : <SortDesc size={10} />}
-                            </button>
+                    <div className={clsx(
+                        "bg-white border border-gray-100 rounded-[20px] shadow-sm transition-all duration-300",
+                        expandedBlock !== 2 && "md:block h-fit"
+                    )}>
+                        <div
+                            onClick={() => setExpandedBlock(expandedBlock === 2 ? null : 2)}
+                            className="flex items-center justify-between p-3 cursor-pointer md:cursor-default"
+                        >
+                            <div className="flex flex-col">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.35em] text-[#9E9E9E] flex items-center">
+                                    <Layers size={11} className="mr-1.5" /> {t('grades.selection.sequence')}
+                                </h3>
+                                {expandedBlock !== 2 && selectedSequence && (
+                                    <span className="text-[9px] font-black uppercase mt-1 md:hidden">
+                                        {selectedSequence.nomSequence}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center space-x-1">
+                                {expandedBlock === 2 ? (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setSequenceSort(prev => prev === 'ASC' ? 'DESC' : 'ASC'); }}
+                                        className="p-1 hover:bg-gray-100 rounded text-gray-400"
+                                    >
+                                        {sequenceSort === 'ASC' ? <SortAsc size={10} /> : <SortDesc size={10} />}
+                                    </button>
+                                ) : (
+                                    <ChevronRight size={14} className="text-gray-300 md:hidden" />
+                                )}
+                            </div>
                         </div>
-                        <div className="space-y-1.5 max-h-[300px] overflow-y-auto custom-scrollbar">
+
+                        <div className={clsx(
+                            "px-3 pb-3 space-y-1.5 overflow-y-auto custom-scrollbar transition-all",
+                            expandedBlock === 2 ? "max-h-[300px] opacity-100" : "max-h-0 md:max-h-[300px] opacity-0 md:opacity-100"
+                        )}>
                             {selectedSalle ? (sortedSequences.length > 0 ? sortedSequences.map(seq => (
                                 <button
                                     key={seq.idSousPeriode}
-                                    onClick={() => setSelectedSequence(seq)}
+                                    onClick={() => {
+                                        setSelectedSequence(seq);
+                                        setSelectedCompetence(null);
+                                        if (window.innerWidth < 768) setExpandedBlock(3);
+                                    }}
                                     className={clsx(
                                         "w-full text-left border rounded-[14px] p-2.5 transition-all text-[9px] relative",
                                         selectedSequence?.idSousPeriode === seq.idSousPeriode
@@ -662,27 +785,50 @@ const GradeManagementPage: React.FC = () => {
 
                     {/* Bloc 3: Matières */}
                     <div className={clsx(
-                        "bg-white border border-gray-100 rounded-[20px] p-3 shadow-sm transition-all duration-300",
-                        activeView === 'eleve' && "opacity-30 grayscale pointer-events-none"
+                        "bg-white border border-gray-100 rounded-[20px] shadow-sm transition-all duration-300",
+                        activeView === 'eleve' && "opacity-30 grayscale pointer-events-none",
+                        expandedBlock !== 3 && "md:block h-fit"
                     )}>
-                        <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.35em] text-[#9E9E9E] flex items-center">
-                                <BookMarked size={11} className="mr-1.5" /> {t('grades.selection.subject')}
-                            </h3>
-                            <button
-                                onClick={() => setMatiereSort(prev => prev === 'ASC' ? 'DESC' : 'ASC')}
-                                className="p-1 hover:bg-gray-100 rounded text-gray-400"
-                            >
-                                {matiereSort === 'ASC' ? <SortAsc size={10} /> : <SortDesc size={10} />}
-                            </button>
+                        <div
+                            onClick={() => setExpandedBlock(expandedBlock === 3 ? null : 3)}
+                            className="flex items-center justify-between p-3 cursor-pointer md:cursor-default"
+                        >
+                            <div className="flex flex-col">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.35em] text-[#9E9E9E] flex items-center">
+                                    <BookMarked size={11} className="mr-1.5" /> {t('grades.selection.subject')}
+                                </h3>
+                                {expandedBlock !== 3 && selectedMatiere && (
+                                    <span className="text-[9px] font-black uppercase mt-1 md:hidden">
+                                        {selectedMatiere.libelle}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center space-x-1">
+                                {expandedBlock === 3 ? (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setMatiereSort(prev => prev === 'ASC' ? 'DESC' : 'ASC'); }}
+                                        className="p-1 hover:bg-gray-100 rounded text-gray-400"
+                                    >
+                                        {matiereSort === 'ASC' ? <SortAsc size={10} /> : <SortDesc size={10} />}
+                                    </button>
+                                ) : (
+                                    <ChevronRight size={14} className="text-gray-300 md:hidden" />
+                                )}
+                            </div>
                         </div>
-                        <div className="space-y-1.5 max-h-[300px] overflow-y-auto custom-scrollbar">
+
+                        <div className={clsx(
+                            "px-3 pb-3 space-y-1.5 overflow-y-auto custom-scrollbar transition-all",
+                            expandedBlock === 3 ? "max-h-[300px] opacity-100" : "max-h-0 md:max-h-[300px] opacity-0 md:opacity-100"
+                        )}>
                             {selectedSalle && selectedSequence ? (sortedMatieres.length > 0 ? sortedMatieres.map(mat => (
                                 <button
                                     key={mat.idMatiere}
                                     onClick={() => {
                                         console.clear();
                                         setSelectedMatiere(mat);
+                                        setSelectedCompetence(null);
+                                        if (window.innerWidth < 768) setExpandedBlock(4);
                                     }}
                                     className={clsx(
                                         "w-full text-left border rounded-[14px] p-2.5 transition-all text-[9px] relative",
@@ -708,66 +854,118 @@ const GradeManagementPage: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Bloc 4: Élèves (Quick Entry) */}
-                    <div className="bg-white border border-gray-100 rounded-[20px] p-3 shadow-sm">
-                        <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.35em] text-[#9E9E9E] flex items-center">
-                                <User size={11} className="mr-1.5" /> {t('grades.selection.student')}
-                            </h3>
+                    {/* Bloc 4: Élèves (Quick Entry) or Competences */}
+                    <div className={clsx(
+                        "bg-white border border-gray-100 rounded-[20px] shadow-sm transition-all duration-300",
+                        expandedBlock !== 4 && "md:block h-fit"
+                    )}>
+                        <div
+                            onClick={() => setExpandedBlock(expandedBlock === 4 ? null : 4)}
+                            className="flex items-center justify-between p-3 cursor-pointer md:cursor-default"
+                        >
+                            <div className="flex flex-col">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.35em] text-[#9E9E9E] flex items-center">
+                                    {activeView === 'discipline' ? (
+                                        <><Zap size={11} className="mr-1.5" /> Compétences</>
+                                    ) : (
+                                        <><User size={11} className="mr-1.5" /> {t('grades.selection.student')}</>
+                                    )}
+                                </h3>
+                            </div>
                             <div className="flex items-center space-x-1">
-                                <button
-                                    onClick={() => setEleveSort(prev => prev === 'ASC' ? 'DESC' : 'ASC')}
-                                    className="p-1 hover:bg-gray-100 rounded text-gray-400"
-                                >
-                                    {eleveSort === 'ASC' ? <SortAsc size={10} /> : <SortDesc size={10} />}
-                                </button>
-                                {eleves.length > 0 && (
-                                    <span className="text-[8px] font-black text-accent">{completionPercentage}%</span>
+                                {expandedBlock === 4 ? (
+                                    activeView !== 'discipline' && (
+                                        <>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setEleveSort(prev => prev === 'ASC' ? 'DESC' : 'ASC'); }}
+                                                className="p-1 hover:bg-gray-100 rounded text-gray-400"
+                                            >
+                                                {eleveSort === 'ASC' ? <SortAsc size={10} /> : <SortDesc size={10} />}
+                                            </button>
+                                            {eleves.length > 0 && (
+                                                <span className="text-[8px] font-black text-accent">{completionPercentage}%</span>
+                                            )}
+                                        </>
+                                    )
+                                ) : (
+                                    <ChevronRight size={14} className="text-gray-300 md:hidden" />
                                 )}
                             </div>
                         </div>
-                        <div className="space-y-1.5 max-h-[300px] overflow-y-auto custom-scrollbar">
-                            {selectedSalle ? (
-                                sortedEleves.filter(e => !e.isComplete).length > 0 ? (
-                                    sortedEleves.filter(e => !e.isComplete).map(eleve => (
+
+                        <div className={clsx(
+                            "px-3 pb-3 space-y-1.5 overflow-y-auto custom-scrollbar transition-all",
+                            expandedBlock === 4 ? "max-h-[300px] opacity-100" : "max-h-0 md:max-h-[300px] opacity-0 md:opacity-100"
+                        )}>
+                            {activeView === 'discipline' ? (
+                                selectedMatiere ? (
+                                    competences.length > 0 ? competences.map(comp => (
                                         <button
-                                            key={eleve.idInscription}
-                                            onClick={() => {
-                                                console.clear();
-                                                handleOpenGradeModal(eleve);
-                                            }}
+                                            key={comp.id}
+                                            onClick={() => handleOpenDisciplineModal(comp)}
                                             className={clsx(
-                                                "w-full text-left border rounded-[14px] p-2.5 transition-all text-[9px] relative overflow-hidden",
-                                                selectedEleve?.idInscription === eleve.idInscription
+                                                "w-full text-left border rounded-[14px] p-2.5 transition-all text-[9px] relative group",
+                                                selectedCompetence?.id === comp.id
                                                     ? "border-black bg-black text-white shadow-md font-black"
                                                     : "border-gray-100 hover:border-black hover:shadow-sm"
                                             )}
                                         >
-                                            <div className="font-black text-[9px] uppercase tracking-tight">{eleve.nomEleve}</div>
-                                            <div className="flex flex-wrap gap-1 mt-1">
-                                                {eleve.missingCompetencies?.map((c: any, i: number) => (
-                                                    <span key={i} className="text-[7px] font-black bg-red-50 text-red-500 px-1.5 py-0.5 rounded uppercase">
-                                                        {c.label}
-                                                    </span>
-                                                ))}
-                                            </div>
+                                            <div className="font-black text-[9px] uppercase tracking-tight">{comp.Competence?.libelle}</div>
                                             <div className={clsx(
                                                 "text-[8px] tracking-[0.2em] mt-1 font-bold",
-                                                selectedEleve?.idInscription === eleve.idInscription ? "text-white/70" : "text-gray-300"
-                                            )}>{t('grades.status.to_complete')}</div>
+                                                selectedCompetence?.id === comp.id ? "text-white/70" : "text-gray-300 group-hover:text-black"
+                                            )}>{t('grades.entry.quick_entry')}</div>
+                                            <ChevronRight size={12} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all" />
                                         </button>
-                                    ))
-                                ) : eleves.length > 0 ? (
-                                    <div className="text-center py-6 px-4 bg-green-50 rounded-[20px] border border-green-100 animate-in zoom-in-95">
-                                        <CheckCircle2 size={24} className="mx-auto text-green-500 mb-2" />
-                                        <div className="text-[9px] font-black text-green-700 uppercase tracking-widest">{t('grades.status.complete')}</div>
-                                        <p className="text-[8px] text-green-600/70 mt-1">{lang === 'fr' ? 'Tous les élèves ont une note pour cette matière.' : 'All students have a grade for this subject.'}</p>
-                                    </div>
+                                    )) : (
+                                        <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest">Aucune compétence</div>
+                                    )
                                 ) : (
-                                    <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest">{lang === 'fr' ? 'Aucun élève' : 'No students'}</div>
+                                    <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest italic opacity-50">Choisir une matière</div>
                                 )
                             ) : (
-                                <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest italic opacity-50">{t('grades.selection.placeholder_room')}</div>
+                                selectedSalle ? (
+                                    sortedEleves.filter(e => !e.isComplete).length > 0 ? (
+                                        sortedEleves.filter(e => !e.isComplete).map(eleve => (
+                                            <button
+                                                key={eleve.idInscription}
+                                                onClick={() => {
+                                                    console.clear();
+                                                    handleOpenGradeModal(eleve);
+                                                }}
+                                                className={clsx(
+                                                    "w-full text-left border rounded-[14px] p-2.5 transition-all text-[9px] relative overflow-hidden",
+                                                    selectedEleve?.idInscription === eleve.idInscription
+                                                        ? "border-black bg-black text-white shadow-md font-black"
+                                                        : "border-gray-100 hover:border-black hover:shadow-sm"
+                                                )}
+                                            >
+                                                <div className="font-black text-[9px] uppercase tracking-tight">{eleve.nomEleve}</div>
+                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                    {eleve.missingCompetencies?.map((c: any, i: number) => (
+                                                        <span key={i} className="text-[7px] font-black bg-red-50 text-red-500 px-1.5 py-0.5 rounded uppercase">
+                                                            {c.label}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <div className={clsx(
+                                                    "text-[8px] tracking-[0.2em] mt-1 font-bold",
+                                                    selectedEleve?.idInscription === eleve.idInscription ? "text-white/70" : "text-gray-300"
+                                                )}>{t('grades.status.to_complete')}</div>
+                                            </button>
+                                        ))
+                                    ) : eleves.length > 0 ? (
+                                        <div className="text-center py-6 px-4 bg-green-50 rounded-[20px] border border-green-100 animate-in zoom-in-95">
+                                            <CheckCircle2 size={24} className="mx-auto text-green-500 mb-2" />
+                                            <div className="text-[9px] font-black text-green-700 uppercase tracking-widest">{t('grades.status.complete')}</div>
+                                            <p className="text-[8px] text-green-600/70 mt-1">{lang === 'fr' ? 'Tous les élèves ont une note pour cette matière.' : 'All students have a grade for this subject.'}</p>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest">{lang === 'fr' ? 'Aucun élève' : 'No students'}</div>
+                                    )
+                                ) : (
+                                    <div className="text-center text-[8px] text-[#9E9E9E] py-4 uppercase font-black tracking-widest italic opacity-50">{t('grades.selection.placeholder_room')}</div>
+                                )
                             )}
                         </div>
                     </div>
@@ -789,6 +987,15 @@ const GradeManagementPage: React.FC = () => {
                         salle={selectedSalle}
                         eleve={selectedEleve}
                         sequence={selectedSequence}
+                        refreshTrigger={refreshTrigger}
+                    />
+                )}
+                {activeView === 'discipline' && (
+                    <DisciplineView
+                        salle={selectedSalle}
+                        sequence={selectedSequence}
+                        matiere={selectedMatiere}
+                        competence={selectedCompetence}
                         refreshTrigger={refreshTrigger}
                     />
                 )}
@@ -815,6 +1022,18 @@ const GradeManagementPage: React.FC = () => {
                 onSave={handleModalSave}
                 mode="BY_MATIERE"
                 noteSur={selectedMatiere?.noteSur || 20}
+            />
+
+            {/* Discipline Entry Modal */}
+            <DisciplineSequentialEntry
+                isOpen={disciplineModalOpen}
+                onClose={() => setDisciplineModalOpen(false)}
+                items={modalItems}
+                currentIndex={modalIndex}
+                onNavigate={setModalIndex}
+                onSave={handleDisciplineSave}
+                competenceLabel={selectedCompetence?.Competence?.libelle}
+                subjectLabel={selectedMatiere?.libelle}
             />
 
             {loading && (

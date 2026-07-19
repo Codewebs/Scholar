@@ -126,13 +126,16 @@ data class AbsenceUiModel(
     val matricule: String?,
     var heuresAJ: Int,
     var heuresANJ: Int,
-    val idSuiviAbsence: Long?
+    val idSuiviAbsence: Long?,
+    val idRepartitionCompetence: Long? = null,
+    var isDirty: Boolean = false
 )
 
 data class SaveAbsencesPayload(
     val absences: List<AbsenceUiModel>,
     val idSequence: Long,
-    val idAnneeScolaire: Long
+    val idAnneeScolaire: Long,
+    val idRepartitionCompetence: Long? = null
 )
 
 data class PVResponse(

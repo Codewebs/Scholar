@@ -89,6 +89,7 @@ class MainActivity : AppCompatActivity() {
 
                     InitialSetupScreen(
                         viewModel = setupViewModel,
+                        onLogout = { redirectToLogin() },
                         onSetupComplete = { schoolId, yearId, lang ->
                             configPrefs.edit().apply {
                                 putBoolean("setup_complete", true)

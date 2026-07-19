@@ -125,7 +125,7 @@ Classe.hasMany(RepartitionSousPeriode, { foreignKey: "idClasse", as: "repartitio
 RepartitionSousPeriode.belongsTo(Classe, { foreignKey: "idClasse" });
 
 SousPeriode.hasMany(RepartitionSousPeriode, { foreignKey: "idSousPeriode" });
-RepartitionSousPeriode.belongsTo(SousPeriode, { foreignKey: "idSousPeriode" });
+RepartitionSousPeriode.belongsTo(SousPeriode, { foreignKey: "idSousPeriode", as: 'SousPeriode' });
 
 AnneeScolaire.hasMany(RepartitionMatiere, { foreignKey: "idAnneeScolaire" });
 RepartitionMatiere.belongsTo(AnneeScolaire, { foreignKey: "idAnneeScolaire" });
@@ -280,6 +280,9 @@ AnneeScolaire.hasMany(SuiviAbsence, { foreignKey: "idAnneeScolaire" });
 
 SuiviAbsence.belongsTo(SousPeriode, { foreignKey: "idSequence" });
 SousPeriode.hasMany(SuiviAbsence, { foreignKey: "idSequence" });
+
+SuiviAbsence.belongsTo(RepartitionCompetence, { foreignKey: "idRepartitionCompetence" });
+RepartitionCompetence.hasMany(SuiviAbsence, { foreignKey: "idRepartitionCompetence" });
 
 // ✅ Annonces
 Annonce.belongsTo(Utilisateur, { foreignKey: "idAuteur", as: "auteur" });

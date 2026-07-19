@@ -85,10 +85,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
       const normalizedRooms = roomsRes.data.map((r: any) => ({
           ...r,
           nomSalle: r.nomSalle || r.nom || 'N/A',
-          Classe: {
-              ...r.Classe,
-              nomClasse: r.Classe?.libelleFr || r.Classe?.nomClasse || 'N/A'
-          }
+          classeLabel: r.Classe?.libelleClasseFr || r.classeLabel || 'N/A'
       }));
       setSalles(normalizedRooms);
       setSequenceRepartition(seqRepRes.data);
@@ -324,7 +321,7 @@ const SaisieEleveView: React.FC<SaisieEleveViewProps> = ({ salle: propSalle, ele
                 {salles.map(s => (
                     <SelectionCard
                         key={s.idSalle}
-                        title={`${s.Classe?.nomClasse} ${s.nomLettre || s.nomSalle}`}
+                        title={`${s.classeLabel} ${s.nomLettre || s.nomSalle}`}
                         subtitle={s.nomSalle}
                         icon={Building2}
                         onClick={() => { setSelectedSalleId(s.idSalle); setStep('ELEVE'); }}
